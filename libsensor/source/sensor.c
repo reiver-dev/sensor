@@ -16,6 +16,8 @@
 
 #include <fcntl.h>
 
+#include "debug.h"
+
 int create_socket() {
 	/*
 	 * Packet family
