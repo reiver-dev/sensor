@@ -16,7 +16,10 @@
 
 #include <fcntl.h>
 
+#include "debug.h"
 #include "sensor.h"
+
+
 
 int create_socket() {
 	/*
