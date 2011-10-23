@@ -16,6 +16,8 @@
 
 #include <fcntl.h>
 
+#include "sensor.h"
+
 int create_socket() {
 	/*
 	 * Packet family
