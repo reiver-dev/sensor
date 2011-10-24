@@ -10,13 +10,15 @@ LANG = en_EN.UTF8
 CC = gcc
 
 # Build parameters
-CFLAGS = -pipe -m64 -Wall -O2 -fPIC
+CFLAGS = -pipe -m64 -Wall -fPIC
 
 # std -- C standart
 # pipe -- Use pipes rather than temporary files
 # O2 -- Optimization
 # m64 -- for x86_64
 
+# Build parameters for release
+RELEASEFLAGS = -O2
 # Build parameters for debug
 DEBUGFLAGS = -g3 -DDEBUG
 
@@ -43,6 +45,7 @@ all:
 	@make release
 	cp $(HEADERSDIR)/$(EXPORTHEADER) $(DESTDIR)/$(EXPORTHEADER)
 
+release: CFLAGS += ${RELEASEFLAGS}
 release: BUILDDIR = $(BUILD_RELEASE)
 release: build
 
