@@ -8,7 +8,7 @@ class Sensor:
     libsensor = None
 
     def __init__(self):
-        self.libsensor = CDLL("/home/reiver/DEVELOP/EPIC-IDS/libsensor/bin/libsensor.so")
+        self.libsensor = CDLL("/home/reiver/DEVELOP/epic-ids/epicids/libsensor/bin/libsensor.so")
 
     def create_socket(self):
         return self.libsensor.create_socket()

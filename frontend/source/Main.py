@@ -13,7 +13,7 @@ print("Setting promisc: ", sensor.set_iface_promiscuous(socket, b"wlan0", True))
 i = 10
 while(i>0):
     print("iter: ", i)
-    sensor.get_next_packet(socket, 1)
+    sensor.get_next_packet(socket, 5)
     i-=1
 
 
