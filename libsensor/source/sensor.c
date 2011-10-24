@@ -1,6 +1,9 @@
 #define READ_BUFFER_SIZE 4096
 
+#include <stdlib.h>
 #include <stdio.h>
+
+#include <assert.h>
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
@@ -12,7 +15,8 @@
 #include <net/if.h>
 
 #include <netinet/in.h>
-#include <linux/if_ether.h>
+#include <netinet/if_ether.h>
+
 
 #include <fcntl.h>
 
@@ -78,6 +82,8 @@ void PrintPacketInHex(unsigned char *packet, int len) {
 
 }
 
+
+
 int get_next_packet(int sock, int seconds){
 	fd_set readset;
 	struct timeval timeout;
@@ -93,7 +99,7 @@ int get_next_packet(int sock, int seconds){
 		uint8_t* buffer = malloc(READ_BUFFER_SIZE);
 		int count = read(sock, buffer, READ_BUFFER_SIZE);
 		if(count > 0){
-			PrintPacketInHex(buffer, count);
+			dissect(buffer, count);
 		}
 		free(buffer);
 	}
@@ -102,6 +108,50 @@ int get_next_packet(int sock, int seconds){
 }
 
 
+void macToStr(uint8_t mac[6]){
+	int i;
+	for(i=0; i<6;i++)
+		printf("%02X:", mac[i]);
+}
+
+
+//--------------actual dissection-----------------
+uint8_t dissect(uint8_t* packet, int length){
+	DEBUG_PRINT("\n---------------\n");
+	struct EthernetHeader *ethernet = (struct ethernetHeader*) (packet);
+
+	int size_ethernet = sizeof(struct EthernetHeader);
+	macToStr(ethernet->sourceHost);
+	DEBUG_PRINT("\nETHERNET-TYPE: %04X\n", ethernet->type);
+	switch (ethernet->type){
+		case 8:
+			DEBUG_PRINT("%s\n","IP");
+			struct Ip4Header *ipheader = (struct Ip4Header*) (packet + size_ethernet);
+			int size_ip = IP4_HEADER(ipheader->version_headerLen);
+			DEBUG_PRINT("Source ip:%d\nDest ip:%d\n", ipheader->sourceAddress.s_addr, ipheader->destAddress.s_addr);
+			DEBUG_PRINT("PROTOCOL:%d\n", ipheader->protocol);
+			switch (ipheader->protocol){
+				case IPPROTO_TCP:
+					DEBUG_PRINT("%s\n","Protocol TCP");
+					struct TcpHeader *tcpheader = (struct TcpHeader*) (packet + size_ethernet + size_ip);
+					DEBUG_PRINT("Source port:%d\nDest port:%d\n", tcpheader->sourcePort, tcpheader->destPort);
+					break;
+				case IPPROTO_UDP:
+					DEBUG_PRINT("%s\n","Protocol UDP");
+					struct UdpHeader *udpheader = (struct UdpHeader*) (packet + size_ethernet + size_ip);
+					DEBUG_PRINT("Source port:%d\nDest port:%d\n", udpheader->sourcePort, udpheader->destPort);
+					break;
+				case IPPROTO_ICMP:
+					DEBUG_PRINT("%s\n","Protocol ICMP");
+					struct Icmp *icmp = (struct Icmp*) (packet + size_ethernet + size_ip);
+					DEBUG_PRINT("Type:%d\nCode:%d\n", icmp->type, icmp->code);
+			}
+			break;
+	}
+
+
+	return 0;
+}
 
 
 
