@@ -1,28 +1,23 @@
 #define READ_BUFFER_SIZE 4096
-
+//Standart Libraries
 #include <stdlib.h>
 #include <stdio.h>
-
-#include <assert.h>
+//Additional libs
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
-
-#include <sys/socket.h>
+//For packate capture
+#include <sys/select.h>
+//For interface flags change
 #include <sys/ioctl.h>
-
-#include <net/if.h>
 
 #include <netinet/in.h>
 #include <netinet/if_ether.h>
-
-
-#include <fcntl.h>
+#include <linux/if.h>
 
 #include "debug.h"
 #include "sensor.h"
-
 
 
 int create_socket() {
@@ -118,7 +113,7 @@ void macToStr(uint8_t mac[6]){
 //--------------actual dissection-----------------
 uint8_t dissect(uint8_t* packet, int length){
 	DEBUG_PRINT("\n---------------\n");
-	struct EthernetHeader *ethernet = (struct ethernetHeader*) (packet);
+	struct EthernetHeader *ethernet = (struct EthernetHeader*) (packet);
 
 	int size_ethernet = sizeof(struct EthernetHeader);
 	macToStr(ethernet->sourceHost);
@@ -127,7 +122,7 @@ uint8_t dissect(uint8_t* packet, int length){
 		case 8:
 			DEBUG_PRINT("%s\n","IP");
 			struct Ip4Header *ipheader = (struct Ip4Header*) (packet + size_ethernet);
-			int size_ip = IP4_HEADER(ipheader->version_headerLen);
+			int size_ip = IP4_HEADER(ipheader->version_headerLen) * 4;
 			DEBUG_PRINT("Source ip:%d\nDest ip:%d\n", ipheader->sourceAddress.s_addr, ipheader->destAddress.s_addr);
 			DEBUG_PRINT("PROTOCOL:%d\n", ipheader->protocol);
 			switch (ipheader->protocol){
@@ -145,6 +140,7 @@ uint8_t dissect(uint8_t* packet, int length){
 					DEBUG_PRINT("%s\n","Protocol ICMP");
 					struct Icmp *icmp = (struct Icmp*) (packet + size_ethernet + size_ip);
 					DEBUG_PRINT("Type:%d\nCode:%d\n", icmp->type, icmp->code);
+					break;
 			}
 			break;
 	}

@@ -10,7 +10,7 @@ LANG = en_EN.UTF8
 CC = gcc
 
 # Build parameters
-CFLAGS = -pipe -m64 -Wall -fPIC
+CFLAGS = -std=c99 -pipe -m64 -Wall -fPIC
 
 # std -- C standart
 # pipe -- Use pipes rather than temporary files
@@ -20,7 +20,7 @@ CFLAGS = -pipe -m64 -Wall -fPIC
 # Build parameters for release
 RELEASEFLAGS = -O2
 # Build parameters for debug
-DEBUGFLAGS = -g3 -DDEBUG
+DEBUGFLAGS = -g3 -DDEBUG 
 
 # Linker paramers
 LFLAGS = -shared
