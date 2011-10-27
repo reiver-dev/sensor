@@ -1,13 +1,13 @@
 #define READ_BUFFER_SIZE 4096
-//Standart Libraries
+//Standard Libraries
 #include <stdlib.h>
 #include <stdio.h>
-//Additional libs
+//Additional libraries
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
-//For packate capture
+//For package capture
 #include <sys/select.h>
 //For interface flags change
 #include <sys/ioctl.h>
@@ -26,8 +26,8 @@ int create_socket() {
 	 * Linux specific way of getting packets at the dev level
 	 * Capturing every packet
 	 */
-    int sock = socket(PF_PACKET, SOCK_PACKET, htons(ETH_P_ALL));
-    return sock;
+	int sock = socket(PF_PACKET, SOCK_PACKET, htons(ETH_P_ALL));
+	return sock;
 }
 
 
