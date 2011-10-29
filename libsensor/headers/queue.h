@@ -17,11 +17,11 @@ typedef struct {
 } Queue_t;
 
 //Initialize new queue
-Queue_t* queue_new();
+Queue_t queue_init();
 //Free memory item content and item
-inline void queue_free_item(queue_item_t* self);
-//Free memory of queue and all items
-void queue_free(Queue_t* self);
+void queue_item_destroy(queue_item_t* self);
+//Free memory of all items
+void queue_destroy(Queue_t* self);
 
 void queue_push(Queue_t* queue, uint8_t* content, int length);
 queue_item_t* queue_pop(Queue_t* self);

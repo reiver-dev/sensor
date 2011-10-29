@@ -2,27 +2,26 @@
 #include "queue.h"
 
 
-Queue_t* queue_new(){
-	Queue_t* queue = (Queue_t*)malloc(sizeof(Queue_t));
-	queue->length = 0;
-	queue->first = 0;
-	queue->last = 0;
+Queue_t queue_init(){
+	Queue_t queue;
+	queue.length = 0;
+	queue.first = 0;
+	queue.last = 0;
 	return queue;
 }
 
-inline void queue_free_item(queue_item_t* self){
+void queue_item_destroy(queue_item_t* self) {
 	free(self->content);
 	free(self);
 }
 
-void queue_free(Queue_t* self){
+void queue_destroy(Queue_t* self){
 	queue_item_t* item = self->first;
 	while(item) {
 		queue_item_t* next = item->next;
-		queue_free_item(item);
+		queue_item_destroy(item);
 		item = next;
 	}
-	free(self);
 }
 
 
