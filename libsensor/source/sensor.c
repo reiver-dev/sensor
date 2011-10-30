@@ -12,16 +12,13 @@
 #include <sys/ioctl.h>
 // Basic address related functions and types
 #include <netinet/in.h>
-// protocol header defines
 #include <netinet/ether.h>
-#include <netinet/tcp.h>
-#include <netinet/udp.h>
 // replace for net/if.h
-#include <linux/if.h>
+#include <net/if.h>
 // local
 #include "debug.h"
-#include "protocols.h"
 #include "sensor.h"
+#include "dissect.h"
 
 #define SENSOR_DEFAULT_READ_BUFFER_SIZE 65536
 #define SENSOR_DEFAULT_TIMEOUT 1
@@ -59,7 +56,7 @@ int create_socket() {
 	 * Linux specific way of getting packets at the dev level
 	 * Capturing every packet
 	 */
-	int sock = socket(PF_PACKET, SOCK_PACKET, htons(ETH_P_ALL));
+	int sock = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
 	return sock;
 }
 
@@ -93,6 +90,14 @@ int set_iface_promiscuous(int sock, const char* interfaceName, bool state) {
 	}
 
 	return SENSOR_SUCCESS;
+}
+
+int BindRawSocketToInterface(int sock, char *interfaceName){
+	if (setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE, interfaceName, strlen(interfaceName))) {
+		return SENSOR_BIND_SOCKET;
+	}
+	return SENSOR_SUCCESS;
+
 }
 
 
@@ -151,7 +156,7 @@ int sensor_set_dissection_simple(sensor_t *config){
 	if (config->activated) {
 		return SENSOR_ALREADY_ACTIVATED;
 	}
-	config->dissect_function = sensor_empty;
+	config->dissect_function = sensor_dissect_simple;
 	return 0;
 }
 
@@ -199,54 +204,4 @@ int sensor_loop(sensor_t *config, sensor_persist_f callback){
 void sensor_breakloop(sensor_t *config){
 	config->activated = false;
 }
-
-
-void macToStr(uint8_t mac[6]){
-	int i;
-	for(i=0; i<6;i++)
-		printf("%02X:", mac[i]);
-}
-
-
-//--------------actual dissection-----------------
-uint8_t dissect(uint8_t* packet, int length){
-	DEBUG_PRINT("\n---------------\n");
-	struct EthernetHeader *ethernet = (struct EthernetHeader*) (packet);
-
-	int size_ethernet = sizeof(struct EthernetHeader);
-	macToStr(ethernet->sourceHost);
-	DEBUG_PRINT("\nETHERNET-TYPE: %04X\n", ethernet->type);
-	switch (ethernet->type){
-		case 8:
-			DEBUG_PRINT("%s\n","IP");
-			struct Ip4Header *ipheader = (struct Ip4Header*) (packet + size_ethernet);
-			int size_ip = IP4_HEADER(ipheader->version_headerLen) * 4;
-			DEBUG_PRINT("Source ip:%d\nDest ip:%d\n", ipheader->sourceAddress.s_addr, ipheader->destAddress.s_addr);
-			DEBUG_PRINT("PROTOCOL:%d\n", ipheader->protocol);
-			switch (ipheader->protocol){
-				case IPPROTO_TCP:
-					DEBUG_PRINT("%s\n","Protocol TCP");
-					struct TcpHeader *tcpheader = (struct TcpHeader*) (packet + size_ethernet + size_ip);
-					DEBUG_PRINT("Source port:%d\nDest port:%d\n", tcpheader->sourcePort, tcpheader->destPort);
-					break;
-				case IPPROTO_UDP:
-					DEBUG_PRINT("%s\n","Protocol UDP");
-					struct UdpHeader *udpheader = (struct UdpHeader*) (packet + size_ethernet + size_ip);
-					DEBUG_PRINT("Source port:%d\nDest port:%d\n", udpheader->sourcePort, udpheader->destPort);
-					break;
-				case IPPROTO_ICMP:
-					DEBUG_PRINT("%s\n","Protocol ICMP");
-					struct Icmp *icmp = (struct Icmp*) (packet + size_ethernet + size_ip);
-					DEBUG_PRINT("Type:%d\nCode:%d\n", icmp->type, icmp->code);
-					break;
-			}
-			break;
-	}
-
-
-	return 0;
-}
-
-
-
 

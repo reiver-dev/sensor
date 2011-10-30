@@ -10,7 +10,7 @@ LANG = en_EN.UTF8
 CC = gcc
 
 # Build parameters
-CFLAGS = -std=c99 -pipe -m64 -Wall -fPIC
+CFLAGS = -std=c99 -pipe -m64 -Wall -fPIC -D_GNU_SOURCE
 
 # std -- C standart
 # pipe -- Use pipes rather than temporary files

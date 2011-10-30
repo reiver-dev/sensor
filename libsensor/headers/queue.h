@@ -24,6 +24,7 @@ void queue_item_destroy(queue_item_t* self);
 void queue_destroy(Queue_t* self);
 
 void queue_push(Queue_t* queue, uint8_t* content, int length);
+void queue_push_copy(Queue_t* queue, uint8_t* content, int length);
 queue_item_t* queue_pop(Queue_t* self);
 
 #endif /* QUEUE_H_ */

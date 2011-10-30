@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>//for memcpy
 #include "queue.h"
 
 
@@ -47,6 +48,12 @@ void queue_push(Queue_t* queue, uint8_t* content, int length){
 	queue->last = item;
 
 	queue->length++;
+}
+
+void queue_push_copy(Queue_t* queue, uint8_t* content, int length){
+	uint8_t* newcontent = malloc(length);
+	memcpy(newcontent, content, length);
+	queue_push(queue, newcontent, length);
 }
 
 queue_item_t* queue_pop(Queue_t* self){

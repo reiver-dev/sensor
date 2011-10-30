@@ -7,6 +7,7 @@ enum sensor_error_e{
 	SENSOR_SUCCESS,
 	SENSOR_ALREADY_ACTIVATED,
 	SENSOR_CREATE_SOCKET,
+	SENSOR_BIND_SOCKET,
 	SENSOR_IFACE_GET_FLAGS,
 	SENSOR_IFACE_SET_FLAGS
 };
@@ -21,11 +22,11 @@ int sensor_set_dissection_simple(sensor_t *config);
 int sensor_loop(sensor_t *config, sensor_persist_f callback);
 void sensor_breakloop(sensor_t *config);
 
-
+/* TODO: DELETE IT
 int create_socket();
 int close_socket(int socket);
 int set_iface_promiscuous(int sock, const char* interfaceName, bool state);
 int get_next_packet(int sock, int seconds);
-uint8_t dissect(uint8_t* packet, int length);
+uint8_t dissect(uint8_t* packet, int length);*/
 
 #endif /*SENSOR_H*/
