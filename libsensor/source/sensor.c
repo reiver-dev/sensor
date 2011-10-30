@@ -1,23 +1,79 @@
-#define READ_BUFFER_SIZE 4096
-//Standard Libraries
+// Standard Libraries
 #include <stdlib.h>
 #include <stdio.h>
-//Additional libraries
+// Additional libraries
 #include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
-//For package capture
+// For package capture
 #include <sys/select.h>
-//For interface flags change
+// For interface flags change
 #include <sys/ioctl.h>
-
+// Basic address related functions and types
 #include <netinet/in.h>
-#include <netinet/if_ether.h>
+// protocol header defines
+#include <netinet/ether.h>
+#include <netinet/tcp.h>
+#include <netinet/udp.h>
+// replace for net/if.h
 #include <linux/if.h>
-
+// local
 #include "debug.h"
+#include "protocols.h"
 #include "sensor.h"
+
+#define SENSOR_DEFAULT_READ_BUFFER_SIZE 65536
+#define SENSOR_DEFAULT_TIMEOUT 1
+#define SENSOR_DEFAULT_PROMISC false
+//-------------------------------
+
+typedef int (*sensor_dissect_f)(uint8_t* packet, int length, Queue_t in, Queue_t out);
+
+typedef struct {
+	char *device_name;
+	bool promiscuous;
+	uint32_t buffersize;
+	uint8_t timeout;
+} sensor_options_t;
+
+struct sensor{
+	bool activated;
+	bool loop;
+	sensor_options_t opt;
+	Queue_t captured;
+	Queue_t dissected;
+	sensor_dissect_f dissect_function;
+	sensor_persist_f persist_function;
+};
+//----------------------------------
+
+int sensor_empty(){
+	return 0;
+}
+
+sensor_t sensor_init(){
+	sensor_options_t options = {0,SENSOR_DEFAULT_PROMISC,SENSOR_DEFAULT_READ_BUFFER_SIZE, SENSOR_DEFAULT_TIMEOUT};
+	struct sensor result = {false, false, options, queue_init(), queue_init(), *sensor_empty, *sensor_empty};
+	return result;
+}
+
+int sensor_set_options(sensor_t config, char *device, bool is_promisc, uint8_t capture_timeout);
+int sensor_set_dissection_simple(sensor_t config);
+int sensor_loop(sensor_t config, sensor_persist_f callback);
+int sensor_breakloop(sensor_t config);
+int sensor_destroy(sensor_t config);
+
+
+
+
+
+
+
+
+
+
+
 
 
 int create_socket() {
@@ -91,8 +147,8 @@ int get_next_packet(int sock, int seconds){
 
 	select(FD_SETSIZE, &readset, NULL, NULL, &timeout);
 	if(FD_ISSET(sock, &readset)){
-		uint8_t* buffer = malloc(READ_BUFFER_SIZE);
-		int count = read(sock, buffer, READ_BUFFER_SIZE);
+		uint8_t* buffer = malloc(SENSOR_DEFAULT_READ_BUFFER_SIZE);
+		int count = read(sock, buffer, SENSOR_DEFAULT_READ_BUFFER_SIZE);
 		if(count > 0){
 			dissect(buffer, count);
 		}
