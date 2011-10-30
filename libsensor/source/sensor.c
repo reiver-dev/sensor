@@ -26,9 +26,10 @@
 #define SENSOR_DEFAULT_READ_BUFFER_SIZE 65536
 #define SENSOR_DEFAULT_TIMEOUT 1
 #define SENSOR_DEFAULT_PROMISC false
+
 //-------------------------------
 
-typedef int (*sensor_dissect_f)(uint8_t* packet, int length, Queue_t in, Queue_t out);
+typedef int (*sensor_dissect_f)(Queue_t *in, Queue_t *out);
 
 typedef struct {
 	char *device_name;
@@ -39,7 +40,7 @@ typedef struct {
 
 struct sensor{
 	bool activated;
-	bool loop;
+	int sock;
 	sensor_options_t opt;
 	Queue_t captured;
 	Queue_t dissected;
@@ -51,30 +52,6 @@ struct sensor{
 int sensor_empty(){
 	return 0;
 }
-
-sensor_t sensor_init(){
-	sensor_options_t options = {0,SENSOR_DEFAULT_PROMISC,SENSOR_DEFAULT_READ_BUFFER_SIZE, SENSOR_DEFAULT_TIMEOUT};
-	struct sensor result = {false, false, options, queue_init(), queue_init(), *sensor_empty, *sensor_empty};
-	return result;
-}
-
-int sensor_set_options(sensor_t config, char *device, bool is_promisc, uint8_t capture_timeout);
-int sensor_set_dissection_simple(sensor_t config);
-int sensor_loop(sensor_t config, sensor_persist_f callback);
-int sensor_breakloop(sensor_t config);
-int sensor_destroy(sensor_t config);
-
-
-
-
-
-
-
-
-
-
-
-
 
 int create_socket() {
 	/*
@@ -100,7 +77,7 @@ int set_iface_promiscuous(int sock, const char* interfaceName, bool state) {
 
 	//reading flags
 	if(ioctl(sock, SIOCGIFFLAGS, &interface) == -1){
-		return 1;
+		return SENSOR_IFACE_GET_FLAGS;
 	}
 
 	if(state){
@@ -112,50 +89,115 @@ int set_iface_promiscuous(int sock, const char* interfaceName, bool state) {
 
 	//setting flags
 	if(ioctl(sock, SIOCSIFFLAGS, &interface) == -1){
-		return 1;
+		return SENSOR_IFACE_SET_FLAGS;
+	}
+
+	return SENSOR_SUCCESS;
+}
+
+
+
+int sensor_prepare_loop(sensor_t *config){
+	config->sock = create_socket();
+	if (!config->sock) {
+		return SENSOR_CREATE_SOCKET;
+	}
+
+	if (config->opt.promiscuous){
+		int res;
+		if (!(res = set_iface_promiscuous(config->sock, config->opt.device_name, true)))
+			return res;
 	}
 
 	return 0;
 }
 
-
-void PrintPacketInHex(unsigned char *packet, int len) {
-	unsigned char *p = packet;
-
-	printf("\n\n--------Packet---Starts-----\n\n");
-
-	while(len--) {
-		printf("%.2x ", *p);
-		p++;
+int sensor_destroy(sensor_t *config){
+	close_socket(config->sock);
+	queue_destroy(&config->captured);
+	queue_destroy(&config->dissected);
+	if (config->opt.promiscuous){
+		int res;
+		if (!(res = set_iface_promiscuous(config->sock, config->opt.device_name, true)))
+			return res;
 	}
-
-	printf("\n\n--------Packet---Ends-----\n\n");
-
+	return 0;
 }
 
+//-----------------interfaces---------------------
+sensor_t sensor_init(){
+	sensor_options_t options = {0,SENSOR_DEFAULT_PROMISC,SENSOR_DEFAULT_READ_BUFFER_SIZE, SENSOR_DEFAULT_TIMEOUT};
+	struct sensor result;
+	result.activated = false;
+	result.sock = 0;
+	result.opt = options;
+	result.dissect_function = sensor_empty;
+	result.persist_function = sensor_empty;
+	return result;
+}
 
+int sensor_set_options(sensor_t *config, char *device, bool is_promisc, uint32_t buffersize, uint8_t capture_timeout){
+	if (config->activated) {
+		return SENSOR_ALREADY_ACTIVATED;
+	}
+	config->opt.device_name = device;
+	config->opt.promiscuous = is_promisc;
+	config->opt.buffersize = buffersize;
+	config->opt.timeout = capture_timeout;
+	return 0;
+}
 
-int get_next_packet(int sock, int seconds){
-	fd_set readset;
+int sensor_set_dissection_simple(sensor_t *config){
+	if (config->activated) {
+		return SENSOR_ALREADY_ACTIVATED;
+	}
+	config->dissect_function = sensor_empty;
+	return 0;
+}
+
+int sensor_loop(sensor_t *config, sensor_persist_f callback){
+	if (config->activated) {
+		return SENSOR_ALREADY_ACTIVATED;
+	}
+	config->activated = true;
+	int res;
+	if ((res = sensor_prepare_loop(config))) {
+		return res;
+	}
+
+	//--------------------------
 	struct timeval timeout;
-
-	timeout.tv_sec = seconds;
+	timeout.tv_sec = config->opt.timeout;
 	timeout.tv_usec = 0;
 
+	fd_set readset;
 	FD_ZERO(&readset);
-	FD_SET(sock, &readset);
+	FD_SET(config->sock, &readset);
 
-	select(FD_SETSIZE, &readset, NULL, NULL, &timeout);
-	if(FD_ISSET(sock, &readset)){
-		uint8_t* buffer = malloc(SENSOR_DEFAULT_READ_BUFFER_SIZE);
-		int count = read(sock, buffer, SENSOR_DEFAULT_READ_BUFFER_SIZE);
-		if(count > 0){
-			dissect(buffer, count);
+	int buflength = config->opt.buffersize;
+	uint8_t *buffer = malloc(buflength);
+
+	while(config->activated && !config->captured.length && !config->dissected.length){
+		// complete queue if we broke the loop
+		if(config->activated){
+			// wait for packet for given timeout and then read it
+			select(FD_SETSIZE, &readset, NULL, NULL, &timeout);
+			if(FD_ISSET(config->sock, &readset)){
+				int read_len = read(config->sock, buffer, buflength);
+				if(read_len > 0){
+					queue_push(&config->captured, buffer, read_len);
+				}
+			}
 		}
-		free(buffer);
-	}
+		config->dissect_function(&config->captured, &config->dissected);
+		config->persist_function(&config->dissected);
+	} /* while */
+	sensor_destroy(config);
+	return SENSOR_SUCCESS;
+}
 
-	return 0;
+void sensor_breakloop(sensor_t *config){
+	config->activated = false;
 }
 
 
