@@ -1,7 +1,7 @@
 SENSOR_PATH=/home/reiver/DEVELOP/epic-ids/epicids/libsensor
 SENSOR_LIB = ${SENSOR_PATH}/bin/libsensor.so 
 
-APP = sensor
+APP = sensord
 ARCH = x86_64
 
 # English compile messages
@@ -17,9 +17,10 @@ CFLAGS = -pipe -m64
 # m64 -- for x86_64
 
 # Build parameters for debug
+RELEASEFLAGS = -O2
 DEBUGFLAGS = -g3 -DDEBUG
 # Linker paramers
-LFLAGS = $(SENSOR_LIB)
+LFLAGS = $(SENSOR_LIB) -lmysqlclient
 
 # Directories
 HEADERSDIR = headers
@@ -38,6 +39,7 @@ OBJECTFILES = $(SOURCEFILES:.c=.o)
 all: 
 	@make release
 
+release: CFLAGS += ${RELEASEFLAGS}
 release: BUILDDIR = $(BUILD_RELEASE)
 release: build
 
