@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include <arpa/inet.h>
+#include <netinet/ether.h>
 
 #include "dissect.h"
 
@@ -14,7 +15,10 @@ static char result_buf[FULL_BUF_LENGTH];
 
 
 static inline void appendentry(char *parameter, char *value){
-	sprintf(parse_buf, "%s=%s\n", parameter, value);
+	strcat(parse_buf, parameter);
+	strcat(parse_buf, "=");
+	strcat(parse_buf, value);
+	strcat(parse_buf, "\n");
 }
 
 static inline void appendprotocol(char *value){
@@ -41,7 +45,7 @@ int sensor_dissect_simple(Queue_t *in, Queue_t *out){
 	switch (ethernet->ether_type) {
 		struct iphdr *ipheader;
 
-		case ETHERTYPE_IP:
+		case 8:
 			ipheader = (struct iphdr*) (next_payload);
 			next_payload += ipheader->ihl * 4; // get header length in 4-byte words
 
@@ -70,6 +74,7 @@ int sensor_dissect_simple(Queue_t *in, Queue_t *out){
 			break;
 	}
 	queue_push_copy(out, (uint8_t*)result_buf,strlen(result_buf));
+	queue_item_destroy(item);
 	return 0;
 }
 
@@ -86,11 +91,10 @@ char* dissect_ip(struct iphdr *header){
 
 	memset(parse_buf, '\0', PARSE_BUF_LENGTH);
 	strcat(parse_buf,"[IP]\n");
-	sprintf(parse_buf,"VERSION=%d\n", header->version);
-	sprintf(parse_buf,"HEADER-LENGTH=%d",header->ihl);
-	sprintf(parse_buf,"SOURCE=%s\n", inet_ntop(AF_INET, &header->saddr, temp_buf, 16));
-	sprintf(parse_buf,"DESTINATION=%s\n", inet_ntop(AF_INET, &header->daddr, temp_buf, 16));
-	sprintf(parse_buf, "TTL=%d\n", header->ttl);
+	//sprintf(parse_buf,"VERSION=%d\n", header->version);
+	//sprintf(parse_buf,"HEADER-LENGTH=%d",header->ihl);
+	appendentry("SOURCE", inet_ntop(AF_INET, &header->saddr, temp_buf, 16));
+	appendentry("DESTINATION", inet_ntop(AF_INET, &header->daddr, temp_buf, 16));
 
 	return parse_buf;
 }

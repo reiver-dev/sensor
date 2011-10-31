@@ -26,24 +26,6 @@
 
 //-------------------------------
 
-typedef int (*sensor_dissect_f)(Queue_t *in, Queue_t *out);
-
-typedef struct {
-	char *device_name;
-	bool promiscuous;
-	uint32_t buffersize;
-	uint8_t timeout;
-} sensor_options_t;
-
-struct sensor{
-	bool activated;
-	int sock;
-	sensor_options_t opt;
-	Queue_t captured;
-	Queue_t dissected;
-	sensor_dissect_f dissect_function;
-	sensor_persist_f persist_function;
-};
 //----------------------------------
 
 int sensor_empty(){
@@ -56,7 +38,7 @@ int create_socket() {
 	 * Linux specific way of getting packets at the dev level
 	 * Capturing every packet
 	 */
-	int sock = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+	int sock = socket(PF_PACKET, SOCK_PACKET, htons(ETH_P_ALL));
 	return sock;
 }
 
@@ -103,6 +85,9 @@ int BindRawSocketToInterface(int sock, char *interfaceName){
 
 
 int sensor_prepare_loop(sensor_t *config){
+	config->captured = queue_init();
+	config->dissected = queue_init();
+
 	config->sock = create_socket();
 	if (!config->sock) {
 		return SENSOR_CREATE_SOCKET;
@@ -110,7 +95,7 @@ int sensor_prepare_loop(sensor_t *config){
 
 	if (config->opt.promiscuous){
 		int res;
-		if (!(res = set_iface_promiscuous(config->sock, config->opt.device_name, true)))
+		if ((res = set_iface_promiscuous(config->sock, config->opt.device_name, true)))
 			return res;
 	}
 
@@ -160,6 +145,7 @@ int sensor_set_dissection_simple(sensor_t *config){
 	return 0;
 }
 
+
 int sensor_loop(sensor_t *config, sensor_persist_f callback){
 	if (config->activated) {
 		return SENSOR_ALREADY_ACTIVATED;
@@ -169,6 +155,7 @@ int sensor_loop(sensor_t *config, sensor_persist_f callback){
 	if ((res = sensor_prepare_loop(config))) {
 		return res;
 	}
+	config->persist_function = callback;
 
 	//--------------------------
 	struct timeval timeout;
@@ -182,7 +169,7 @@ int sensor_loop(sensor_t *config, sensor_persist_f callback){
 	int buflength = config->opt.buffersize;
 	uint8_t *buffer = malloc(buflength);
 
-	while(config->activated && !config->captured.length && !config->dissected.length){
+	while(config->activated || !config->captured.length || !config->dissected.length){
 		// complete queue if we broke the loop
 		if(config->activated){
 			// wait for packet for given timeout and then read it
@@ -190,12 +177,14 @@ int sensor_loop(sensor_t *config, sensor_persist_f callback){
 			if(FD_ISSET(config->sock, &readset)){
 				int read_len = read(config->sock, buffer, buflength);
 				if(read_len > 0){
-					queue_push(&config->captured, buffer, read_len);
+					queue_push_copy(&config->captured, buffer, read_len);
 				}
 			}
 		}
-		config->dissect_function(&config->captured, &config->dissected);
-		config->persist_function(&config->dissected);
+		if (config->captured.length)
+			config->dissect_function(&config->captured, &config->dissected);
+		if (config->dissected.length)
+			config->persist_function(&config->dissected);
 	} /* while */
 	sensor_destroy(config);
 	return SENSOR_SUCCESS;

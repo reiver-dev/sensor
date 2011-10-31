@@ -14,6 +14,29 @@ enum sensor_error_e{
 
 
 typedef int (*sensor_persist_f)(Queue_t *in);
+
+typedef int (*sensor_dissect_f)(Queue_t *in, Queue_t *out);
+
+typedef struct {
+	char *device_name;
+	bool promiscuous;
+	uint32_t buffersize;
+	uint8_t timeout;
+} sensor_options_t;
+
+struct sensor{
+	bool activated;
+	int sock;
+	sensor_options_t opt;
+	Queue_t captured;
+	Queue_t dissected;
+	sensor_dissect_f dissect_function;
+	sensor_persist_f persist_function;
+};
+
+
+
+
 typedef struct sensor sensor_t;
 
 sensor_t sensor_init();

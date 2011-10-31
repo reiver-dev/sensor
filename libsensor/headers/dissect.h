@@ -1,14 +1,14 @@
 #ifndef DISSECT_H_
 #define DISSECT_H_
 
-#include <net/ethernet.h>
+
 #include <netinet/in.h>
 #include <netinet/ip.h>
 #include <netinet/ether.h>
 #include <netinet/tcp.h>
 #include <netinet/udp.h>
 #include <netinet/ip_icmp.h>
-#include <netinet/if_ether.h>
+
 
 #include "queue.h"
 

@@ -61,6 +61,9 @@ queue_item_t* queue_pop(Queue_t* self){
 	if(item){
 		self->first = item->next;
 		self->length--;
+		if (!self->length) {
+			self->last = self->first;
+		}
 	}
 	return item;
 }
