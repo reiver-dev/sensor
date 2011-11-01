@@ -26,7 +26,7 @@ static inline void appendprotocol(char *value){
 
 //--------------actual-dissection-----------------
 int sensor_dissect_simple(Queue_t *in, Queue_t *out){
-	memset(result_buf, '\0', PARSE_BUF_LENGTH);
+	memset(result_buf, '\0', FULL_BUF_LENGTH);
 
 	queue_item_t* item = queue_pop(in);
 	uint8_t* next_payload = item->content;
@@ -41,6 +41,7 @@ int sensor_dissect_simple(Queue_t *in, Queue_t *out){
 
 		case 8:
 			ipheader = (struct iphdr*) (next_payload);
+			appendprotocol(dissect_ip(ipheader));
 			next_payload += ipheader->ihl * 4; // get header length in 4-byte words
 
 			switch (ipheader->protocol){
@@ -50,14 +51,17 @@ int sensor_dissect_simple(Queue_t *in, Queue_t *out){
 
 				case IPPROTO_TCP:
 					tcpheader = (struct tcphdr*) (next_payload);
+					appendprotocol(dissect_tcp(tcpheader));
 					next_payload += sizeof(tcpheader);
 					break;
 				case IPPROTO_UDP:
 					udpheader = (struct udphdr*) (next_payload);
+					appendprotocol(dissect_udp(udpheader));
 					next_payload += sizeof(udpheader);
 					break;
 				case IPPROTO_ICMP:
 					icmpheader = (struct icmphdr*) (next_payload);
+					appendprotocol(dissect_icmp(icmpheader));
 					next_payload += sizeof(icmpheader);
 					break;
 
@@ -67,7 +71,7 @@ int sensor_dissect_simple(Queue_t *in, Queue_t *out){
 		case ETHERTYPE_ARP:
 			break;
 	}
-	queue_push_copy(out, (uint8_t*)result_buf,strlen(result_buf));
+	queue_push_copy(out, (uint8_t*)result_buf,strlen(result_buf)+1);
 	queue_item_destroy(item);
 	return 0;
 }
@@ -85,7 +89,8 @@ char* dissect_ethernet(struct ether_header *header){
 }
 
 char* dissect_ip(struct iphdr *header){
-	static char temp_buf[16];
+	char temp_buf_source[16];
+	char temp_buf_dest[16];
 	memset(parse_buf, '\0', PARSE_BUF_LENGTH);
 	snprintf(parse_buf, PARSE_BUF_LENGTH,
 			"[IP]\n"
@@ -97,8 +102,8 @@ char* dissect_ip(struct iphdr *header){
 			"TOS=%d\n",
 			header->version,
 			header->ihl,
-			inet_ntop(AF_INET, &header->daddr, temp_buf, 16),
-			inet_ntop(AF_INET, &header->saddr, temp_buf, 16),
+			inet_ntop(AF_INET, &header->daddr, temp_buf_dest, 16),
+			inet_ntop(AF_INET, &header->saddr, temp_buf_source, 16),
 			header->ttl,
 			header->tos
 	);
@@ -132,7 +137,6 @@ char* dissect_udp(struct udphdr *header){
 			header->check
 	);
 
-	strcat(parse_buf,"[UDP]\n");
 	return parse_buf;
 }
 
