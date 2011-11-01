@@ -14,12 +14,6 @@ static char parse_buf[PARSE_BUF_LENGTH];
 static char result_buf[FULL_BUF_LENGTH];
 
 
-static inline void appendentry(char *parameter, char *value){
-	strcat(parse_buf, parameter);
-	strcat(parse_buf, "=");
-	strcat(parse_buf, value);
-	strcat(parse_buf, "\n");
-}
 
 static inline void appendprotocol(char *value){
 	strcat(result_buf, value);
@@ -80,34 +74,64 @@ int sensor_dissect_simple(Queue_t *in, Queue_t *out){
 
 char* dissect_ethernet(struct ether_header *header){
 	memset(parse_buf, '\0', PARSE_BUF_LENGTH);
-	strcat(parse_buf,"[Ethernet]\n");
-	appendentry("DESTINATION", ether_ntoa((struct ether_addr*)header->ether_dhost));
-	appendentry("SOURCE", ether_ntoa((struct ether_addr*)header->ether_shost));
+	snprintf(parse_buf, PARSE_BUF_LENGTH,
+			"[Ethernet]\n"
+			"DESTINATION=%s\n"
+			"SOURCE=%s\n",
+			ether_ntoa((struct ether_addr*)header->ether_dhost),
+			ether_ntoa((struct ether_addr*)header->ether_shost)
+	);
 	return parse_buf;
 }
 
 char* dissect_ip(struct iphdr *header){
 	static char temp_buf[16];
-
 	memset(parse_buf, '\0', PARSE_BUF_LENGTH);
-	strcat(parse_buf,"[IP]\n");
-	//sprintf(parse_buf,"VERSION=%d\n", header->version);
-	//sprintf(parse_buf,"HEADER-LENGTH=%d",header->ihl);
-	appendentry("SOURCE", inet_ntop(AF_INET, &header->saddr, temp_buf, 16));
-	appendentry("DESTINATION", inet_ntop(AF_INET, &header->daddr, temp_buf, 16));
-
+	snprintf(parse_buf, PARSE_BUF_LENGTH,
+			"[IP]\n"
+			"VERSION=%d\n"
+			"HEADER_LENGTH=%d\n"
+			"DESTINATION=%s\n"
+			"SOURCE=%s\n"
+			"TTL=%d\n"
+			"TOS=%d\n",
+			header->version,
+			header->ihl,
+			inet_ntop(AF_INET, &header->daddr, temp_buf, 16),
+			inet_ntop(AF_INET, &header->saddr, temp_buf, 16),
+			header->ttl,
+			header->tos
+	);
 	return parse_buf;
 }
 
 char* dissect_tcp(struct tcphdr *header){
 	memset(parse_buf, '\0', PARSE_BUF_LENGTH);
-	strcat(parse_buf,"[TCP]\n");
+	snprintf(parse_buf, PARSE_BUF_LENGTH,
+			"[TCP]\n"
+			"SOURCE=%d\n"
+			"DESTINATION=%d\n",
+			header->source,
+			header->dest
+	);
 	return parse_buf;
 }
 
 
 char* dissect_udp(struct udphdr *header){
 	memset(parse_buf, '\0', PARSE_BUF_LENGTH);
+	snprintf(parse_buf, PARSE_BUF_LENGTH,
+			"[UDP]\n"
+			"SOURCE=%d\n"
+			"DESTINATION=%d\n"
+			"LENGTH=%d\n"
+			"CHECKSUM=%d\n",
+			header->source,
+			header->dest,
+			header->len,
+			header->check
+	);
+
 	strcat(parse_buf,"[UDP]\n");
 	return parse_buf;
 }
@@ -115,8 +139,15 @@ char* dissect_udp(struct udphdr *header){
 
 char* dissect_icmp(struct icmphdr *header){
 	memset(parse_buf, '\0', PARSE_BUF_LENGTH);
-	strcat(parse_buf,"[ICMP]\n");
-	sprintf(parse_buf,"TYPE=%d\n", header->type);
-	sprintf(parse_buf, "CODE=%d\n", header->code);
+
+	snprintf(parse_buf, PARSE_BUF_LENGTH,
+				"[ICMP]\n"
+				"CODE=%d\n"
+				"TYPE=%d\n"
+				"CHECKSUM=%d\n",
+				header->code,
+				header->type,
+				header->checksum
+	);
 	return parse_buf;
 }
