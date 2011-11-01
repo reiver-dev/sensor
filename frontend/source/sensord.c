@@ -122,11 +122,10 @@ int main(int argc, char** argv) {
 	sensor_set_dissection_simple(&sensor);
 	sensor_loop(&sensor, print_callback);
 
-/*
-	signal(SIGINT, process_stop);
-	signal(SIGQUIT, process_stop);
 
-*/
+	signal(SIGINT, break_loop);
+	signal(SIGQUIT, break_loop);
+
 
 
 	return (EXIT_SUCCESS);
