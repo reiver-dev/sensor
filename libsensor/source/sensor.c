@@ -162,6 +162,10 @@ int sensor_loop(sensor_t *config, sensor_persist_f callback){
 	timeout.tv_sec = config->opt.timeout;
 	timeout.tv_usec = 0;
 
+	time_t iteration_time;//TODO: get intervals as parameters
+	time_t dissect_time;
+	time_t persist_time;
+
 	fd_set readset;
 	FD_ZERO(&readset);
 	FD_SET(config->sock, &readset);
@@ -170,6 +174,8 @@ int sensor_loop(sensor_t *config, sensor_persist_f callback){
 	uint8_t *buffer = malloc(buflength);
 
 	while(config->activated || !config->captured.length || !config->dissected.length){
+		iteration_time = time(0);
+
 		// complete queue if we broke the loop
 		if(config->activated){
 			// wait for packet for given timeout and then read it
@@ -181,10 +187,17 @@ int sensor_loop(sensor_t *config, sensor_persist_f callback){
 				}
 			}
 		}
-		if (config->captured.length)
+
+		if (config->captured.length && (iteration_time - dissect_time) > 2) {
 			config->dissect_function(&config->captured, &config->dissected);
-		if (config->dissected.length)
+			dissect_time = time(0);
+		}
+		if (config->dissected.length > 10 && (iteration_time - persist_time) > 5) {
 			config->persist_function(&config->dissected);
+			persist_time = time(0);
+		}
+
+
 	} /* while */
 	sensor_destroy(config);
 	return SENSOR_SUCCESS;

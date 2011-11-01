@@ -93,6 +93,7 @@ static struct argp args_parser = {options, parse_options};
 int print_callback(Queue_t *in){
 	queue_item_t *packet = queue_pop(in);
 	printf("%s\n", (char *)packet->content);
+	fflush(stdout);
 	queue_item_destroy(packet);
 	return 0;
 }
