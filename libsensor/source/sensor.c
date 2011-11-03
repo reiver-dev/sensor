@@ -44,7 +44,6 @@ int create_socket() {
 	 * Capturing every packet
 	 */
 	int sock = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
-	fcntl(sock, F_SETFL, O_NONBLOCK);
 	return sock;
 }
 
@@ -80,7 +79,7 @@ int set_iface_promiscuous(int sock, const char* interfaceName, bool state) {
 	return SENSOR_SUCCESS;
 }
 
-int BindRawSocketToInterface(int sock, char *interfaceName){
+int sensor_bind_socket_to_interface(int sock, char *interfaceName){
 	if (setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE, interfaceName, strlen(interfaceName))) {
 		return SENSOR_BIND_SOCKET;
 	}
@@ -108,12 +107,14 @@ int sensor_prepare_loop(sensor_t *config){
 }
 
 int sensor_destroy(sensor_t *config){
+	DEBUG_PRINT("Destroying sensor\n");
 	close_socket(config->sock);
 	queue_destroy(&config->captured);
 	queue_destroy(&config->dissected);
 	if (config->opt.promiscuous){
 		int res;
-		if (!(res = set_iface_promiscuous(config->sock, config->opt.device_name, true)))
+		if (!(res = set_iface_promiscuous(config->sock, config->opt.device_name, false)))
+			DEBUG_PRINTF("Disabling promiscuous: %d\n", res);
 			return res;
 	}
 	return 0;
@@ -172,6 +173,7 @@ int sensor_loop(sensor_t *config, sensor_persist_f callback){
 	config->persist_function = callback;
 
 	//--------------------------
+	//setting socket receive timeout
 	struct timeval timeout;
 	timeout.tv_sec = config->opt.timeout;
 	timeout.tv_usec = 0;
@@ -181,10 +183,6 @@ int sensor_loop(sensor_t *config, sensor_persist_f callback){
 	time_t iteration_time=0;//TODO: get intervals as parameters
 	time_t dissect_time=0;
 	time_t persist_time=0;
-
-	fd_set readset;
-	FD_ZERO(&readset);
-	FD_SET(config->sock, &readset);
 
 	int buflength = config->opt.buffersize;
 	uint8_t *buffer = malloc(buflength);
@@ -196,31 +194,25 @@ int sensor_loop(sensor_t *config, sensor_persist_f callback){
 		// complete queue if we broke the loop
 		if(config->activated){
 			// wait for packet for given timeout and then read it
-			DEBUG_PRINTF("Waiting select\n");
-			res = select(FD_SETSIZE, &readset, NULL, NULL, &timeout);
-			DEBUG_PRINTF("Select result: %d\n Timeout value: %lu\n", res, (long)timeout.tv_sec);
 
-			timeout.tv_sec = config->opt.timeout;
-			assert(timeout.tv_sec != 0);
-			if(FD_ISSET(config->sock, &readset)){
-				int read_len = read(config->sock, buffer, buflength);
+			int read_len = read(config->sock, buffer, buflength);
+			DEBUG_PRINTF("Captured: %d bytes\n", read_len);
 
-				if(read_len > 0){
-					DEBUG_PRINTF("Captured: %d bytes\n", read_len);
-					sensor_captured_t *captured = malloc(sizeof(sensor_captured_t));
-					captured->timestamp = time(0);
-					captured->length = read_len;
-					captured->buffer = malloc(read_len);
-					memcpy(captured->buffer, buffer, read_len);
-					queue_push(&config->captured, captured);
-				}
+			if(read_len > 0){
+				sensor_captured_t *captured = malloc(sizeof(sensor_captured_t));
+				captured->timestamp = time(0);
+				captured->length = read_len;
+				captured->buffer = malloc(read_len);
+				memcpy(captured->buffer, buffer, read_len);
+				queue_push(&config->captured, captured);
 			}
+
 		}
 
 		if (config->captured.length && (iteration_time - dissect_time) > 2){
 			DEBUG_PRINTF("Dissecting: %d packets\n", config->captured.length);
 			while(config->captured.length !=0){
-				DEBUG_PRINT("Dissecting\n");
+				DEBUG_PRINT("dissecting\n");
 				config->dissect_function(&config->captured, &config->dissected);
 				dissect_time = time(0);
 			}
@@ -235,6 +227,7 @@ int sensor_loop(sensor_t *config, sensor_persist_f callback){
 
 
 	} /* while */
+	DEBUG_PRINT("Capture ended\n");
 	sensor_destroy(config);
 	return SENSOR_SUCCESS;
 }
