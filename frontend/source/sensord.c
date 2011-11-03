@@ -91,10 +91,12 @@ static struct argp args_parser = {options, parse_options};
 
 //TODO: remove this shit
 int print_callback(Queue_t *in){
-	queue_item_t *packet = queue_pop(in);
-	printf("%s\n", (char *)packet->content);
+	sensor_dissected_t *packet = queue_pop(in);
+	printf("%s\n", packet->content);
 	fflush(stdout);
-	queue_item_destroy(packet);
+	free(packet->content);
+	free(packet->payload);
+	free(packet);
 	return 0;
 }
 

@@ -20,6 +20,15 @@ struct arguments {
 
 };
 
+typedef struct capture_s{
+	char sourcemac[16];
+	char destmac[16];
+	int content_len;
+	int payload_len;
+	uint8_t* content;
+	uint8_t* payload;
+} captured_t;
+
 void message(int message_type, const char* fmt, ...);
 
 #endif	/* MAIN_H */
