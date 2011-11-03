@@ -7,33 +7,35 @@
 #include <netinet/ether.h>
 
 #include "dissect.h"
+#include "sensor.h"
+
+
 
 #define PARSE_BUF_LENGTH 128
 #define FULL_BUF_LENGTH 128*4
 static char parse_buf[PARSE_BUF_LENGTH];
-static char result_buf[FULL_BUF_LENGTH];
-
-
-
-static inline void appendprotocol(char *value){
-	strcat(result_buf, value);
-}
-
-
 
 //TODO: PROPER DISSECTION
 
 
 //--------------actual-dissection-----------------
 int sensor_dissect_simple(Queue_t *in, Queue_t *out){
-	memset(result_buf, '\0', FULL_BUF_LENGTH);
+	sensor_captured_t* captured = (sensor_captured_t*)queue_pop(in);
 
-	queue_item_t* item = queue_pop(in);
-	uint8_t* next_payload = item->content;
+	sensor_dissected_t* result = malloc(sizeof(sensor_dissected_t));
+	memset(result, '\0', sizeof(sensor_dissected_t));
+
+	result->timestamp = captured->timestamp;
+	result->content_length = FULL_BUF_LENGTH;
+	result->content = malloc(FULL_BUF_LENGTH);
+	memset(result->content, '\0', FULL_BUF_LENGTH);
+
+	uint8_t* next_payload = captured->buffer;
 
 	struct ether_header *ethernet = (struct ether_header*) (next_payload);
-	appendprotocol(dissect_ethernet(ethernet));
-
+	strcat(result->mac_dest, ether_ntoa((struct ether_addr*)ethernet->ether_dhost));
+	strcat(result->mac_source, ether_ntoa((struct ether_addr*)ethernet->ether_shost));
+	strcat(result->content,dissect_ethernet(ethernet));
 	next_payload += sizeof(struct ether_header);
 
 	switch (ethernet->ether_type) {
@@ -41,7 +43,7 @@ int sensor_dissect_simple(Queue_t *in, Queue_t *out){
 
 		case 8:
 			ipheader = (struct iphdr*) (next_payload);
-			appendprotocol(dissect_ip(ipheader));
+			strcat(result->content,dissect_ip(ipheader));
 			next_payload += ipheader->ihl * 4; // get header length in 4-byte words
 
 			switch (ipheader->protocol){
@@ -51,28 +53,34 @@ int sensor_dissect_simple(Queue_t *in, Queue_t *out){
 
 				case IPPROTO_TCP:
 					tcpheader = (struct tcphdr*) (next_payload);
-					appendprotocol(dissect_tcp(tcpheader));
+					strcat(result->content,dissect_tcp(tcpheader));
 					next_payload += sizeof(tcpheader);
 					break;
 				case IPPROTO_UDP:
 					udpheader = (struct udphdr*) (next_payload);
-					appendprotocol(dissect_udp(udpheader));
+					strcat(result->content,dissect_udp(udpheader));
 					next_payload += sizeof(udpheader);
 					break;
 				case IPPROTO_ICMP:
 					icmpheader = (struct icmphdr*) (next_payload);
-					appendprotocol(dissect_icmp(icmpheader));
+					strcat(result->content,dissect_icmp(icmpheader));
 					next_payload += sizeof(icmpheader);
 					break;
-
 			}
 			break;
 		//-------------------------
 		case ETHERTYPE_ARP:
 			break;
 	}
-	queue_push_copy(out, (uint8_t*)result_buf,strlen(result_buf)+1);
-	queue_item_destroy(item);
+	result->payload_length = captured->length - (next_payload - captured->buffer);
+	result->payload = malloc(result->payload_length);
+	memcpy(result->payload, next_payload, result->payload_length);
+
+	queue_push(out, result);
+
+	free(captured->buffer);
+	free(captured);
+
 	return 0;
 }
 

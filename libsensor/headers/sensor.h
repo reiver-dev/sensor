@@ -1,6 +1,8 @@
 #ifndef SENSOR_H
 #define SENSOR_H
 #include <stdint.h>
+#include <stdbool.h>
+#include <time.h>
 #include "queue.h"
 
 enum sensor_error_e{
@@ -34,10 +36,24 @@ struct sensor{
 	sensor_persist_f persist_function;
 };
 
-
-
-
 typedef struct sensor sensor_t;
+
+
+typedef struct sensor_captured_s{
+	time_t timestamp;
+	int length;
+	uint8_t* buffer;
+} sensor_captured_t;
+
+typedef struct sensor_dissected_s{
+	time_t timestamp;
+	int content_length;
+	int payload_length;
+	char mac_source[18];
+	char mac_dest[18];
+	char* content;
+	uint8_t* payload;
+} sensor_dissected_t;
 
 sensor_t sensor_init();
 int sensor_set_options(sensor_t *config, char *device, bool is_promisc, uint32_t buffersize,uint8_t capture_timeout);

@@ -14,9 +14,9 @@ void tsqueue_destroy(tsQueue_t* self) {
 	pthread_mutex_unlock(&self->mutex);
 }
 
-void tsqueue_push(tsQueue_t* self, uint8_t* content, int length) {
+void tsqueue_push(tsQueue_t* self, queue_item_t* item) {
 	pthread_mutex_lock(&self->mutex);
-	queue_push(&self->queue, content, length);
+	queue_push(&self->queue, item);
 	pthread_mutex_unlock(&self->mutex);
 }
 

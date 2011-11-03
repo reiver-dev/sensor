@@ -2,7 +2,6 @@
 #include <string.h>//for memcpy
 #include "queue.h"
 
-
 Queue_t queue_init(){
 	Queue_t queue;
 	queue.length = 0;
@@ -11,10 +10,18 @@ Queue_t queue_init(){
 	return queue;
 }
 
+queue_item_t* queue_item_new(void* content){
+	queue_item_t* item = malloc(sizeof(queue_item_t));
+	item->content = content;
+	item->next = 0;
+	return item;
+}
+
 void queue_item_destroy(queue_item_t* self) {
 	free(self->content);
 	free(self);
 }
+
 
 void queue_destroy(Queue_t* self){
 	queue_item_t* item = self->first;
@@ -25,19 +32,8 @@ void queue_destroy(Queue_t* self){
 	}
 }
 
-
-queue_item_t* queue_new_item(uint8_t* content, int length){
-
-	queue_item_t* newitem = malloc(sizeof(queue_item_t));
-	newitem->content = content;
-	newitem->length = length;
-	newitem->next = 0;
-
-	return newitem;
-}
-
-void queue_push(Queue_t* queue, uint8_t* content, int length){
-	queue_item_t* item = queue_new_item(content, length);
+void queue_push(Queue_t* queue, void* content){
+	queue_item_t* item = queue_item_new(content);
 
 	if (queue->last) {
 		queue->last->next = item;
@@ -46,17 +42,10 @@ void queue_push(Queue_t* queue, uint8_t* content, int length){
 		queue->first = item;
 	}
 	queue->last = item;
-
 	queue->length++;
 }
 
-void queue_push_copy(Queue_t* queue, uint8_t* content, int length){
-	uint8_t* newcontent = malloc(length);
-	memcpy(newcontent, content, length);
-	queue_push(queue, newcontent, length);
-}
-
-queue_item_t* queue_pop(Queue_t* self){
+void* queue_pop(Queue_t* self){
 	queue_item_t* item = self->first;
 	if(item){
 		self->first = item->next;
@@ -65,7 +54,9 @@ queue_item_t* queue_pop(Queue_t* self){
 			self->last = self->first;
 		}
 	}
-	return item;
+	void* result = item->content;
+	free(item);
+	return result;
 }
 
 
