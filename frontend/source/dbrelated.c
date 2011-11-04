@@ -19,10 +19,6 @@ void db_init(struct arguments *arguments){
 	db_password = arguments->db_password;
 	db_table = arguments->db_table;
 	db_schema = arguments->db_schema;
-}
-
-void db_destroy(){
-	free(sql);
 
 }
 
@@ -37,19 +33,22 @@ void db_disconnect(){
 //---------------------------------
 
 
-void db_create_sql(){
+void db_prepare_statement(){
 	sql = malloc(100 + strlen(db_schema) + strlen(db_table));
 	sprintf(
-			"INSERT INTO '%s'.'%s' "//18
-			"(\"TIMESTAMP\", \"MAC_FROM\", \"MAC_TO\", \"CONTENT\", \"PAYLOAD\") "///60
+			sql,
+			"INSERT INTO %s "//18
+			"(TIMESTAMP, MAC_FROM, MAC_TO, CONTENT, PAYLOAD) "///60
 			"VALUES(?,?,?,?,?)",
-			db_schema, db_table
+			db_table
 			);
-}
 
-void db_prepare_statement(){
 	statement = mysql_stmt_init(&connection);
-	mysql_stmt_prepare(statement, sql, strlen(sql));
+	int res = mysql_stmt_prepare(statement, sql, strlen(sql));
+	if (res) {
+		printf("ERROR: %s\n",mysql_stmt_error(statement));
+		exit(1);
+	}
 
 	memset(&params, 0, sizeof(params));
 
@@ -59,16 +58,22 @@ void db_prepare_statement(){
 
 	params[1].buffer_type = MYSQL_TYPE_VARCHAR;
 	params[1].is_null = 0;
-	params[1].buffer_length = 64L;
+	params[1].buffer_length = 24L;
 
 	params[2].buffer_type = MYSQL_TYPE_VARCHAR;
 	params[2].is_null = 0;
-	params[2].buffer_length = 64L;
+	params[2].buffer_length = 24L;
 
 	params[3].buffer_type = MYSQL_TYPE_VARCHAR;
 	params[3].is_null = 0;
 
 	params[4].buffer_type = MYSQL_TYPE_BLOB;
+
+}
+
+void db_close_statement(){
+	mysql_stmt_close(statement);
+	free(sql);
 }
 
 
@@ -92,8 +97,11 @@ int db_execute_statement(int timestamp, char *mac_from, char *mac_to, char *head
 
 	mysql_stmt_bind_param(statement, params);
 	int res = mysql_stmt_execute(statement);
-	if(!res){
+	if (res) {
+		printf("ERROR: %s\n",mysql_stmt_error(statement));
+	} else {
 		mysql_stmt_free_result(statement);
+		mysql_commit(&connection);
 	}
 	return res;
 }

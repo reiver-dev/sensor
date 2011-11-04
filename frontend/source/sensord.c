@@ -100,6 +100,23 @@ int print_callback(Queue_t *in){
 	return 0;
 }
 
+int persist_callback(Queue_t *in){
+	sensor_dissected_t *packet = queue_pop(in);
+	db_execute_statement(
+			packet->timestamp,
+			packet->mac_source,
+			packet->mac_dest,
+			packet->content,
+			packet->payload,
+			packet->payload_length
+			);
+
+	free(packet->content);
+	free(packet->payload);
+	free(packet);
+	return 0;
+}
+
 sensor_t sensor;
 void break_loop() {
 	sensor_breakloop(&sensor);
@@ -120,10 +137,17 @@ int main(int argc, char** argv) {
 	arguments.db_password = 0;
 	argp_parse(&args_parser, argc, argv, 0, 0, &arguments);
 
+	db_init(&arguments);
+	db_connect();
+	db_prepare_statement();
+
 	sensor = sensor_init();
 	sensor_set_options(&sensor, arguments.interface, arguments.promiscuous, 65536, 5);
 	sensor_set_dissection_simple(&sensor);
-	sensor_loop(&sensor, print_callback);
+	sensor_loop(&sensor, persist_callback);
+
+	db_close_statement();
+	db_disconnect();
 
 
 	signal(SIGINT, break_loop);
