@@ -1,26 +1,25 @@
-// Standard Libraries
-#include <stdlib.h>
+#include <stdlib.h>                // Standard Libraries
 #include <stdio.h>
-// Additional libraries
-#include <stdint.h>
+
+#include <stdint.h>                // Additional libraries
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
 #include <assert.h>
 #include <errno.h>
-// For package capture
-#include <sys/select.h>
-// For interface flags change
-#include <sys/ioctl.h>
-#include <fcntl.h>
-// Basic address related functions and types
-#include <netinet/in.h>
+
+#include <sys/select.h>            // For package capture
+
+#include <sys/ioctl.h>             // For interface flags change
+
+#include <netinet/in.h>            // Basic address related functions and types
 #include <netinet/ether.h>
-// replace for net/if.h
 #include <net/if.h>
-// local
-#include "debug.h"
+
+#include <netpacket/packet.h>
+
+#include "debug.h"                 // local
 #include "sensor.h"
 #include "dissect.h"
 #include "debug.h"
@@ -43,7 +42,7 @@ int create_socket() {
 	 * Linux specific way of getting packets at the dev level
 	 * Capturing every packet
 	 */
-	int sock = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+	int sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
 	return sock;
 }
 
@@ -60,19 +59,18 @@ int set_iface_promiscuous(int sock, const char* interfaceName, bool state) {
 	strcpy(interface.ifr_name, interfaceName);
 
 	//reading flags
-	if(ioctl(sock, SIOCGIFFLAGS, &interface) == -1){
+	if (ioctl(sock, SIOCGIFFLAGS, &interface) == -1) {
 		return SENSOR_IFACE_GET_FLAGS;
 	}
 
-	if(state){
+	if (state) {
 		interface.ifr_flags |= IFF_PROMISC;
-	}
-	else{
+	} else {
 		interface.ifr_flags &= ~IFF_PROMISC;
 	}
 
 	//setting flags
-	if(ioctl(sock, SIOCSIFFLAGS, &interface) == -1){
+	if (ioctl(sock, SIOCSIFFLAGS, &interface) == -1) {
 		return SENSOR_IFACE_SET_FLAGS;
 	}
 
@@ -80,9 +78,27 @@ int set_iface_promiscuous(int sock, const char* interfaceName, bool state) {
 }
 
 int sensor_bind_socket_to_interface(int sock, char *interfaceName){
-	if (setsockopt(sock, SOL_SOCKET, SO_BINDTODEVICE, interfaceName, strlen(interfaceName))) {
+
+	struct ifreq interface;
+	struct sockaddr_ll address;
+
+	strcpy(interface.ifr_name, interfaceName);
+
+	// Get interface index
+	if (ioctl(sock, SIOCGIFINDEX, &interface) == -1) {
+		return SENSOR_IFACE_GET_INDEX;
+	}
+
+	// Bind raw socket to interface
+	address.sll_family   = AF_PACKET;
+	address.sll_ifindex  = interface.ifr_ifindex;
+	address.sll_protocol = htons(ETH_P_ALL);
+
+	if (bind(sock, (struct sockaddr *)&address, sizeof(address)) == -1) {
+		DEBUG_PRINT("Can't bind socket");
 		return SENSOR_BIND_SOCKET;
 	}
+
 	return SENSOR_SUCCESS;
 }
 
@@ -102,6 +118,8 @@ int sensor_prepare_loop(sensor_t *config){
 		if ((res = set_iface_promiscuous(config->sock, config->opt.device_name, true)))
 			return res;
 	}
+
+	sensor_bind_socket_to_interface(config->sock, config->opt.device_name);
 
 	return 0;
 }
@@ -195,7 +213,7 @@ int sensor_loop(sensor_t *config, sensor_persist_f callback){
 		if(config->activated){
 			// wait for packet for given timeout and then read it
 
-			int read_len = read(config->sock, buffer, buflength);
+			int read_len = recv(config->sock, buffer, buflength, 0);
 			DEBUG_PRINTF("Captured: %d bytes\n", read_len);
 
 			if(read_len > 0){
@@ -217,7 +235,7 @@ int sensor_loop(sensor_t *config, sensor_persist_f callback){
 				dissect_time = time(0);
 			}
 		}
-		if (config->dissected.length > 10 && (iteration_time - persist_time) > 5) {
+		if (config->dissected.length && (iteration_time - persist_time) > 5) {
 			DEBUG_PRINTF("Persisting: %d packets\n", config->dissected.length);
 			while(config->dissected.length !=0){
 				config->persist_function(&config->dissected);

@@ -22,5 +22,6 @@ char* dissect_ip(struct iphdr *header);
 char* dissect_ethernet(struct ether_header *header);
 char* dissect_arp(struct ether_arp *header);
 char* dissect_icmp(struct icmphdr *header);
+char* dissect_out_of_bounds();
 
 #endif /* DISSECT_H_ */
