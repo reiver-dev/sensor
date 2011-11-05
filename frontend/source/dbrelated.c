@@ -39,7 +39,7 @@ void db_prepare_statement(){
 			sql,
 			"INSERT INTO %s "//18
 			"(TIMESTAMP, MAC_FROM, MAC_TO, CONTENT, PAYLOAD) "///60
-			"VALUES(?,?,?,?,?)",
+			"VALUES(FROM_UNIXTIME(?),?,?,?,?)",
 			db_table
 			);
 
@@ -52,17 +52,16 @@ void db_prepare_statement(){
 
 	memset(&params, 0, sizeof(params));
 
-	params[0].buffer_type = MYSQL_TYPE_TIMESTAMP;
-	params[0].is_null;
-	params[0].buffer_length = 32;
+	params[0].buffer_type = MYSQL_TYPE_LONG;
+	params[0].is_null = 0;
 
 	params[1].buffer_type = MYSQL_TYPE_VARCHAR;
 	params[1].is_null = 0;
-	params[1].buffer_length = 24L;
+	params[1].buffer_length = 18;
 
 	params[2].buffer_type = MYSQL_TYPE_VARCHAR;
 	params[2].is_null = 0;
-	params[2].buffer_length = 24L;
+	params[2].buffer_length = 18;
 
 	params[3].buffer_type = MYSQL_TYPE_VARCHAR;
 	params[3].is_null = 0;
@@ -77,7 +76,7 @@ void db_close_statement(){
 }
 
 
-int db_execute_statement(int timestamp, char *mac_from, char *mac_to, char *headers, uint8_t *payload, uint32_t payload_length){
+int db_execute_statement(time_t timestamp, char *mac_from, char *mac_to, char *headers, uint8_t *payload, uint32_t payload_length){
 	params[0].buffer = &timestamp;
 	params[1].buffer = mac_from;
 	params[2].buffer = mac_to;
@@ -92,7 +91,6 @@ int db_execute_statement(int timestamp, char *mac_from, char *mac_to, char *head
 	} else {
 		params[4].buffer = 0;
 		params[4].is_null = (my_bool*)1;
-		params[4].length = 0;
 	}
 
 	mysql_stmt_bind_param(statement, params);
