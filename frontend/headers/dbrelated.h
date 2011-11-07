@@ -11,4 +11,6 @@ void db_disconnect();
 void db_prepare_statement();
 int db_execute_statement();
 
+void db_close_statement();
+
 #endif	/* DBRELATED_H */

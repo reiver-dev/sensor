@@ -9,7 +9,7 @@ LANG = en_EN.UTF8
 # Compiler
 CC = gcc
 # Build parameters
-CFLAGS = -pipe -m64
+CFLAGS = -std=c99 -pipe -m64 -Wall -pedantic
 
 # std -- C standart
 # pipe -- Use pipes rather than temporary files

@@ -2,13 +2,10 @@
 #define DEBUG_H_
 
 #ifdef DEBUG
-#define DEBUG_PRINTF(format, args ...) printf(format, ## args)
-#define DEBUG_PRINT(format) printf(format);
+#define DEBUG_PRINTF(...) printf(__VA_ARGS__)
 
 #else
-#define DEBUG_PRINTF(format, args ...)
-#define DEBUG_PRINT(format)
-
+#define DEBUG_PRINTF(...)
 #endif /* DEBUG_PRINT */
 
 

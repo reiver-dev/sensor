@@ -8,7 +8,7 @@
 
 #include "dissect.h"
 #include "sensor.h"
-
+#include "debug.h"
 
 
 #define PARSE_BUF_LENGTH 196
@@ -85,6 +85,7 @@ int sensor_dissect_simple(Queue_t *in, Queue_t *out){
 		case ETHERTYPE_ARP:
 			break;
 	}
+	DEBUG_PRINTF("%s--------------\n", result->content);
 	result->payload_length = captured->length - (next_payload - captured->buffer);
 	if (result->payload_length > 0) {
 		result->payload = malloc(result->payload_length);

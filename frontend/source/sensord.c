@@ -7,6 +7,7 @@
 #include "sensor.h"
 #include "sensord.h"
 #include "queue.h"
+#include "dbrelated.h"
 
 const char * argp_program_version = "Sensor v0.0.1";
 const char * argp_program_bug_address = "<Bushev A.S.>";

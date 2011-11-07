@@ -95,7 +95,7 @@ int sensor_bind_socket_to_interface(int sock, char *interfaceName){
 	address.sll_protocol = htons(ETH_P_ALL);
 
 	if (bind(sock, (struct sockaddr *)&address, sizeof(address)) == -1) {
-		DEBUG_PRINT("Can't bind socket");
+		DEBUG_PRINTF("Can't bind socket");
 		return SENSOR_BIND_SOCKET;
 	}
 
@@ -125,7 +125,7 @@ int sensor_prepare_loop(sensor_t *config){
 }
 
 int sensor_destroy(sensor_t *config){
-	DEBUG_PRINT("Destroying sensor\n");
+	DEBUG_PRINTF("Destroying sensor\n");
 	close_socket(config->sock);
 	queue_destroy(&config->captured);
 	queue_destroy(&config->dissected);
@@ -205,7 +205,7 @@ int sensor_loop(sensor_t *config, sensor_persist_f callback){
 	int buflength = config->opt.buffersize;
 	uint8_t *buffer = malloc(buflength);
 
-	DEBUG_PRINT("Starting capture\n");
+	DEBUG_PRINTF("Starting capture\n");
 	while(config->activated || !config->captured.length || !config->dissected.length){
 		iteration_time = time(0);
 
@@ -230,7 +230,7 @@ int sensor_loop(sensor_t *config, sensor_persist_f callback){
 		if (config->captured.length && (iteration_time - dissect_time) > 2){
 			DEBUG_PRINTF("Dissecting: %d packets\n", config->captured.length);
 			while(config->captured.length !=0){
-				DEBUG_PRINT("dissecting\n");
+				DEBUG_PRINTF("dissecting\n");
 				config->dissect_function(&config->captured, &config->dissected);
 				dissect_time = time(0);
 			}
@@ -245,7 +245,7 @@ int sensor_loop(sensor_t *config, sensor_persist_f callback){
 
 
 	} /* while */
-	DEBUG_PRINT("Capture ended\n");
+	DEBUG_PRINTF("Capture ended\n");
 	sensor_destroy(config);
 	return SENSOR_SUCCESS;
 }
