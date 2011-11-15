@@ -23,6 +23,7 @@
 #include "sensor.h"
 #include "dissect.h"
 #include "debug.h"
+#include "redirect.h"
 
 #define SENSOR_DEFAULT_READ_BUFFER_SIZE 65536
 #define SENSOR_DEFAULT_TIMEOUT 1
@@ -121,6 +122,9 @@ int sensor_prepare_loop(sensor_t *config){
 
 	sensor_bind_socket_to_interface(config->sock, config->opt.device_name);
 
+	get_current_address(config->sock, config->opt.device_name);
+	get_current_address6(config->sock, config->opt.device_name);
+	get_current_mac(config->sock, config->opt.device_name);
 	return 0;
 }
 
