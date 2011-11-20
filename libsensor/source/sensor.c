@@ -122,9 +122,6 @@ int sensor_prepare_loop(sensor_t *config){
 
 	sensor_bind_socket_to_interface(config->sock, config->opt.device_name);
 
-	get_current_address(config->sock, config->opt.device_name);
-	get_current_address6(config->sock, config->opt.device_name);
-	get_current_mac(config->sock, config->opt.device_name);
 	return 0;
 }
 
