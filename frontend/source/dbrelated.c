@@ -5,6 +5,7 @@
 
 
 static char *db_host, *db_username, *db_password, *db_schema, *db_table;
+static int db_port;
 
 static MYSQL connection;
 static MYSQL_STMT *statement;
@@ -19,12 +20,13 @@ void db_init(struct arguments *arguments){
 	db_password = arguments->db_password;
 	db_table = arguments->db_table;
 	db_schema = arguments->db_schema;
+	db_port = arguments->db_port;
 
 }
 
 void db_connect(){
 	mysql_init(&connection);
-	mysql_real_connect(&connection, db_host, db_username, db_password, db_schema, 0, NULL, 0);
+	mysql_real_connect(&connection, db_host, db_username, db_password, db_schema, db_port, NULL, 0);
 }
 
 void db_disconnect(){

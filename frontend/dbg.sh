@@ -2,4 +2,5 @@
 
 
 export LD_LIBRARY_PATH=:/home/reiver/DEVELOP/epic-ids/epicids/libsensor/bin
-gdbserver localhost:31337 bin/sensord -i wlan0 -p -H 127.0.0.1 -N sniffer -S sniffer -U root -P toor
+
+gdbserver localhost:31337 bin/sensord -i wlan0 -p -b 65536 --disable-persistance --disable-redirect

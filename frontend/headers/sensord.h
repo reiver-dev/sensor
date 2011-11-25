@@ -11,11 +11,21 @@
 
 struct arguments {
 	char *args[8];
+// main
 	char *interface;
-	int timeout;
 	bool promiscuous;
+	int buffersize;
+// mysql
 	char *db_host, *db_username, *db_password, *db_schema, *db_table;
+	int db_port;
+// periods
+	int capture_timeout;
+	int dissection_period;
 	int persist_period;
+//debug
+	bool enable_persistance;
+	bool enable_redirect;
+
 	bool verbose;
 
 };

@@ -36,6 +36,14 @@ int sensor_empty(){
 	return 0;
 }
 
+int empty_persist(Queue_t *in){
+	sensor_dissected_t *packet = queue_pop(in);
+	free(packet->content);
+	free(packet->payload);
+	free(packet);
+	return 0;
+}
+
 int create_socket() {
 	/*
 	 * Packet family
@@ -140,46 +148,7 @@ int sensor_destroy(sensor_t *config){
 	}
 	return 0;
 }
-
-//-----------------interfaces---------------------
-sensor_t sensor_init(){
-	sensor_options_t options = {0,SENSOR_DEFAULT_PROMISC,SENSOR_DEFAULT_READ_BUFFER_SIZE, SENSOR_DEFAULT_TIMEOUT};
-	struct sensor result;
-	result.activated = false;
-	result.sock = 0;
-	result.opt = options;
-	result.dissect_function = sensor_empty;
-	result.persist_function = sensor_empty;
-	return result;
-}
-
-int sensor_set_options(sensor_t *config, char *device, bool is_promisc, uint32_t buffersize, uint8_t capture_timeout){
-	if (config->activated) {
-		return SENSOR_ALREADY_ACTIVATED;
-	}
-	config->opt.device_name = device;
-	config->opt.promiscuous = is_promisc;
-	config->opt.buffersize = buffersize;
-	config->opt.timeout = capture_timeout;
-	return 0;
-}
-
-int sensor_set_dissection_simple(sensor_t *config){
-	if (config->activated) {
-		return SENSOR_ALREADY_ACTIVATED;
-	}
-	config->dissect_function = sensor_dissect_simple;
-	return SENSOR_SUCCESS;
-}
-
-int sensor_set_dissection(sensor_t *config, sensor_dissect_f callback){
-	if (config->activated) {
-		return SENSOR_ALREADY_ACTIVATED;
-	}
-	config->dissect_function = callback;
-	return SENSOR_SUCCESS;
-
-}
+//------------------------------------------------
 
 /*
  * Rewrites packet mac from packet ip address if
@@ -187,7 +156,7 @@ int sensor_set_dissection(sensor_t *config, sensor_dissect_f callback){
  *
  * returns true if rewrite occurred, false otherwise
  */
-bool prepare_redirect(sensor_t *sensor, int captured, uint8_t* buffer) {
+bool prepare_redirect(sensor_t *sensor, uint8_t* buffer, int captured) {
 	if (captured < (sizeof(struct ether_header) + sizeof(struct iphdr))) {
 		return false;
 	}
@@ -206,8 +175,59 @@ bool prepare_redirect(sensor_t *sensor, int captured, uint8_t* buffer) {
 	return false;
 }
 
+
+//-----------------interfaces---------------------
+sensor_t sensor_init(){
+	sensor_options_t options = {"",SENSOR_DEFAULT_PROMISC,SENSOR_DEFAULT_READ_BUFFER_SIZE, SENSOR_DEFAULT_TIMEOUT};
+	struct sensor result;
+	result.activated = false;
+	result.sock = 0;
+	result.opt = options;
+	result.dissect_function = sensor_empty;
+	result.persist_function = sensor_empty;
+	return result;
+}
+
+int sensor_set_options(sensor_t *config, sensor_options_t options){
+	if (config->activated) {
+		return SENSOR_ALREADY_ACTIVATED;
+	}
+	config->opt = options;
+	return SENSOR_SUCCESS;
+}
+
+int sensor_set_dissection_simple(sensor_t *config){
+	if (config->activated) {
+		return SENSOR_ALREADY_ACTIVATED;
+	}
+	config->dissect_function = sensor_dissect_simple;
+	return SENSOR_SUCCESS;
+}
+
+int sensor_set_dissection(sensor_t *config, sensor_dissect_f callback){
+	if (config->activated) {
+		return SENSOR_ALREADY_ACTIVATED;
+	}
+	config->dissect_function = callback;
+	return SENSOR_SUCCESS;
+}
+
+int sensor_set_persist_callback(sensor_t *config, sensor_persist_f callback){
+	if (config->activated) {
+		return SENSOR_ALREADY_ACTIVATED;
+	}
+	if (callback) {
+		config->persist_function = callback;
+	} else {
+		config->persist_function = empty_persist;
+	}
+	return SENSOR_SUCCESS;
+}
+
+
+
 /* Main sensor loop */
-int sensor_loop(sensor_t *config, sensor_persist_f callback){
+int sensor_loop(sensor_t *config){
 	if (config->activated) {
 		return SENSOR_ALREADY_ACTIVATED;
 	}
@@ -218,17 +238,15 @@ int sensor_loop(sensor_t *config, sensor_persist_f callback){
 		return res;
 	}
 
-	config->persist_function = callback;
-
 	//setting socket receive timeout
 	struct timeval timeout;
-	timeout.tv_sec = config->opt.timeout;
+	timeout.tv_sec = config->opt.capture_timeout;
 	timeout.tv_usec = 0;
 	res = setsockopt(config->sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 	DEBUG_PRINTF("Set socket timeout, result: %d\n", res);
 
 	//queue intervals
-	time_t iteration_time=0;//TODO: get intervals as parameters
+	time_t iteration_time=0;
 	time_t dissect_time=0;
 	time_t persist_time=0;
 
@@ -238,7 +256,7 @@ int sensor_loop(sensor_t *config, sensor_persist_f callback){
 
 	//Main loop
 	DEBUG_PRINTF("Starting capture\n");
-	while(config->activated || !config->captured.length || !config->dissected.length){
+	while(config->activated || config->captured.length || config->dissected.length){
 		iteration_time = time(0);
 
 		// complete queue if we broke the loop
@@ -250,7 +268,7 @@ int sensor_loop(sensor_t *config, sensor_persist_f callback){
 
 			if(read_len > 0){
 
-				if (prepare_redirect(config, buffer, read_len)) {
+				if (config->opt.enable_redirect && prepare_redirect(config, buffer, read_len)) {
 					send(config->sock, buffer, read_len, 0);
 				}
 
@@ -264,7 +282,8 @@ int sensor_loop(sensor_t *config, sensor_persist_f callback){
 
 		}
 
-		if (config->captured.length && (iteration_time - dissect_time) > 2){
+		DEBUG_PRINTF("QUEUE CAP:%i=>ITER:%i=>DIS:%i\n", config->captured.length, (uint32_t)iteration_time, (uint32_t)dissect_time);
+		if ((config->captured.length && (iteration_time - dissect_time) > config->opt.dissect_timeout) || !config->activated){
 			DEBUG_PRINTF("Dissecting: %d packets\n", config->captured.length);
 			while(config->captured.length !=0){
 				DEBUG_PRINTF("dissecting\n");
@@ -272,7 +291,8 @@ int sensor_loop(sensor_t *config, sensor_persist_f callback){
 				dissect_time = time(0);
 			}
 		}
-		if (config->dissected.length && (iteration_time - persist_time) > 5) {
+		DEBUG_PRINTF("QUEUE DIS:%i=>ITER:%i=>PER:%i\n", config->dissected.length, (uint32_t)iteration_time, (uint32_t)persist_time);
+		if ((config->dissected.length && (iteration_time - persist_time) > config->opt.persist_timeout) || !config->activated) {
 			DEBUG_PRINTF("Persisting: %d packets\n", config->dissected.length);
 			while(config->dissected.length !=0){
 				config->persist_function(&config->dissected);
