@@ -29,9 +29,8 @@
 #define SENSOR_DEFAULT_TIMEOUT 1
 #define SENSOR_DEFAULT_PROMISC false
 
-//-------------------------------
 
-//----------------------------------
+//------------PRIVATE---------------------
 
 int sensor_empty(){
 	return 0;
@@ -78,7 +77,7 @@ int set_iface_promiscuous(int sock, const char* interfaceName, bool state) {
 	return SENSOR_SUCCESS;
 }
 
-int sensor_bind_socket_to_interface(int sock, char *interfaceName){
+int bind_socket_to_interface(int sock, char *interfaceName){
 
 	struct ifreq interface;
 	struct sockaddr_ll address;
@@ -120,7 +119,10 @@ int sensor_prepare_loop(sensor_t *config){
 			return res;
 	}
 
-	sensor_bind_socket_to_interface(config->sock, config->opt.device_name);
+	bind_socket_to_interface(config->sock, config->opt.device_name);
+
+	get_current_mac_r(config->sock, config->opt.device_name, config->hwaddr);
+	config->ip4addr = get_current_address(config->sock, config->opt.device_name);
 
 	return 0;
 }
@@ -179,19 +181,45 @@ int sensor_set_dissection(sensor_t *config, sensor_dissect_f callback){
 
 }
 
+/*
+ * Rewrites packet mac from packet ip address if
+ * it is not equal to sensor ip
+ *
+ * returns true if rewrite occurred, false otherwise
+ */
+bool prepare_redirect(sensor_t *sensor, int captured, uint8_t* buffer) {
+	if (captured < (sizeof(struct ether_header) + sizeof(struct iphdr))) {
+		return false;
+	}
 
+	int position = sizeof(struct ether_header);
+	struct ether_header *ethernet = (struct ether_header*) (buffer);
+
+	if (ethernet->ether_type == ETHERTYPE_IP) {
+		struct iphdr *ipheader = (struct iphdr*) (buffer + position);
+		if (ipheader->daddr != sensor->ip4addr) {
+			read_arp_ip_to_mac_r(sensor->sock, sensor->opt.device_name, ipheader->daddr, ethernet->ether_dhost);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/* Main sensor loop */
 int sensor_loop(sensor_t *config, sensor_persist_f callback){
 	if (config->activated) {
 		return SENSOR_ALREADY_ACTIVATED;
 	}
 	config->activated = true;
+
 	int res;
 	if ((res = sensor_prepare_loop(config))) {
 		return res;
 	}
+
 	config->persist_function = callback;
 
-	//--------------------------
 	//setting socket receive timeout
 	struct timeval timeout;
 	timeout.tv_sec = config->opt.timeout;
@@ -199,25 +227,33 @@ int sensor_loop(sensor_t *config, sensor_persist_f callback){
 	res = setsockopt(config->sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 	DEBUG_PRINTF("Set socket timeout, result: %d\n", res);
 
+	//queue intervals
 	time_t iteration_time=0;//TODO: get intervals as parameters
 	time_t dissect_time=0;
 	time_t persist_time=0;
 
+	//buffer length
 	int buflength = config->opt.buffersize;
 	uint8_t *buffer = malloc(buflength);
 
+	//Main loop
 	DEBUG_PRINTF("Starting capture\n");
 	while(config->activated || !config->captured.length || !config->dissected.length){
 		iteration_time = time(0);
 
 		// complete queue if we broke the loop
 		if(config->activated){
-			// wait for packet for given timeout and then read it
 
+			// wait for packet for given timeout and then read it
 			int read_len = recv(config->sock, buffer, buflength, 0);
 			DEBUG_PRINTF("Captured: %d bytes\n", read_len);
 
 			if(read_len > 0){
+
+				if (prepare_redirect(config, buffer, read_len)) {
+					send(config->sock, buffer, read_len, 0);
+				}
+
 				sensor_captured_t *captured = malloc(sizeof(sensor_captured_t));
 				captured->timestamp = time(0);
 				captured->length = read_len;
@@ -250,6 +286,7 @@ int sensor_loop(sensor_t *config, sensor_persist_f callback){
 	sensor_destroy(config);
 	return SENSOR_SUCCESS;
 }
+
 
 void sensor_breakloop(sensor_t *config){
 	config->activated = false;

@@ -11,6 +11,8 @@
 
 #include "redirect.h"
 
+
+
 uint8_t* get_current_mac(int sock, const char* interfaceName) {
 	static uint8_t hwaddr[ETH_ALEN] = {0};
 	return get_current_mac_r(sock, interfaceName, hwaddr);
@@ -97,4 +99,6 @@ uint32_t read_arp_mac_to_ip(int sock, const char* interfaceName, uint8_t hwaddre
 	uint32_t address = ((struct sockaddr_in *)&arp.arp_pa)->sin_addr.s_addr;
 	return address;
 }
+
+
 
