@@ -1,4 +1,6 @@
 #include <mysql/mysql.h>
+#include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdint.h>
 #include "dbrelated.h"

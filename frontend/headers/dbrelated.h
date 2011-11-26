@@ -1,7 +1,6 @@
 #ifndef DBRELATED_H
 #define	DBRELATED_H
-#include "sensord.h"
-#include <mysql/mysql.h>
+#include "arguments.h"
 
 void db_init(struct arguments *arguments);
 
