@@ -20,37 +20,40 @@ static char parse_buf[PARSE_BUF_LENGTH];
 
 //--------------actual-dissection-----------------
 int sensor_dissect_simple(Queue_t *in, Queue_t *out){
+	// extract from queue
 	sensor_captured_t* captured = (sensor_captured_t*)queue_pop(in);
-
+	// allocate dissected
 	sensor_dissected_t* result = malloc(sizeof(sensor_dissected_t));
 	memset(result, '\0', sizeof(sensor_dissected_t));
 
+	// enter base values
 	result->timestamp = captured->timestamp;
 	result->content_length = FULL_BUF_LENGTH;
 	result->content = malloc(FULL_BUF_LENGTH);
 	memset(result->content, '\0', FULL_BUF_LENGTH);
 
-	uint8_t* next_payload = captured->buffer;
+	uint8_t* packet_begin = captured->buffer;
+	int position = 0;
 
-	struct ether_header *ethernet = (struct ether_header*) (next_payload);
+	struct ether_header *ethernet = (struct ether_header*) (packet_begin);
 	strcat(result->mac_dest, ether_ntoa((struct ether_addr*)ethernet->ether_dhost));
 	strcat(result->mac_source, ether_ntoa((struct ether_addr*)ethernet->ether_shost));
 	strcat(result->content,dissect_ethernet(ethernet));
-	next_payload += sizeof(struct ether_header);
+	position += sizeof(struct ether_header);
 
 	uint16_t ethernet_type = ntohs(ethernet->ether_type);
 	switch (ethernet_type) {
 		struct iphdr *ipheader;
 
 		case ETHERTYPE_IP:
-			ipheader = (struct iphdr*) (next_payload);
+			ipheader = (struct iphdr*) (packet_begin + position);
 			strcat(result->content,dissect_ip(ipheader));
 			// CHECK BOUNDS
-			if (next_payload + (ipheader->ihl * 4) < captured->buffer + captured->length) {
-				next_payload += ipheader->ihl * 4; // get header length in 4-byte words
+			if (position + (ipheader->ihl * 4) <= captured->length) {
+				position += ipheader->ihl * 4; // get header length in 4-byte words
 			} else {
 				strcat(result->content, dissect_out_of_bounds());
-				next_payload += sizeof(struct iphdr);
+				position += sizeof(struct iphdr);
 				break;
 			}
 
@@ -60,24 +63,24 @@ int sensor_dissect_simple(Queue_t *in, Queue_t *out){
 				struct icmphdr *icmpheader;
 
 				case IPPROTO_TCP:
-					tcpheader = (struct tcphdr*) (next_payload);
+					tcpheader = (struct tcphdr*) (packet_begin + position);
 					strcat(result->content,dissect_tcp(tcpheader));
-					if (next_payload + (tcpheader->doff * 4) <= captured->buffer + captured->length) {
-						next_payload += tcpheader->doff;
+					if (position + (tcpheader->doff * 4) <= captured->length) {
+						position += tcpheader->doff;
 					} else {
 						strcat(result->content, dissect_out_of_bounds());
-						next_payload += sizeof(struct tcphdr);
+						position += sizeof(struct tcphdr);
 					}
 					break;
 				case IPPROTO_UDP:
-					udpheader = (struct udphdr*) (next_payload);
+					udpheader = (struct udphdr*) (packet_begin + position);
 					strcat(result->content,dissect_udp(udpheader));
-					next_payload += sizeof(udpheader);
+					position += sizeof(udpheader);
 					break;
 				case IPPROTO_ICMP:
-					icmpheader = (struct icmphdr*) (next_payload);
+					icmpheader = (struct icmphdr*) (packet_begin + position);
 					strcat(result->content,dissect_icmp(icmpheader));
-					next_payload += sizeof(icmpheader);
+					position += sizeof(icmpheader);
 					break;
 			}
 			break;
@@ -86,10 +89,10 @@ int sensor_dissect_simple(Queue_t *in, Queue_t *out){
 			break;
 	}
 	DEBUG_PRINTF("%s--------------\n", result->content);
-	result->payload_length = captured->length - (next_payload - captured->buffer);
+	result->payload_length = captured->length - position;
 	if (result->payload_length > 0) {
 		result->payload = malloc(result->payload_length);
-		memcpy(result->payload, next_payload, result->payload_length);
+		memcpy(result->payload, packet_begin, result->payload_length);
 	} else {
 		result->payload = 0;
 	}
