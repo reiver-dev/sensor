@@ -134,7 +134,7 @@ int main(int argc, char** argv) {
 	opts.enable_redirect = arguments.enable_redirect;
 
 	sensor_set_options(&sensor, opts);
-	sensor_set_dissection_simple(&sensor);
+	sensor_set_dissection_default(&sensor);
 	sensor_loop(&sensor);
 
 	if (arguments.enable_persistance) {
