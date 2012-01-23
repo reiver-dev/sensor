@@ -11,6 +11,11 @@
 #include "debug.h"
 
 
+#define ALLOCATE(target){                                \
+			target = malloc(sizeof(typeof(target)))      \
+			memset(target, '\0', sizeof(typeof(target))) \
+		}                                                \
+
 #define PARSE_BUF_LENGTH 196
 #define FULL_BUF_LENGTH 196*4
 static char parse_buf[PARSE_BUF_LENGTH];
@@ -20,13 +25,14 @@ static char parse_buf[PARSE_BUF_LENGTH];
 
 //--------------actual-dissection-----------------
 int sensor_dissect_simple(Queue_t *in, Queue_t *out){
-	// extract from queue
+	//extract from queue
 	sensor_captured_t* captured = (sensor_captured_t*)queue_pop(in);
-	// allocate dissected
+
+	//allocate dissected
 	sensor_dissected_t* result = malloc(sizeof(sensor_dissected_t));
 	memset(result, '\0', sizeof(sensor_dissected_t));
 
-	// enter base values
+	//enter base values
 	result->timestamp = captured->timestamp;
 	result->content_length = FULL_BUF_LENGTH;
 	result->content = malloc(FULL_BUF_LENGTH);
@@ -36,8 +42,8 @@ int sensor_dissect_simple(Queue_t *in, Queue_t *out){
 	int position = 0;
 
 	struct ether_header *ethernet = (struct ether_header*) (packet_begin);
-	strcat(result->mac_dest, ether_ntoa((struct ether_addr*)ethernet->ether_dhost));
-	strcat(result->mac_source, ether_ntoa((struct ether_addr*)ethernet->ether_shost));
+	strcpy(result->mac_dest, ether_ntoa((struct ether_addr*)ethernet->ether_dhost));
+	strcpy(result->mac_source, ether_ntoa((struct ether_addr*)ethernet->ether_shost));
 	strcat(result->content,dissect_ethernet(ethernet));
 	position += sizeof(struct ether_header);
 
@@ -47,7 +53,7 @@ int sensor_dissect_simple(Queue_t *in, Queue_t *out){
 
 		case ETHERTYPE_IP:
 			ipheader = (struct iphdr*) (packet_begin + position);
-			strcat(result->content,dissect_ip(ipheader));
+			strcat(result->content, dissect_ip(ipheader));
 			// CHECK BOUNDS
 			if (position + (ipheader->ihl * 4) <= captured->length) {
 				position += ipheader->ihl * 4; // get header length in 4-byte words
@@ -89,6 +95,8 @@ int sensor_dissect_simple(Queue_t *in, Queue_t *out){
 			break;
 	}
 	DEBUG_PRINTF("%s--------------\n", result->content);
+
+	//copy payload
 	result->payload_length = captured->length - position;
 	if (result->payload_length > 0) {
 		result->payload = malloc(result->payload_length);
@@ -98,8 +106,7 @@ int sensor_dissect_simple(Queue_t *in, Queue_t *out){
 	}
 	queue_push(out, result);
 
-	free(captured->buffer);
-	free(captured);
+	destroy_captured(captured);
 
 	return 0;
 }
@@ -141,11 +148,11 @@ char* dissect_ip(struct iphdr *header){
 			inet_ntop(AF_INET, &header->saddr, temp_buf_source, 16),
 			header->ttl,
 			header->tos,
-			header->id,
+			ntohl(header->id),
 			header->frag_off & 0x4000,    //don't fragment flag
 			header->frag_off & 0x2000,    //more fragments flag
 			header->frag_off & 0x1fff,    //fragment offset
-			header->check
+			ntohs(header->check)
 	);
 	return parse_buf;
 }
@@ -168,10 +175,10 @@ char* dissect_tcp(struct tcphdr *header){
 			"WINDOW=%d\n"
 			"CHECKSUM=%d\n"
 			"URGENTPTR=%d\n",
-			header->source,
-			header->dest,
-			header->seq,
-			header->ack_seq,
+			ntohs(header->source),
+			ntohs(header->dest),
+			ntohl(header->seq),
+			ntohl(header->ack_seq),
 			header->doff,
 			header->fin,
 			header->syn,
@@ -179,9 +186,9 @@ char* dissect_tcp(struct tcphdr *header){
 			header->psh,
 			header->ack,
 			header->urg,
-			header->window,
-			header->check,
-			header->urg_ptr
+			ntohs(header->window),
+			ntohs(header->check),
+			ntohs(header->urg_ptr)
 	);
 	return parse_buf;
 }
@@ -195,10 +202,10 @@ char* dissect_udp(struct udphdr *header){
 			"DESTINATION=%d\n"
 			"LENGTH=%d\n"
 			"CHECKSUM=%d\n",
-			header->source,
-			header->dest,
-			header->len,
-			header->check
+			ntohs(header->source),
+			ntohs(header->dest),
+			ntohs(header->len),
+			ntohs(header->check)
 	);
 
 	return parse_buf;
@@ -215,7 +222,7 @@ char* dissect_icmp(struct icmphdr *header){
 				"CHECKSUM=%d\n",
 				header->code,
 				header->type,
-				header->checksum
+				ntohs(header->checksum)
 	);
 
 	if (header->type == ICMP_ECHO) {
@@ -223,8 +230,8 @@ char* dissect_icmp(struct icmphdr *header){
 		snprintf(parse_buf + strlen(parse_buf), PARSE_BUF_LENGTH - length,
 				"ID=%d\n"
 				"SEQUENCE=%d\n",
-				header->un.echo.id,
-				header->un.echo.sequence
+				ntohs(header->un.echo.id),
+				ntohs(header->un.echo.sequence)
 		);
 	}
 

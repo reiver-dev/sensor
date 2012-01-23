@@ -63,9 +63,16 @@ typedef struct sensor_dissected_s{
 	uint8_t* payload;
 } sensor_dissected_t;
 
+
+sensor_captured_t* init_captured(uint8_t *buffer, int len);
+void destroy_captured(sensor_captured_t *captured);
+void destroy_dissected(sensor_dissected_t *dissected);
+
+
+
 sensor_t sensor_init();
 int sensor_set_options(sensor_t *config, sensor_options_t options);
-int sensor_set_dissection_simple(sensor_t *config);
+int sensor_set_dissection_default(sensor_t *config);
 int sensor_set_persist_callback(sensor_t *config, sensor_persist_f callback);
 int sensor_loop(sensor_t *config);
 void sensor_breakloop(sensor_t *config);

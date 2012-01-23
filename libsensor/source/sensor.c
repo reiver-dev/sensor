@@ -31,18 +31,7 @@
 
 
 //------------PRIVATE---------------------
-
-int sensor_empty(){
-	return 0;
-}
-
-int empty_persist(Queue_t *in){
-	sensor_dissected_t *packet = queue_pop(in);
-	free(packet->content);
-	free(packet->payload);
-	free(packet);
-	return 0;
-}
+//-----------socket-related---------------
 
 int create_socket() {
 	/*
@@ -111,23 +100,54 @@ int bind_socket_to_interface(int sock, char *interfaceName){
 }
 
 
+int set_socket_timeout(int sock, int seconds) {
+	struct timeval timeout;
+	timeout.tv_sec = seconds;
+	timeout.tv_usec = 0;
+	int res = setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
+	DEBUG_PRINTF("Set socket timeout, result: %d\n", res);
+	return res;
+}
 
-int sensor_prepare_loop(sensor_t *config){
+
+//-----------sensor-related
+int sensor_empty(){
+	return 0;
+}
+
+int empty_persist(Queue_t *in){
+	sensor_dissected_t *packet = queue_pop(in);
+	free(packet->content);
+	free(packet->payload);
+	free(packet);
+	return 0;
+}
+
+
+
+int commit_config(sensor_t *config){
 	config->captured = queue_init();
 	config->dissected = queue_init();
 
 	config->sock = create_socket();
+
 	if (!config->sock) {
 		return SENSOR_CREATE_SOCKET;
 	}
 
-	if (config->opt.promiscuous){
-		int res;
-		if ((res = set_iface_promiscuous(config->sock, config->opt.device_name, true)))
+	if (config->opt.promiscuous) {
+		int res = set_iface_promiscuous(config->sock, config->opt.device_name, true);
+		if (res)
 			return res;
 	}
 
 	bind_socket_to_interface(config->sock, config->opt.device_name);
+
+	if (config->opt.capture_timeout) {
+		int res = set_socket_timeout(config->sock, config->opt.capture_timeout);
+		if (res)
+			return res;
+	}
 
 	get_current_mac_r(config->sock, config->opt.device_name, config->hwaddr);
 	config->ip4addr = get_current_address(config->sock, config->opt.device_name);
@@ -196,7 +216,7 @@ int sensor_set_options(sensor_t *config, sensor_options_t options){
 	return SENSOR_SUCCESS;
 }
 
-int sensor_set_dissection_simple(sensor_t *config){
+int sensor_set_dissection_default(sensor_t *config){
 	if (config->activated) {
 		return SENSOR_ALREADY_ACTIVATED;
 	}
@@ -224,26 +244,53 @@ int sensor_set_persist_callback(sensor_t *config, sensor_persist_f callback){
 	return SENSOR_SUCCESS;
 }
 
+//----------------------------------------------------------
+
+sensor_captured_t* init_captured(uint8_t *buffer, int len){
+	assert(buffer);
+	sensor_captured_t *captured = malloc(sizeof(sensor_captured_t));
+	captured->timestamp = time(0);
+	captured->length = len;
+	captured->buffer = malloc(len);
+	memcpy(captured->buffer, buffer, len);
+	return captured;
+}
+
+void destroy_captured(sensor_captured_t *captured){
+	assert(captured);
+	free(captured->buffer);
+	free(captured);
+}
+
+void destroy_dissected(sensor_dissected_t *dissected){
+	assert(dissected);
+	if (dissected->content) {
+		free(dissected->content);
+	}
+	if (dissected->payload) {
+		free(dissected->payload);
+	}
+	free(dissected);
+}
 
 
 /* Main sensor loop */
+void sensor_breakloop(sensor_t *config){
+	config->activated = false;
+}
+
 int sensor_loop(sensor_t *config){
+
 	if (config->activated) {
 		return SENSOR_ALREADY_ACTIVATED;
 	}
 	config->activated = true;
 
-	int res;
-	if ((res = sensor_prepare_loop(config))) {
+	int res = commit_config(config);
+	if (res)
 		return res;
-	}
 
-	//setting socket receive timeout
-	struct timeval timeout;
-	timeout.tv_sec = config->opt.capture_timeout;
-	timeout.tv_usec = 0;
-	res = setsockopt(config->sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-	DEBUG_PRINTF("Set socket timeout, result: %d\n", res);
+
 
 	//queue intervals
 	time_t iteration_time=0;
@@ -272,11 +319,8 @@ int sensor_loop(sensor_t *config){
 					send(config->sock, buffer, read_len, 0);
 				}
 
-				sensor_captured_t *captured = malloc(sizeof(sensor_captured_t));
-				captured->timestamp = time(0);
-				captured->length = read_len;
-				captured->buffer = malloc(read_len);
-				memcpy(captured->buffer, buffer, read_len);
+				sensor_captured_t *captured = init_captured(buffer, read_len);
+
 				queue_push(&config->captured, captured);
 			}
 
@@ -308,7 +352,5 @@ int sensor_loop(sensor_t *config){
 }
 
 
-void sensor_breakloop(sensor_t *config){
-	config->activated = false;
-}
+
 
