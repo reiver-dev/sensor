@@ -26,11 +26,12 @@ typedef struct {
 	char device_name[IF_NAMESIZE];
 	bool promiscuous;
 	uint32_t buffersize;
-	uint32_t capture_timeout;
-	uint32_t dissect_timeout;
-	uint32_t persist_timeout;
+	uint32_t timeout_capture;
+	uint32_t timeout_dissect;
+	uint32_t timeout_persist;
 	bool enable_redirect;
 } sensor_options_t;
+
 
 struct sensor{
 	bool activated;

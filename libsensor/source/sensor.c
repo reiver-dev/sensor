@@ -143,8 +143,8 @@ int commit_config(sensor_t *config){
 
 	bind_socket_to_interface(config->sock, config->opt.device_name);
 
-	if (config->opt.capture_timeout) {
-		int res = set_socket_timeout(config->sock, config->opt.capture_timeout);
+	if (config->opt.timeout_capture) {
+		int res = set_socket_timeout(config->sock, config->opt.timeout_capture);
 		if (res)
 			return res;
 	}
@@ -327,7 +327,7 @@ int sensor_loop(sensor_t *config){
 		}
 
 		DEBUG_PRINTF("QUEUE CAP:%i=>ITER:%i=>DIS:%i\n", config->captured.length, (uint32_t)iteration_time, (uint32_t)dissect_time);
-		if ((config->captured.length && (iteration_time - dissect_time) > config->opt.dissect_timeout) || !config->activated){
+		if ((config->captured.length && (iteration_time - dissect_time) > config->opt.timeout_dissect) || !config->activated){
 			DEBUG_PRINTF("Dissecting: %d packets\n", config->captured.length);
 			while(config->captured.length !=0){
 				DEBUG_PRINTF("dissecting\n");
@@ -336,7 +336,7 @@ int sensor_loop(sensor_t *config){
 			}
 		}
 		DEBUG_PRINTF("QUEUE DIS:%i=>ITER:%i=>PER:%i\n", config->dissected.length, (uint32_t)iteration_time, (uint32_t)persist_time);
-		if ((config->dissected.length && (iteration_time - persist_time) > config->opt.persist_timeout) || !config->activated) {
+		if ((config->dissected.length && (iteration_time - persist_time) > config->opt.timeout_persist) || !config->activated) {
 			DEBUG_PRINTF("Persisting: %d packets\n", config->dissected.length);
 			while(config->dissected.length !=0){
 				config->persist_function(&config->dissected);

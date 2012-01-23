@@ -128,9 +128,9 @@ int main(int argc, char** argv) {
 	strncpy(opts.device_name, arguments.interface, IF_NAMESIZE);
 	opts.buffersize = arguments.buffersize;
 
-	opts.capture_timeout = arguments.capture_timeout;
-	opts.persist_timeout = arguments.persist_period;
-	opts.dissect_timeout = arguments.dissection_period;
+	opts.timeout_capture = arguments.capture_timeout;
+	opts.timeout_persist = arguments.persist_period;
+	opts.timeout_dissect = arguments.dissection_period;
 	opts.enable_redirect = arguments.enable_redirect;
 
 	sensor_set_options(&sensor, opts);
