@@ -30,6 +30,26 @@
 #define SENSOR_DEFAULT_PROMISC false
 
 
+
+
+struct timer {
+	time_t last;
+	time_t period;
+};
+
+bool timer_check(struct timer *timer, time_t now) {
+	return (now - timer->last) > timer->period;
+}
+
+void timer_ping_r(struct timer *timer, time_t now) {
+	timer->last = now;
+}
+
+void timer_ping(struct timer *timer) {
+	timer_ping_r(timer, time(0));
+}
+
+
 //------------PRIVATE---------------------
 //---------socket-related---------------
 
@@ -294,8 +314,9 @@ int sensor_loop(sensor_t *config){
 
 	//queue intervals
 	time_t iteration_time=0;
-	time_t dissect_time=0;
-	time_t persist_time=0;
+
+	struct timer dissect_timer = {0, config->opt.timeout_dissect};
+	struct timer persist_timer = {0, config->opt.timeout_persist};
 
 	//buffer length
 	int buflength = config->opt.buffersize;
@@ -326,32 +347,32 @@ int sensor_loop(sensor_t *config){
 
 		}
 
-		DEBUG_PRINTF("QUEUE CAP:%i=>ITER:%i=>DIS:%i\n", queue_length(config->captured), (uint32_t)iteration_time, (uint32_t)dissect_time);
+		DEBUG_PRINTF("QUEUE CAP:%i=>ITER:%i=>DIS:%i\n", queue_length(config->captured), (uint32_t)iteration_time, (uint32_t)dissect_timer.last);
 
-		if ((queue_length(config->captured)
-			&& (iteration_time - dissect_time) > config->opt.timeout_dissect)
+		if ((queue_length(config->captured)	&& timer_check(&dissect_timer, iteration_time))
 			|| !config->activated)
 		{
 			DEBUG_PRINTF("Dissecting: %d packets\n", queue_length(config->captured));
-			while(queue_length(config->captured) !=0){
+			while(queue_length(config->captured)){
 				DEBUG_PRINTF("dissecting\n");
 				config->dissect_function(config->captured, config->dissected);
-				dissect_time = time(0);
 			}
+			timer_ping(&dissect_timer);
+
 		}
 
-		DEBUG_PRINTF("QUEUE DIS:%i=>ITER:%i=>PER:%i\n", queue_length(config->dissected), (uint32_t)iteration_time, (uint32_t)persist_time);
+		DEBUG_PRINTF("QUEUE DIS:%i=>ITER:%i=>PER:%i\n", queue_length(config->dissected), (uint32_t)iteration_time, (uint32_t)persist_timer.last);
 
-		if ((queue_length(config->dissected)
-			&& (iteration_time - persist_time) > config->opt.timeout_persist)
+		if ((queue_length(config->dissected) && timer_check(&persist_timer, iteration_time))
 			|| !config->activated)
 		{
 
 			DEBUG_PRINTF("Persisting: %d packets\n", queue_length(config->dissected));
 			while(queue_length(config->dissected) !=0){
 				config->persist_function(config->dissected);
-				persist_time = time(0);
 			}
+			timer_ping(&persist_timer);
+
 		}
 
 	} /* while */
