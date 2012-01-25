@@ -31,7 +31,7 @@
 
 
 //------------PRIVATE---------------------
-//-----------socket-related---------------
+//---------socket-related---------------
 
 int create_socket() {
 	/*
@@ -115,7 +115,7 @@ int sensor_empty(){
 	return 0;
 }
 
-int empty_persist(Queue_t *in){
+int empty_persist(Queue_t in){
 	sensor_dissected_t *packet = queue_pop(in);
 	free(packet->content);
 	free(packet->payload);
@@ -158,8 +158,8 @@ int commit_config(sensor_t *config){
 int sensor_destroy(sensor_t *config){
 	DEBUG_PRINTF("Destroying sensor\n");
 	close_socket(config->sock);
-	queue_destroy(&config->captured);
-	queue_destroy(&config->dissected);
+	queue_destroy(config->captured);
+	queue_destroy(config->dissected);
 	if (config->opt.promiscuous){
 		int res;
 		if (!(res = set_iface_promiscuous(config->sock, config->opt.device_name, false)))
@@ -303,7 +303,7 @@ int sensor_loop(sensor_t *config){
 
 	//Main loop
 	DEBUG_PRINTF("Starting capture\n");
-	while(config->activated || config->captured.length || config->dissected.length){
+	while(config->activated || queue_length(config->captured) || queue_length(config->dissected)){
 		iteration_time = time(0);
 
 		// complete queue if we broke the loop
@@ -321,29 +321,38 @@ int sensor_loop(sensor_t *config){
 
 				sensor_captured_t *captured = init_captured(buffer, read_len);
 
-				queue_push(&config->captured, captured);
+				queue_push(config->captured, captured);
 			}
 
 		}
 
-		DEBUG_PRINTF("QUEUE CAP:%i=>ITER:%i=>DIS:%i\n", config->captured.length, (uint32_t)iteration_time, (uint32_t)dissect_time);
-		if ((config->captured.length && (iteration_time - dissect_time) > config->opt.timeout_dissect) || !config->activated){
-			DEBUG_PRINTF("Dissecting: %d packets\n", config->captured.length);
-			while(config->captured.length !=0){
+		DEBUG_PRINTF("QUEUE CAP:%i=>ITER:%i=>DIS:%i\n", queue_length(config->captured), (uint32_t)iteration_time, (uint32_t)dissect_time);
+
+		if ((queue_length(config->captured)
+			&& (iteration_time - dissect_time) > config->opt.timeout_dissect)
+			|| !config->activated)
+		{
+			DEBUG_PRINTF("Dissecting: %d packets\n", queue_length(config->captured));
+			while(queue_length(config->captured) !=0){
 				DEBUG_PRINTF("dissecting\n");
-				config->dissect_function(&config->captured, &config->dissected);
+				config->dissect_function(config->captured, config->dissected);
 				dissect_time = time(0);
 			}
 		}
-		DEBUG_PRINTF("QUEUE DIS:%i=>ITER:%i=>PER:%i\n", config->dissected.length, (uint32_t)iteration_time, (uint32_t)persist_time);
-		if ((config->dissected.length && (iteration_time - persist_time) > config->opt.timeout_persist) || !config->activated) {
-			DEBUG_PRINTF("Persisting: %d packets\n", config->dissected.length);
-			while(config->dissected.length !=0){
-				config->persist_function(&config->dissected);
+
+		DEBUG_PRINTF("QUEUE DIS:%i=>ITER:%i=>PER:%i\n", queue_length(config->dissected), (uint32_t)iteration_time, (uint32_t)persist_time);
+
+		if ((queue_length(config->dissected)
+			&& (iteration_time - persist_time) > config->opt.timeout_persist)
+			|| !config->activated)
+		{
+
+			DEBUG_PRINTF("Persisting: %d packets\n", queue_length(config->dissected));
+			while(queue_length(config->dissected) !=0){
+				config->persist_function(config->dissected);
 				persist_time = time(0);
 			}
 		}
-
 
 	} /* while */
 	DEBUG_PRINTF("Capture ended\n");

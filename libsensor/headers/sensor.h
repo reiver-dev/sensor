@@ -18,9 +18,9 @@ enum sensor_error_e{
 };
 
 
-typedef int (*sensor_persist_f)(Queue_t *in);
+typedef int (*sensor_persist_f)(Queue_t in);
 
-typedef int (*sensor_dissect_f)(Queue_t *in, Queue_t *out);
+typedef int (*sensor_dissect_f)(Queue_t in, Queue_t out);
 
 typedef struct {
 	char device_name[IF_NAMESIZE];

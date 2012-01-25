@@ -12,7 +12,7 @@
 #include "queue.h"
 
 
-int sensor_dissect_simple(Queue_t *in, Queue_t *out);
+int sensor_dissect_simple(Queue_t in, Queue_t out);
 //int sensor_dissect_xml(Queue_t *in, Queue_t *out);
 
 char* dissect_ethernet(struct ether_header *header);

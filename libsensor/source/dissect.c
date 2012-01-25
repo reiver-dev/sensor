@@ -24,9 +24,9 @@ static char parse_buf[PARSE_BUF_LENGTH];
 #define next_step(current, next, length) curr > length ? dissect_out_of_bounds(), break;
 
 //--------------actual-dissection-----------------
-int sensor_dissect_simple(Queue_t *in, Queue_t *out){
+int sensor_dissect_simple(Queue_t in, Queue_t out){
 	//extract from queue
-	sensor_captured_t* captured = (sensor_captured_t*)queue_pop(in);
+	sensor_captured_t* captured = queue_pop(in);
 
 	//allocate dissected
 	sensor_dissected_t* result = malloc(sizeof(sensor_dissected_t));
