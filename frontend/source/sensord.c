@@ -19,7 +19,7 @@
 sensor_t sensor;
 sensor_options_t opts;
 
-int persist_callback(Queue_t *in){
+int persist_callback(Queue_t in){
 	sensor_dissected_t *packet = queue_pop(in);
 	db_execute_statement(
 			packet->timestamp,
