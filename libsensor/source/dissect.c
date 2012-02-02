@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+#include <assert.h>
 
 #include <arpa/inet.h>
 #include <netinet/ether.h>
@@ -10,100 +11,121 @@
 #include "sensor.h"
 #include "debug.h"
 
-
-#define ALLOCATE(target){                                \
-			target = malloc(sizeof(typeof(target)))      \
-			memset(target, '\0', sizeof(typeof(target))) \
-		}                                                \
-
 #define PARSE_BUF_LENGTH 196
 #define FULL_BUF_LENGTH 196*4
 static char parse_buf[PARSE_BUF_LENGTH];
+static char content[FULL_BUF_LENGTH];
+
+#define ALLOCATE(ptr, size)                          \
+	do {                                             \
+		ptr = malloc(sizeof(typeof(*ptr))*size)      \
+		memset(ptr, '\0', sizeof(typeof(*ptr))*size) \
+	} while(0);                                      \
+
+
 
 //TODO: LENGTH SAFE CHECK
 #define next_step(current, next, length) curr > length ? dissect_out_of_bounds(), break;
 
 //--------------actual-dissection-----------------
 int sensor_dissect_simple(Queue_t in, Queue_t out){
+
 	//extract from queue
 	sensor_captured_t* captured = queue_pop(in);
+	sensor_dissected_t* result;
 
-	//allocate dissected
-	sensor_dissected_t* result = malloc(sizeof(sensor_dissected_t));
-	memset(result, '\0', sizeof(sensor_dissected_t));
+	struct ether_header *Ethernet;
+	struct iphdr *IP4header;
+	struct tcphdr *TCPheader;
+	struct udphdr *UDPheader;
+	struct icmphdr *ICMPheader;
 
-	//enter base values
-	result->timestamp = captured->timestamp;
-	result->content_length = FULL_BUF_LENGTH;
-	result->content = malloc(FULL_BUF_LENGTH);
-	memset(result->content, '\0', FULL_BUF_LENGTH);
 
 	uint8_t* packet_begin = captured->buffer;
 	int position = 0;
 
-	struct ether_header *ethernet = (struct ether_header*) (packet_begin);
-	strcpy(result->mac_dest, ether_ntoa((struct ether_addr*)ethernet->ether_dhost));
-	strcpy(result->mac_source, ether_ntoa((struct ether_addr*)ethernet->ether_shost));
-	strcat(result->content,dissect_ethernet(ethernet));
+	//allocate dissected
+	memset(content, '\0', FULL_BUF_LENGTH);
+
+	//enter base values
+
+	DINFO("%s", "Dissecting ethernet");
+	Ethernet = (struct ether_header*) (packet_begin);
+
+	strcat(content,dissect_ethernet(Ethernet));
+
 	position += sizeof(struct ether_header);
 
-	uint16_t ethernet_type = ntohs(ethernet->ether_type);
+
+	/* content processing */
+
+	uint16_t ethernet_type = ntohs(Ethernet->ether_type);
+
 	switch (ethernet_type) {
-		struct iphdr *ipheader;
+	case ETHERTYPE_IP:
+		IP4header = (struct iphdr*) (packet_begin + position);
+		strcat(content, dissect_ip(IP4header));
+		/* CHECK IP BOUNDS*/
+		if (position + (IP4header->ihl * 4) <= captured->length) {
+			position += IP4header->ihl * 4; // get header length in 4-byte words
+		} else {
+			strcat(content, dissect_out_of_bounds());
+			position += sizeof(struct iphdr);
+			break;
+		}
 
-		case ETHERTYPE_IP:
-			ipheader = (struct iphdr*) (packet_begin + position);
-			strcat(result->content, dissect_ip(ipheader));
-			// CHECK BOUNDS
-			if (position + (ipheader->ihl * 4) <= captured->length) {
-				position += ipheader->ihl * 4; // get header length in 4-byte words
+		switch (IP4header->protocol) {
+		case IPPROTO_TCP:
+			TCPheader = (struct tcphdr*) (packet_begin + position);
+			strcat(content,dissect_tcp(TCPheader));
+			/* CHECK IP BOUNDS */
+			if (position + (TCPheader->doff * 4) <= captured->length) {
+				position += TCPheader->doff;
 			} else {
-				strcat(result->content, dissect_out_of_bounds());
-				position += sizeof(struct iphdr);
-				break;
-			}
-
-			switch (ipheader->protocol){
-				struct tcphdr *tcpheader;
-				struct udphdr *udpheader;
-				struct icmphdr *icmpheader;
-
-				case IPPROTO_TCP:
-					tcpheader = (struct tcphdr*) (packet_begin + position);
-					strcat(result->content,dissect_tcp(tcpheader));
-					if (position + (tcpheader->doff * 4) <= captured->length) {
-						position += tcpheader->doff;
-					} else {
-						strcat(result->content, dissect_out_of_bounds());
-						position += sizeof(struct tcphdr);
-					}
-					break;
-				case IPPROTO_UDP:
-					udpheader = (struct udphdr*) (packet_begin + position);
-					strcat(result->content,dissect_udp(udpheader));
-					position += sizeof(udpheader);
-					break;
-				case IPPROTO_ICMP:
-					icmpheader = (struct icmphdr*) (packet_begin + position);
-					strcat(result->content,dissect_icmp(icmpheader));
-					position += sizeof(icmpheader);
-					break;
+				strcat(content, dissect_out_of_bounds());
+				position += sizeof(struct tcphdr);
 			}
 			break;
-		//-------------------------
-		case ETHERTYPE_ARP:
+
+		case IPPROTO_UDP:
+			UDPheader = (struct udphdr*) (packet_begin + position);
+			strcat(content,dissect_udp(UDPheader));
+			position += sizeof(UDPheader);
 			break;
+
+		case IPPROTO_ICMP:
+			ICMPheader = (struct icmphdr*) (packet_begin + position);
+			strcat(content,dissect_icmp(ICMPheader));
+			position += sizeof(ICMPheader);
+			break;
+		}
+		break; /* IP4 protocol */
+
+	case ETHERTYPE_ARP:
+		break;
 	}
-	DEBUG_PRINTF("%s--------------\n", result->content);
+	DEBUG_PRINTF("%s--------------\n", content);
 
-	//copy payload
-	result->payload_length = captured->length - position;
-	if (result->payload_length > 0) {
-		result->payload = malloc(result->payload_length);
-		memcpy(result->payload, packet_begin, result->payload_length);
-	} else {
+
+
+	//form result
+
+	result = init_dissected(strlen(content), captured->length - position);
+
+	strcpy(result->content, content);
+
+	assert(result->payload_length >= 0);
+	if (result->payload_length > 0)
+		memcpy(result->payload, packet_begin + position, result->payload_length);
+	else
 		result->payload = 0;
-	}
+
+	strcpy(result->mac_dest, ether_ntoa((struct ether_addr*)Ethernet->ether_dhost));
+	strcpy(result->mac_source, ether_ntoa((struct ether_addr*)Ethernet->ether_shost));
+
+	result->timestamp = captured->timestamp;
+
+
 	queue_push(out, result);
 
 	destroy_captured(captured);
@@ -111,6 +133,8 @@ int sensor_dissect_simple(Queue_t in, Queue_t out){
 	return 0;
 }
 
+
+//-----------------------------------------------
 char* dissect_ethernet(struct ether_header *header){
 	char temp_buf_source[18];
 	char temp_buf_dest[18];

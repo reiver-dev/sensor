@@ -137,8 +137,6 @@ int sensor_empty(){
 
 int empty_persist(Queue_t in){
 	sensor_dissected_t *packet = queue_pop(in);
-	free(packet->content);
-	free(packet->payload);
 	free(packet);
 	return 0;
 }
@@ -266,7 +264,7 @@ int sensor_set_persist_callback(sensor_t *config, sensor_persist_f callback){
 
 //----------------------------------------------------------
 
-sensor_captured_t* init_captured(uint8_t *buffer, int len){
+sensor_captured_t *init_captured(uint8_t *buffer, int len){
 	assert(buffer);
 	sensor_captured_t *captured = malloc(sizeof(sensor_captured_t));
 	captured->timestamp = time(0);
@@ -274,6 +272,22 @@ sensor_captured_t* init_captured(uint8_t *buffer, int len){
 	captured->buffer = malloc(len);
 	memcpy(captured->buffer, buffer, len);
 	return captured;
+}
+
+sensor_dissected_t *init_dissected(int content_length, int payload_length) {
+	// 2 is spacer
+	uint8_t *begin = malloc(sizeof(sensor_dissected_t) + content_length + payload_length + 3);
+	uint8_t *content = begin + sizeof(sensor_dissected_t) + 1;
+	uint8_t *payload = content + content_length + 1;
+
+	sensor_dissected_t *dissected = (sensor_dissected_t *)begin;
+	dissected->content = (char *)content;
+	dissected->payload = payload;
+
+	dissected->content_length = content_length;
+	dissected->payload_length = payload_length;
+
+	return dissected;
 }
 
 void destroy_captured(sensor_captured_t *captured){
@@ -347,7 +361,7 @@ int sensor_loop(sensor_t *config){
 
 		}
 
-		DEBUG_PRINTF("QUEUE CAP:%i=>ITER:%i=>DIS:%i\n", queue_length(config->captured), (uint32_t)iteration_time, (uint32_t)dissect_timer.last);
+		DEBUG_PRINTF("QUEUE CAP:%i    ITER:%i    DIS:%i\n", queue_length(config->captured), (uint32_t)iteration_time, (uint32_t)dissect_timer.last);
 
 		if ((queue_length(config->captured)	&& timer_check(&dissect_timer, iteration_time))
 			|| !config->activated)
@@ -361,7 +375,7 @@ int sensor_loop(sensor_t *config){
 
 		}
 
-		DEBUG_PRINTF("QUEUE DIS:%i=>ITER:%i=>PER:%i\n", queue_length(config->dissected), (uint32_t)iteration_time, (uint32_t)persist_timer.last);
+		DEBUG_PRINTF("QUEUE DIS:%i    ITER:%i    PER:%i\n", queue_length(config->dissected), (uint32_t)iteration_time, (uint32_t)persist_timer.last);
 
 		if ((queue_length(config->dissected) && timer_check(&persist_timer, iteration_time))
 			|| !config->activated)

@@ -9,7 +9,7 @@
 int rvr_debug = 3;
 
 void debug(int level, const char *function, char *format, ...){
-	if (rvr_debug >= level) return;
+	if (rvr_debug < level) return;
 	char line[512];
 	time_t now;
 	time(&now);

@@ -65,7 +65,8 @@ typedef struct sensor_dissected_s{
 } sensor_dissected_t;
 
 
-sensor_captured_t* init_captured(uint8_t *buffer, int len);
+sensor_captured_t *init_captured(uint8_t *buffer, int len);
+sensor_dissected_t *init_dissected(int content_length, int payload_length);
 void destroy_captured(sensor_captured_t *captured);
 void destroy_dissected(sensor_dissected_t *dissected);
 
