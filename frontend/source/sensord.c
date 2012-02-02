@@ -30,8 +30,6 @@ int persist_callback(Queue_t in){
 			packet->payload_length
 			);
 
-	free(packet->content);
-	free(packet->payload);
 	free(packet);
 	return 0;
 }
