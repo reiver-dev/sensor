@@ -49,7 +49,6 @@ int sensor_dissect_simple(Queue_t in, Queue_t out){
 
 	//enter base values
 
-	DINFO("%s", "Dissecting ethernet");
 	Ethernet = (struct ether_header*) (packet_begin);
 
 	strcat(content,dissect_ethernet(Ethernet));
@@ -104,7 +103,7 @@ int sensor_dissect_simple(Queue_t in, Queue_t out){
 	case ETHERTYPE_ARP:
 		break;
 	}
-	DEBUG_PRINTF("%s--------------\n", content);
+	DINFO("\n%s--------------\n", content);
 
 
 

@@ -77,6 +77,7 @@ int set_iface_promiscuous(int sock, const char* interfaceName, bool state) {
 
 	//reading flags
 	if (ioctl(sock, SIOCGIFFLAGS, &interface) == -1) {
+		DERROR("%s\n", "get interface flags failed");
 		return SENSOR_IFACE_GET_FLAGS;
 	}
 
@@ -88,6 +89,7 @@ int set_iface_promiscuous(int sock, const char* interfaceName, bool state) {
 
 	//setting flags
 	if (ioctl(sock, SIOCSIFFLAGS, &interface) == -1) {
+		DERROR("%s\n", "set interface flags failed");
 		return SENSOR_IFACE_SET_FLAGS;
 	}
 
@@ -103,6 +105,7 @@ int bind_socket_to_interface(int sock, char *interfaceName){
 
 	// Get interface index
 	if (ioctl(sock, SIOCGIFINDEX, &interface) == -1) {
+		DERROR("%s\n", "get interface flags failed");
 		return SENSOR_IFACE_GET_INDEX;
 	}
 
@@ -112,7 +115,7 @@ int bind_socket_to_interface(int sock, char *interfaceName){
 	address.sll_protocol = htons(ETH_P_ALL);
 
 	if (bind(sock, (struct sockaddr *)&address, sizeof(address)) == -1) {
-		DEBUG_PRINTF("Can't bind socket");
+		DERROR("%s\n", "bind socket to interface failed");
 		return SENSOR_BIND_SOCKET;
 	}
 
@@ -125,7 +128,7 @@ int set_socket_timeout(int sock, int seconds) {
 	timeout.tv_sec = seconds;
 	timeout.tv_usec = 0;
 	int res = setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-	DEBUG_PRINTF("Set socket timeout, result: %d\n", res);
+	DINFO("Set socket timeout, result: %d\n", res);
 	return res;
 }
 
@@ -174,7 +177,7 @@ int commit_config(sensor_t *config){
 }
 
 int sensor_destroy(sensor_t *config){
-	DEBUG_PRINTF("Destroying sensor\n");
+	DNOTIFY("%s\n", "Destroying sensor");
 	close_socket(config->sock);
 	queue_destroy(config->captured);
 	queue_destroy(config->dissected);
@@ -324,77 +327,64 @@ int sensor_loop(sensor_t *config){
 	if (res)
 		return res;
 
-
-
-	//queue intervals
+	// queue intervals
 	time_t iteration_time=0;
 
 	struct timer dissect_timer = {0, config->opt.timeout_dissect};
 	struct timer persist_timer = {0, config->opt.timeout_persist};
 
-	//buffer length
+	// buffer length
 	int buflength = config->opt.buffersize;
 	uint8_t *buffer = malloc(buflength);
 
-	//Main loop
-	DEBUG_PRINTF("Starting capture\n");
+	// Main loop
+	DNOTIFY("%s\n", "Starting capture");
 	while(config->activated || queue_length(config->captured) || queue_length(config->dissected)){
 		iteration_time = time(0);
+		DINFO("Iteration time: %i\n", (uint32_t)iteration_time);
 
 		// complete queue if we broke the loop
 		if(config->activated){
-
 			// wait for packet for given timeout and then read it
 			int read_len = recv(config->sock, buffer, buflength, 0);
-			DEBUG_PRINTF("Captured: %d bytes\n", read_len);
+			DINFO("Captured: %d bytes\n", read_len);
 
 			if(read_len > 0){
-
 				if (config->opt.enable_redirect && prepare_redirect(config, buffer, read_len)) {
 					send(config->sock, buffer, read_len, 0);
 				}
-
 				sensor_captured_t *captured = init_captured(buffer, read_len);
-
 				queue_push(config->captured, captured);
 			}
-
 		}
 
-		DEBUG_PRINTF("QUEUE CAP:%i    ITER:%i    DIS:%i\n", queue_length(config->captured), (uint32_t)iteration_time, (uint32_t)dissect_timer.last);
+		DINFO("Queue captured: %i\tDissection time: %i\n",
+				queue_length(config->captured), (uint32_t)dissect_timer.last);
 
 		if ((queue_length(config->captured)	&& timer_check(&dissect_timer, iteration_time))
 			|| !config->activated)
 		{
-			DEBUG_PRINTF("Dissecting: %d packets\n", queue_length(config->captured));
+			DINFO("Dissecting: %d packets\n", queue_length(config->captured));
 			while(queue_length(config->captured)){
-				DEBUG_PRINTF("dissecting\n");
 				config->dissect_function(config->captured, config->dissected);
 			}
 			timer_ping(&dissect_timer);
-
 		}
 
-		DEBUG_PRINTF("QUEUE DIS:%i    ITER:%i    PER:%i\n", queue_length(config->dissected), (uint32_t)iteration_time, (uint32_t)persist_timer.last);
+		DINFO("Queue dissected: %i\tPersistence time: %i\n",
+				queue_length(config->dissected), (uint32_t)persist_timer.last);
 
 		if ((queue_length(config->dissected) && timer_check(&persist_timer, iteration_time))
 			|| !config->activated)
 		{
-
-			DEBUG_PRINTF("Persisting: %d packets\n", queue_length(config->dissected));
-			while(queue_length(config->dissected) !=0){
+			while(queue_length(config->dissected) != 0) {
 				config->persist_function(config->dissected);
 			}
 			timer_ping(&persist_timer);
-
 		}
 
 	} /* while */
-	DEBUG_PRINTF("Capture ended\n");
+	DNOTIFY("%s\n","Capture ended");
 	sensor_destroy(config);
 	return SENSOR_SUCCESS;
 }
-
-
-
-
