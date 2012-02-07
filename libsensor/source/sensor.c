@@ -223,7 +223,7 @@ sensor_t sensor_init(){
 	result.activated = false;
 	result.sock = 0;
 	result.opt = options;
-	result.dissect_function = sensor_empty;
+	result.dissect_function = sensor_dissect_simple;
 	result.persist_function = sensor_empty;
 	return result;
 }
@@ -336,25 +336,31 @@ int sensor_loop(sensor_t *config){
 	int buflength = config->opt.buffersize;
 	uint8_t *buffer = malloc(buflength);
 
-	// Main loop
+	sensor_captured_t  *captured;
+	sensor_dissected_t *dissected;
+
+	/* Main loop */
 	DNOTIFY("%s\n", "Starting capture");
 	while(config->activated || queue_length(config->captured) || queue_length(config->dissected)){
 		iteration_time = time(0);
 		DINFO("Iteration time: %i\n", (uint32_t)iteration_time);
 
-		// complete queue if we broke the loop
+		/* complete only queue if we broke the loop */
 		if(config->activated){
-			// wait for packet for given timeout and then read it
+			/* wait for packet for given timeout and then read it */
 			int read_len = recv(config->sock, buffer, buflength, 0);
 			DINFO("Captured: %d bytes\n", read_len);
 
-			if(read_len > 0){
+			if(read_len > 0) {
+				/* perform redirect if enabled and packet addresses replacement */
 				if (config->opt.enable_redirect && prepare_redirect(config, buffer, read_len)) {
 					send(config->sock, buffer, read_len, 0);
 				}
-				sensor_captured_t *captured = init_captured(buffer, read_len);
+				/* put captured packet in queue for dissection */
+				captured = init_captured(buffer, read_len);
 				queue_push(config->captured, captured);
 			}
+
 		}
 
 		DINFO("Queue captured: %i\tDissection time: %i\n",
@@ -364,8 +370,10 @@ int sensor_loop(sensor_t *config){
 			|| !config->activated)
 		{
 			DINFO("Dissecting: %d packets\n", queue_length(config->captured));
-			while(queue_length(config->captured)){
-				config->dissect_function(config->captured, config->dissected);
+			while(queue_length(config->captured)) {
+				captured = queue_pop(config->captured);
+				dissected = config->dissect_function(captured);
+				queue_push(config->dissected, dissected);
 			}
 			timer_ping(&dissect_timer);
 		}

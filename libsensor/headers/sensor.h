@@ -18,9 +18,26 @@ enum sensor_error_e{
 };
 
 
+typedef struct sensor_captured_s{
+	time_t timestamp;
+	int length;
+	uint8_t* buffer;
+} sensor_captured_t;
+
+typedef struct sensor_dissected_s{
+	time_t timestamp;
+	int content_length;
+	int payload_length;
+	char mac_source[18];
+	char mac_dest[18];
+	char* content;
+	uint8_t* payload;
+} sensor_dissected_t;
+
+
 typedef int (*sensor_persist_f)(Queue_t in);
 
-typedef int (*sensor_dissect_f)(Queue_t in, Queue_t out);
+typedef sensor_dissected_t *(*sensor_dissect_f)(sensor_captured_t *captured);
 
 typedef struct {
 	char device_name[IF_NAMESIZE];
@@ -46,23 +63,6 @@ struct sensor{
 };
 
 typedef struct sensor sensor_t;
-
-
-typedef struct sensor_captured_s{
-	time_t timestamp;
-	int length;
-	uint8_t* buffer;
-} sensor_captured_t;
-
-typedef struct sensor_dissected_s{
-	time_t timestamp;
-	int content_length;
-	int payload_length;
-	char mac_source[18];
-	char mac_dest[18];
-	char* content;
-	uint8_t* payload;
-} sensor_dissected_t;
 
 
 sensor_captured_t *init_captured(uint8_t *buffer, int len);

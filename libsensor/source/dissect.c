@@ -28,10 +28,9 @@ static char content[FULL_BUF_LENGTH];
 #define next_step(current, next, length) curr > length ? dissect_out_of_bounds(), break;
 
 //--------------actual-dissection-----------------
-int sensor_dissect_simple(Queue_t in, Queue_t out){
+sensor_dissected_t *sensor_dissect_simple(sensor_captured_t *captured){
 
 	//extract from queue
-	sensor_captured_t* captured = queue_pop(in);
 	sensor_dissected_t* result;
 
 	struct ether_header *Ethernet;
@@ -124,12 +123,9 @@ int sensor_dissect_simple(Queue_t in, Queue_t out){
 
 	result->timestamp = captured->timestamp;
 
-
-	queue_push(out, result);
-
 	destroy_captured(captured);
 
-	return 0;
+	return result;
 }
 
 

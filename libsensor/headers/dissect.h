@@ -9,10 +9,10 @@
 #include <netinet/udp.h>
 #include <netinet/ip_icmp.h>
 
-#include "queue.h"
+#include "sensor.h"
 
 
-int sensor_dissect_simple(Queue_t in, Queue_t out);
+sensor_dissected_t *sensor_dissect_simple(sensor_captured_t *captured);
 //int sensor_dissect_xml(Queue_t *in, Queue_t *out);
 
 char* dissect_ethernet(struct ether_header *header);
