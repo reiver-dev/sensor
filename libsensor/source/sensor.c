@@ -178,15 +178,14 @@ int commit_config(sensor_t *config){
 
 int sensor_destroy(sensor_t *config){
 	DNOTIFY("%s\n", "Destroying sensor");
-	close_socket(config->sock);
 	queue_destroy(config->captured);
 	queue_destroy(config->dissected);
 	if (config->opt.promiscuous){
 		int res;
 		if (!(res = set_iface_promiscuous(config->sock, config->opt.device_name, false)))
-			DEBUG_PRINTF("Disabling promiscuous: %d\n", res);
 			return res;
 	}
+	close_socket(config->sock);
 	return 0;
 }
 //------------------------------------------------
