@@ -63,6 +63,21 @@ void get_current_address6(int sock, const char* interfaceName) {
 }
 */
 
+
+uint32_t get_current_netmask(int sock, const char* interfaceName) {
+	struct ifreq interface;
+	strcpy(interface.ifr_name, interfaceName);
+	interface.ifr_addr.sa_family = AF_INET;
+
+	if (ioctl(sock, SIOCGIFNETMASK, &interface) == -1) {
+		return 0;
+	}
+
+	uint32_t netmask = ((struct sockaddr_in *)&interface.ifr_addr)->sin_addr.s_addr;
+	return netmask;
+
+}
+
 uint8_t* read_arp_ip_to_mac(int sock, const char* interfaceName, uint32_t ipaddress) {
 	static uint8_t hwaddr[ETH_ALEN] = {0};
 	return read_arp_ip_to_mac_r(sock, interfaceName, ipaddress, hwaddr);
