@@ -50,11 +50,12 @@ typedef struct {
 } sensor_options_t;
 
 
-struct sensor{
+struct sensor {
 	bool activated;
 	int sock;
 	uint8_t hwaddr[ETH_ALEN];
 	uint32_t ip4addr;
+	uint32_t netmask;
 	sensor_options_t opt;
 	Queue_t captured;
 	Queue_t dissected;

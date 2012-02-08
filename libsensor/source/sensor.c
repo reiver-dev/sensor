@@ -17,6 +17,8 @@
 #include <netinet/ether.h>
 #include <net/if.h>
 
+#include <arpa/inet.h>
+
 #include <netpacket/packet.h>
 
 #include "debug.h"                 // local
@@ -172,6 +174,11 @@ int commit_config(sensor_t *config){
 
 	get_current_mac_r(config->sock, config->opt.device_name, config->hwaddr);
 	config->ip4addr = get_current_address(config->sock, config->opt.device_name);
+	config->netmask = get_current_netmask(config->sock, config->opt.device_name);
+
+	DNOTIFY("Current MAC: %s\n",     ether_ntoa((struct ether_addr*)config->hwaddr));
+	DNOTIFY("Current IP4: %s\n",     inet_ntoa(*(struct in_addr *)&config->ip4addr));
+	DNOTIFY("Current NETMASK: %s\n", inet_ntoa(*(struct in_addr *)&config->netmask));
 
 	return 0;
 }
@@ -180,7 +187,7 @@ int sensor_destroy(sensor_t *config){
 	DNOTIFY("%s\n", "Destroying sensor");
 	queue_destroy(config->captured);
 	queue_destroy(config->dissected);
-	if (config->opt.promiscuous){
+	if (config->opt.promiscuous) {
 		int res;
 		if (!(res = set_iface_promiscuous(config->sock, config->opt.device_name, false)))
 			return res;
