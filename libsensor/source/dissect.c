@@ -102,7 +102,8 @@ sensor_dissected_t *sensor_dissect_simple(sensor_captured_t *captured){
 	case ETHERTYPE_ARP:
 		break;
 	}
-	DINFO("\n%s--------------\n", content);
+
+//	DINFO("\n%s--------------\n", content);
 
 
 

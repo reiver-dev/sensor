@@ -9,7 +9,7 @@
 
 
 
-int rvr_debug = DEBUG_LEVEL_NOTIFY;
+int rvr_debug = DEBUG_LEVEL_INFO;
 
 
 void debug(int level, const char *function, char *format, ...){

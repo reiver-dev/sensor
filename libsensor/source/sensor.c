@@ -26,6 +26,8 @@
 #include "dissect.h"
 #include "debug.h"
 #include "redirect.h"
+#include "balancing.h"
+#include "util.h"
 
 #define SENSOR_DEFAULT_READ_BUFFER_SIZE 65536
 #define SENSOR_DEFAULT_TIMEOUT 1
@@ -176,9 +178,9 @@ int commit_config(sensor_t *config){
 	config->ip4addr = get_current_address(config->sock, config->opt.device_name);
 	config->netmask = get_current_netmask(config->sock, config->opt.device_name);
 
-	DNOTIFY("Current MAC: %s\n",     ether_ntoa((struct ether_addr*)config->hwaddr));
-	DNOTIFY("Current IP4: %s\n",     inet_ntoa(*(struct in_addr *)&config->ip4addr));
-	DNOTIFY("Current NETMASK: %s\n", inet_ntoa(*(struct in_addr *)&config->netmask));
+	DNOTIFY("Current MAC: %s\n",     EtherToStr(config->hwaddr));
+	DNOTIFY("Current IP4: %s\n",     Ip4ToStr(config->ip4addr));
+	DNOTIFY("Current NETMASK: %s\n", Ip4ToStr(config->netmask));
 
 	return 0;
 }
@@ -333,11 +335,15 @@ int sensor_loop(sensor_t *config){
 	if (res)
 		return res;
 
+	// balancing
+	balancing_initNodes(config->ip4addr, config->netmask, config->hwaddr);
+
 	// queue intervals
 	time_t iteration_time=0;
 
 	struct timer dissect_timer = {0, config->opt.timeout_dissect};
 	struct timer persist_timer = {0, config->opt.timeout_persist};
+	struct timer balance_timer = {0, 10};
 
 	// buffer length
 	int buflength = config->opt.buffersize;
@@ -350,19 +356,32 @@ int sensor_loop(sensor_t *config){
 	DNOTIFY("%s\n", "Starting capture");
 	while(config->activated || queue_length(config->captured) || queue_length(config->dissected)){
 		iteration_time = time(0);
-		DINFO("Iteration time: %i\n", (uint32_t)iteration_time);
 
 		/* complete only queue if we broke the loop */
-		if(config->activated){
+		if (config->activated) {
+
+			if (timer_check(&balance_timer, iteration_time)) {
+				DINFO("%s\n", "Starting survey");
+				balancing_survey(config->sock);
+				DINFO("%s\n", "Survey finished");
+				timer_ping(&balance_timer);
+			}
+
 			/* wait for packet for given timeout and then read it */
 			int read_len = recv(config->sock, buffer, buflength, 0);
 			DINFO("Captured: %d bytes\n", read_len);
 
-			if(read_len > 0) {
+			/* process the packet */
+			if (read_len > 0) {
+
+				balancing_check_response(buffer, read_len);
+
+				/* TODO: obsolete */
 				/* perform redirect if enabled and packet addresses replacement */
 				if (config->opt.enable_redirect && prepare_redirect(config, buffer, read_len)) {
 					send(config->sock, buffer, read_len, 0);
 				}
+
 				/* put captured packet in queue for dissection */
 				captured = init_captured(buffer, read_len);
 				queue_push(config->captured, captured);
@@ -370,6 +389,7 @@ int sensor_loop(sensor_t *config){
 
 		}
 
+		/* Dissection */
 		DINFO("Queue captured: %i\tDissection time: %i\n",
 				queue_length(config->captured), (uint32_t)dissect_timer.last);
 
@@ -385,6 +405,8 @@ int sensor_loop(sensor_t *config){
 			timer_ping(&dissect_timer);
 		}
 
+
+		/* Persistance */
 		DINFO("Queue dissected: %i\tPersistence time: %i\n",
 				queue_length(config->dissected), (uint32_t)persist_timer.last);
 
@@ -399,6 +421,7 @@ int sensor_loop(sensor_t *config){
 
 	} /* while */
 	DNOTIFY("%s\n","Capture ended");
+	balancing_destroyNodes();
 	sensor_destroy(config);
 	return SENSOR_SUCCESS;
 }
