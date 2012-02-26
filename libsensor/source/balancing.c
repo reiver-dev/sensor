@@ -25,7 +25,7 @@
 
 #define CLIENT_FREE 0
 #define CLIENT_FOREIGN 1
-#define CLIENT_MY 2
+#define CLIENT_OWNED 2
 
 
 /* Types */
@@ -56,11 +56,14 @@ struct Node {
 
 /* Locals */
 
-
-
 static struct Node *Nodes;
 static unsigned long NodeCount;
 
+
+#define MAXOWNED 255
+#define MAXSENSORS 255
+static struct Node **OwnedNodes;
+static int OwnedCount;
 
 
 static struct {
@@ -68,11 +71,6 @@ static struct {
 	uint32_t network;
 	uint8_t hw[ETH_ALEN];
 } current;
-
-
-
-
-
 
 bool is_same_network_ip4(uint32_t ip) {
 	return (current.network & ip) == current.network;
@@ -83,6 +81,74 @@ uint32_t get_node_index(uint32_t ip) {
 	uint32_t ind = ntohl(ip) - ntohl(current.network) - 1;
 	return ntohl(ip) < ntohl(current.ip4) ? ind : ind - 1;
 }
+/* ----- spoofing ----- */
+
+int take_ownership(int index) {
+	assert(index >= 0);         /* in array bounds   */
+	assert(index < NodeCount);  /* in array bounds   */
+	assert(index > OwnedCount); /* not already owned */
+
+	if (index > MAXOWNED) {
+		return 1; /* max owned reached */
+	}
+
+	struct Node *node = &Nodes[index];
+	assert(node->is_online);
+
+	if (node->type == NODE_SENSOR) {
+		DWARNING("Tried to take ownership over sensor: IP4 = %s", Ip4ToStr(node->ip4addr));
+		return 1;
+	}
+
+	node->info.client.type = CLIENT_OWNED;
+
+	OwnedNodes[OwnedCount] = node;
+	OwnedCount++;
+
+	return 0;
+
+}
+
+int get_owned_index(struct Node *node) {
+	int i;
+	for (i = 0; i < OwnedCount; i ++) {
+		if (OwnedNodes[i] == node) {
+			return i;
+		}
+	}
+	return -1;
+}
+
+int release_ownership(int index) {
+	assert(index >= 0);         /* in array bounds   */
+	assert(index < NodeCount);  /* in array bounds   */
+	assert(index < OwnedCount); /* already owned     */
+
+	struct Node *node = &Nodes[index];
+
+	if (node->type != NODE_CLIENT && node->info.client.type != CLIENT_OWNED) {
+		DWARNING("Tried to release not owned node: IP4 = %s", Ip4ToStr(node->ip4addr));
+		return 1;
+	}
+
+	int owned = get_owned_index(node);
+	assert(owned >= 0);
+
+	node->info.client.type = CLIENT_FREE;
+
+	if (OwnedCount - 1 > 0 && OwnedCount - 1 != owned) {
+		/* fast delete */
+		OwnedNodes[owned] = OwnedNodes[OwnedCount - 1];
+		OwnedNodes[OwnedCount - 1] = 0;
+	} else {
+		OwnedNodes[owned] = 0;
+	}
+	OwnedCount--;
+
+	return 0;
+}
+
+
 
 
 /* ---------------------------------------------- */
@@ -107,6 +173,8 @@ void balancing_initNodes(const uint32_t ip4addr, const uint32_t netmask, const u
 		node->type    = NODE_UNKNOWN;
 	}
 
+	OwnedNodes = malloc(MAXOWNED * sizeof(int));
+	OwnedCount = 0;
 }
 
 void balancing_survey(int packet_sock) {
@@ -152,6 +220,7 @@ void balancing_check_response(uint8_t *buffer, int length) {
 
 void balancing_destroyNodes() {
 	free(Nodes);
+	free(OwnedNodes);
 	NodeCount = 0;
 }
 

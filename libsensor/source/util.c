@@ -1,3 +1,6 @@
+#include <arpa/inet.h>
+#include <netinet/ether.h>
+
 #include "util.h"
 
 
