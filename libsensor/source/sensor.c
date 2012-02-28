@@ -177,10 +177,13 @@ int commit_config(sensor_t *config){
 	get_current_mac_r(config->sock, config->opt.device_name, config->hwaddr);
 	config->ip4addr = get_current_address(config->sock, config->opt.device_name);
 	config->netmask = get_current_netmask(config->sock, config->opt.device_name);
+	config->gateway = read_default_gateway(config->opt.device_name);
 
 	DNOTIFY("Current MAC: %s\n",     EtherToStr(config->hwaddr));
 	DNOTIFY("Current IP4: %s\n",     Ip4ToStr(config->ip4addr));
 	DNOTIFY("Current NETMASK: %s\n", Ip4ToStr(config->netmask));
+	DNOTIFY("Current GATEWAY: %s\n", Ip4ToStr(config->gateway));
+
 
 	return 0;
 }

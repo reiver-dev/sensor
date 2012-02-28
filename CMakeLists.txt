@@ -9,13 +9,13 @@ set(CFLAGS -std=c99 -pipe -Wall -pedantic)
 if(DEBUG)
     set(CFLAGS ${CFLAGS} -g3 -DDEBUG)
 else()
-    set(CFLAGS ${CFLAGS} -O2)    
+    set(CFLAGS ${CFLAGS} -O2)
 endif()
 
 add_definitions(${CFLAGS})
 
 add_subdirectory(libsensor)
 add_subdirectory(frontend)
- 
+
 
 
