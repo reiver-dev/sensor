@@ -11,6 +11,9 @@ const char * argp_program_version = "Sensor v0.0.1";
 const char * argp_program_bug_address = "<Bushev A.S.>";
 
 const struct argp_option options[] = {
+
+		{"config", 'c', "FILE", 0, "Config file to use"},
+
 		// main
 		{"interface", 'i', "IFACE", 0, "Specify interface to listen (DEFAULT eth0)"},
 		{"promisc", 'p', 0, 0, "Specify promiscuous mode for interface (DEFAULT false)"},
@@ -33,6 +36,7 @@ const struct argp_option options[] = {
 		{"disable-persistance", OPT_DISABLE_PERSIST, 0, 0, "Disable persistance (for debug purposes)", 3},
 		{"disable-redirect", OPT_DISABLE_REDIRECT, 0, 0, "Disable redirect (for debug purposes)", 3},
 		{"disable-fork", OPT_DISABLE_FORK, 0, 0, "Disable redirect (for debug purposes)", 3},
+
 		// misc
 		{"verbose", 'v', 0, 0, "Verbose mode", 4},
 		{"background", 'g', 0, 0, "Detach from console", 4},
@@ -45,6 +49,10 @@ error_t parse_options(int key, char *arg, struct argp_state *state){
 	struct arguments *arguments = state->input;
 
 	switch(key){
+
+	case 'c':
+		arguments->config = arg;
+		break;
 
 	// main
 	case 'i':

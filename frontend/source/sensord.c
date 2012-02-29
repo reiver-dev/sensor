@@ -15,6 +15,7 @@
 
 #include "dbrelated.h"
 #include "arguments.h"
+#include "kvset.h"
 
 sensor_t sensor;
 sensor_options_t opts;
@@ -92,10 +93,31 @@ void forking() {
 	printf("This is child\n");
 }
 
+int read_config(struct arguments *arguments) {
+	char *filename = arguments->config;
+	const char *sections[] = {"main", "mysql", "periods", "debug", "misc"};
+	kvset kvs = InitKVS(5, sections);
+	AddKVS(kvs, 0, KVS_STRING, "interface", arguments->interface);
+	AddKVS(kvs, 0, KVS_BOOL, "promiscuous", &arguments->promiscuous);
+	AddKVS(kvs, 0, KVS_UINT32, "buffersize", &arguments->buffersize);
+	AddKVS(kvs, 2, KVS_INT32, "capture_timeout", &arguments->capture_timeout);
+	AddKVS(kvs, 2, KVS_INT32, "dissection_period", &arguments->dissection_period);
+	AddKVS(kvs, 2, KVS_INT32, "persist_period", &arguments->persist_period);
+	AddKVS(kvs, 3, KVS_BOOL, "enable_persistance", &arguments->enable_persistance);
+	AddKVS(kvs, 3, KVS_BOOL, "enable_redirect", &arguments->enable_redirect);
+	AddKVS(kvs, 3, KVS_BOOL, "enable_fork", &arguments->enable_fork);
+	LoadKVS(kvs, filename);
+	DestroyKVS(kvs);
+	return 0;
+}
+
 int main(int argc, char** argv) {
 	struct arguments arguments = args_get_default();
 	args_parse(argc, argv, &arguments);
 
+	if (arguments.config) {
+		read_config(&arguments);
+	}
 
 	if (arguments.background) {
 		detach();

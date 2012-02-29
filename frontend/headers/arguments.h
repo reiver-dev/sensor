@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 struct arguments {
+	char *config;
 	/* main */
 	char *interface;
 	bool promiscuous;
