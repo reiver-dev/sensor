@@ -11,6 +11,10 @@
 
 int rvr_debug = DEBUG_LEVEL_INFO;
 
+void debug_set_level(int lvl) {
+	rvr_debug = lvl > DEBUG_LEVEL_INFO ? DEBUG_LEVEL_INFO : lvl;
+}
+
 
 void debug(int level, const char *function, char *format, ...){
 
