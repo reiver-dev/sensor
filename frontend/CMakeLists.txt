@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 2.8)
 
 project (sensord C)
 
-file (GLOB HEADERS headers/*.h)
+file (GLOB HEADERS source/*.h)
 file (GLOB SOURCES source/*.c)
 
 set (LIBRARIES
@@ -10,7 +10,6 @@ set (LIBRARIES
     mysqlclient)
 
 include_directories (
-    headers
     ../libsensor/include
 )
 
