@@ -5,7 +5,8 @@
 #include <netinet/if_ether.h>
 #include <netinet/in.h>
 
-
+#include "nodes.h"
+#include "util.h"
 #include "debug.h"
 
 
@@ -90,28 +91,22 @@ bool survey_is_response(const uint8_t *buffer, int length) {
 	return true;
 }
 
-int survey_extract_response(const uint8_t *buffer, int length, uint32_t *out_ip, uint8_t *out_hw) {
 
-	if (length < ARP_SURVEY_BUF_LENGTH) {
-		return 1;
+void survey_process_response(const uint8_t *buffer, int length) {
+	if (!survey_is_response(buffer, length)) {
+		return;
 	}
 
-	struct ether_header *ethernet;
 	struct arp_ip4 *arpheader;
-
-	ethernet = (struct ether_header *) &buffer[0];
-	if (ethernet->ether_type != ntohs(ETH_P_ARP)) {
-		return 1;
-	}
-
 	arpheader = (struct arp_ip4 *) &buffer[ETHERNET_LENGTH];
 
-	if (arpheader->header.ar_op != ntohs(ARPOP_REPLY)) {
-		return 1;
-	}
+	uint32_t ip4 = arpheader->ar_sip;
+	uint8_t hw[ETH_ALEN];
+	memcpy(hw, arpheader->ar_sha, ETH_ALEN);
 
-	*out_ip = arpheader->ar_sip;
-	memcpy(out_hw, arpheader->ar_sha, ETH_ALEN);
+	DINFO("Got survey response from: IP4:%s HW:%s\n", Ip4ToStr(ip4), EtherToStr(hw));
 
-	return 0;
+	node_answered(ip4, hw);
+
+
 }
