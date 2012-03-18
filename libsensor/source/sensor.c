@@ -57,7 +57,7 @@ void timer_ping(struct timer *timer) {
 //------------PRIVATE---------------------
 //---------socket-related---------------
 
-int create_socket() {
+int create_raw_socket() {
 	/*
 	 * Packet family
 	 * Linux specific way of getting packets at the dev level
@@ -154,7 +154,7 @@ int commit_config(sensor_t *config){
 	config->captured = queue_init();
 	config->dissected = queue_init();
 
-	config->sock = create_socket();
+	config->sock = create_raw_socket();
 
 	if (!config->sock) {
 		return SENSOR_CREATE_SOCKET;
@@ -309,7 +309,7 @@ void destroy_captured(sensor_captured_t *captured){
 	free(captured->buffer);
 	free(captured);
 }
-
+/* DEPRACHATED */
 void destroy_dissected(sensor_dissected_t *dissected){
 	assert(dissected);
 	if (dissected->content) {
@@ -339,7 +339,7 @@ int sensor_loop(sensor_t *config){
 		return res;
 
 	// balancing
-	balancing_initNodes(config->ip4addr, config->netmask, config->hwaddr);
+	balancing_init(config->ip4addr, config->netmask, config->hwaddr);
 
 	// queue intervals
 	time_t iteration_time=0;
@@ -403,6 +403,7 @@ int sensor_loop(sensor_t *config){
 			while(queue_length(config->captured)) {
 				captured = queue_pop(config->captured);
 				dissected = config->dissect_function(captured);
+				destroy_captured(captured);
 				queue_push(config->dissected, dissected);
 			}
 			timer_ping(&dissect_timer);
@@ -424,7 +425,7 @@ int sensor_loop(sensor_t *config){
 
 	} /* while */
 	DNOTIFY("%s\n","Capture ended");
-	balancing_destroyNodes();
+	balancing_destroy();
 	sensor_destroy(config);
 	return SENSOR_SUCCESS;
 }

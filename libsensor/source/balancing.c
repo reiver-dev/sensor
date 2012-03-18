@@ -63,6 +63,8 @@ static unsigned long NodeCount;
 #define MAXOWNED 255
 #define MAXSENSORS 255
 static struct Node **OwnedNodes;
+static struct Node **SensorNodes;
+static int SensorCount;
 static int OwnedCount;
 
 
@@ -144,15 +146,15 @@ int release_ownership(int index) {
 		OwnedNodes[owned] = 0;
 	}
 	OwnedCount--;
-
 	return 0;
+
 }
 
 
 
 
 /* ---------------------------------------------- */
-void balancing_initNodes(const uint32_t ip4addr, const uint32_t netmask, const uint8_t hwaddr[ETH_ALEN]) {
+void balancing_init(const uint32_t ip4addr, const uint32_t netmask, const uint8_t hwaddr[ETH_ALEN]) {
 	/* memorize current addreses */
 	current.ip4 = ip4addr;
 	memcpy(current.hw, hwaddr, ETH_ALEN);
@@ -173,8 +175,12 @@ void balancing_initNodes(const uint32_t ip4addr, const uint32_t netmask, const u
 		node->type    = NODE_UNKNOWN;
 	}
 
-	OwnedNodes = malloc(MAXOWNED * sizeof(int));
+	OwnedNodes = malloc(MAXOWNED * sizeof(void *));
 	OwnedCount = 0;
+
+	SensorNodes = malloc(MAXSENSORS * sizeof(void *));
+	SensorCount = 0;
+
 }
 
 void balancing_survey(int packet_sock) {
@@ -218,7 +224,13 @@ void balancing_check_response(uint8_t *buffer, int length) {
 }
 
 
-void balancing_destroyNodes() {
+void balancing_transit() {
+
+}
+
+
+
+void balancing_destroy() {
 	free(Nodes);
 	free(OwnedNodes);
 	NodeCount = 0;

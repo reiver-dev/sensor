@@ -1,8 +1,10 @@
 #include <stdint.h>
 #include <assert.h>
 #include <string.h>
+#include <stdbool.h>
 #include <netinet/if_ether.h>
 #include <netinet/in.h>
+
 
 #include "debug.h"
 
@@ -64,6 +66,27 @@ uint8_t *survey_packet(int *out_length, const uint32_t toaddr, const uint32_t cu
 void survey_set_target_ip(uint8_t *buffer, uint32_t ip) {
 	struct arp_ip4 *arpheader = (struct arp_ip4 *) &buffer[ETHERNET_LENGTH];
 	arpheader->ar_tip = ip;
+}
+
+
+bool survey_is_response(const uint8_t *buffer, int length) {
+	if (length < ARP_SURVEY_BUF_LENGTH) {
+		return false;
+	}
+
+	struct ether_header *ethernet;
+
+	ethernet = (struct ether_header *) &buffer[0];
+	if (ethernet->ether_type != ntohs(ETH_P_ARP)) {
+		return false;
+	}
+
+	struct arp_ip4 *arpheader;
+	if (arpheader->header.ar_op != ntohs(ARPOP_REPLY)) {
+		return false;
+	}
+
+	return true;
 }
 
 int survey_extract_response(const uint8_t *buffer, int length, uint32_t *out_ip, uint8_t *out_hw) {

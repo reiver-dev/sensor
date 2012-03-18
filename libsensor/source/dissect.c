@@ -124,8 +124,6 @@ sensor_dissected_t *sensor_dissect_simple(sensor_captured_t *captured){
 
 	result->timestamp = captured->timestamp;
 
-	destroy_captured(captured);
-
 	return result;
 }
 
