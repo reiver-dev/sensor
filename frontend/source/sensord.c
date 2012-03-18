@@ -5,6 +5,7 @@
 #include <fcntl.h>
 
 #include <signal.h>
+#include <net/if.h>
 
 #include <unistd.h>     //for fork
 #include <sys/stat.h>
