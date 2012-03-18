@@ -5,7 +5,7 @@
 #include <time.h>
 #include <net/ethernet.h>
 #include <net/if.h>
-#include "queue.h"
+#include <queue.h>
 
 enum sensor_error_e{
 	SENSOR_SUCCESS,

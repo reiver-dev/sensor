@@ -2,7 +2,7 @@ cmake_minimum_required (VERSION 2.8)
 
 project (sensord C)
 
-file (GLOB HEADERS headers/*.h) 
+file (GLOB HEADERS headers/*.h)
 file (GLOB SOURCES source/*.c)
 
 set (LIBRARIES
@@ -11,7 +11,7 @@ set (LIBRARIES
 
 include_directories (
     headers
-    ../libsensor/headers
+    ../libsensor/include
 )
 
 add_executable (${PROJECT_NAME} ${HEADERS} ${SOURCES})

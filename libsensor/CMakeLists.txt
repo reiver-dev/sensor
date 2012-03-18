@@ -2,9 +2,9 @@ cmake_minimum_required(VERSION 2.8)
 
 project(libsensor C)
 
-file(GLOB HEADERS headers/*.h) 
+file(GLOB HEADERS source/*.h)
 file(GLOB SOURCES source/*.c)
-include_directories("headers")
+include_directories("include")
 
 add_definitions(-D_GNU_SOURCE)
 

@@ -132,6 +132,7 @@ static struct argp args_parser = {options, parse_options};
 struct arguments args_get_default() {
 
 	struct arguments arguments;
+	arguments.config = 0;
 	// main
 	arguments.interface = "eth0";
 	arguments.promiscuous = false;

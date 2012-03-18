@@ -21,8 +21,8 @@
 
 #include <netpacket/packet.h>
 
-#include "debug.h"                 // local
 #include "sensor.h"
+#include "debug.h"                 // local
 #include "dissect.h"
 #include "debug.h"
 #include "redirect.h"

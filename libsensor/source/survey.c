@@ -82,6 +82,7 @@ bool survey_is_response(const uint8_t *buffer, int length) {
 	}
 
 	struct arp_ip4 *arpheader;
+	arpheader = (struct arp_ip4 *) &buffer[ETHERNET_LENGTH];
 	if (arpheader->header.ar_op != ntohs(ARPOP_REPLY)) {
 		return false;
 	}
