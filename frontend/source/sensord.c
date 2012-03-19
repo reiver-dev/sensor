@@ -96,17 +96,28 @@ void forking() {
 
 int read_config(struct arguments *arguments) {
 	char *filename = arguments->config;
-	const char *sections[] = {"main", "mysql", "periods", "debug", "misc"};
+	const char *sections[] = {"main", "capture", "dissection", "persistance", "misc"};
 	kvset kvs = InitKVS(5, sections);
+
 	AddKVS(kvs, 0, KVS_STRING, "interface", arguments->interface);
-	AddKVS(kvs, 0, KVS_BOOL, "promiscuous", &arguments->promiscuous);
-	AddKVS(kvs, 0, KVS_UINT32, "buffersize", &arguments->buffersize);
-	AddKVS(kvs, 2, KVS_INT32, "capture_timeout", &arguments->capture_timeout);
-	AddKVS(kvs, 2, KVS_INT32, "dissection_period", &arguments->dissection_period);
-	AddKVS(kvs, 2, KVS_INT32, "persist_period", &arguments->persist_period);
-	AddKVS(kvs, 3, KVS_BOOL, "enable_persistance", &arguments->enable_persistance);
-	AddKVS(kvs, 3, KVS_BOOL, "enable_redirect", &arguments->enable_redirect);
-	AddKVS(kvs, 3, KVS_BOOL, "enable_fork", &arguments->enable_fork);
+	AddKVS(kvs, 0, KVS_BOOL, "fork", &arguments->enable_fork);
+	AddKVS(kvs, 0, KVS_BOOL, "background", &arguments->background);
+
+	AddKVS(kvs, 1, KVS_BOOL, "promiscuous", &arguments->background);
+	AddKVS(kvs, 1, KVS_UINT32, "buffersize", &arguments->background);
+	AddKVS(kvs, 1, KVS_UINT32, "timeout", &arguments->capture_timeout);
+
+	AddKVS(kvs, 2, KVS_UINT32, "timeout", &arguments->dissection_period);
+
+	AddKVS(kvs, 3, KVS_BOOL, "enable", &arguments->enable_persistance);
+	AddKVS(kvs, 3, KVS_STRING, "host", arguments->db_host);
+	AddKVS(kvs, 3, KVS_UINT32, "port", &arguments->db_port);
+	AddKVS(kvs, 3, KVS_STRING, "login", arguments->db_username);
+	AddKVS(kvs, 3, KVS_STRING, "password", arguments->db_password);
+	AddKVS(kvs, 3, KVS_STRING, "schema", arguments->db_schema);
+	AddKVS(kvs, 3, KVS_STRING, "table", arguments->db_table);
+	AddKVS(kvs, 3, KVS_UINT32, "timeout", &arguments->persist_period);
+
 	LoadKVS(kvs, filename);
 	DestroyKVS(kvs);
 	return 0;
@@ -145,14 +156,14 @@ int main(int argc, char** argv) {
 	}
 
 
-	opts.promiscuous = arguments.promiscuous;
+	opts.capture.promiscuous = arguments.promiscuous;
 	strncpy(opts.device_name, arguments.interface, IF_NAMESIZE);
-	opts.buffersize = arguments.buffersize;
+	opts.capture.buffersize = arguments.buffersize;
 
-	opts.timeout_capture = arguments.capture_timeout;
-	opts.timeout_persist = arguments.persist_period;
-	opts.timeout_dissect = arguments.dissection_period;
-	opts.enable_redirect = arguments.enable_redirect;
+	opts.capture.timeout = arguments.capture_timeout;
+	opts.persist.timeout = arguments.persist_period;
+	opts.dissect.timeout = arguments.dissection_period;
+	opts.balancing.enable_redirect = arguments.enable_redirect;
 
 	sensor_set_options(&sensor, opts);
 	sensor_set_dissection_default(&sensor);

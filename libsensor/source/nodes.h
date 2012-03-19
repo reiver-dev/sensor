@@ -46,4 +46,6 @@ struct Node *nodes_get();
 struct Node *node_get(uint32_t ip);
 void nodes_destroy();
 
+void node_answered(uint32_t ip4, uint8_t *hw);
+
 #endif /* NODES_H_ */

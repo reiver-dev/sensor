@@ -160,7 +160,7 @@ int commit_config(sensor_t *config){
 		return SENSOR_CREATE_SOCKET;
 	}
 
-	if (config->opt.promiscuous) {
+	if (config->opt.capture.promiscuous) {
 		int res = set_iface_promiscuous(config->sock, config->opt.device_name, true);
 		if (res)
 			return res;
@@ -168,8 +168,8 @@ int commit_config(sensor_t *config){
 
 	bind_socket_to_interface(config->sock, config->opt.device_name);
 
-	if (config->opt.timeout_capture) {
-		int res = set_socket_timeout(config->sock, config->opt.timeout_capture);
+	if (config->opt.capture.timeout) {
+		int res = set_socket_timeout(config->sock, config->opt.capture.timeout);
 		if (res)
 			return res;
 	}
@@ -192,7 +192,7 @@ int sensor_destroy(sensor_t *config){
 	DNOTIFY("%s\n", "Destroying sensor");
 	queue_destroy(config->captured);
 	queue_destroy(config->dissected);
-	if (config->opt.promiscuous) {
+	if (config->opt.capture.promiscuous) {
 		int res;
 		if (!(res = set_iface_promiscuous(config->sock, config->opt.device_name, false)))
 			return res;
@@ -230,7 +230,7 @@ bool prepare_redirect(sensor_t *sensor, uint8_t* buffer, int captured) {
 
 //-----------------interfaces---------------------
 sensor_t sensor_init(){
-	sensor_options_t options = {"",SENSOR_DEFAULT_PROMISC,SENSOR_DEFAULT_READ_BUFFER_SIZE, SENSOR_DEFAULT_TIMEOUT};
+	sensor_options_t options;
 	struct sensor result;
 	result.activated = false;
 	result.sock = 0;
@@ -344,12 +344,12 @@ int sensor_loop(sensor_t *config){
 	// queue intervals
 	time_t iteration_time=0;
 
-	struct timer dissect_timer = {0, config->opt.timeout_dissect};
-	struct timer persist_timer = {0, config->opt.timeout_persist};
-	struct timer balance_timer = {0, 10};
+	struct timer dissect_timer = {0, config->opt.dissect.timeout};
+	struct timer persist_timer = {0, config->opt.persist.timeout};
+	struct timer survey_timer = {0, config->opt.balancing.survey_timeout};
 
 	// buffer length
-	int buflength = config->opt.buffersize;
+	int buflength = config->opt.capture.buffersize;
 	uint8_t *buffer = malloc(buflength);
 
 	sensor_captured_t  *captured;
@@ -363,11 +363,11 @@ int sensor_loop(sensor_t *config){
 		/* complete only queue if we broke the loop */
 		if (config->activated) {
 
-			if (timer_check(&balance_timer, iteration_time)) {
+			if (timer_check(&survey_timer, iteration_time)) {
 				DINFO("%s\n", "Starting survey");
 				balancing_survey(config->sock);
 				DINFO("%s\n", "Survey finished");
-				timer_ping(&balance_timer);
+				timer_ping(&survey_timer);
 			}
 
 			/* wait for packet for given timeout and then read it */
@@ -381,7 +381,7 @@ int sensor_loop(sensor_t *config){
 
 				/* TODO: obsolete */
 				/* perform redirect if enabled and packet addresses replacement */
-				if (config->opt.enable_redirect && prepare_redirect(config, buffer, read_len)) {
+				if (config->opt.balancing.enable_redirect && prepare_redirect(config, buffer, read_len)) {
 					send(config->sock, buffer, read_len, 0);
 				}
 

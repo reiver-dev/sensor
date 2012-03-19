@@ -17,7 +17,7 @@ enum sensor_error_e{
 	SENSOR_IFACE_GET_INDEX
 };
 
-
+/*------------------------------*/
 typedef struct sensor_captured_s{
 	time_t timestamp;
 	int length;
@@ -39,17 +39,37 @@ typedef int (*sensor_persist_f)(Queue_t in);
 
 typedef sensor_dissected_t *(*sensor_dissect_f)(sensor_captured_t *captured);
 
+
+/* Options */
 typedef struct {
-	char device_name[IF_NAMESIZE];
 	bool promiscuous;
 	uint32_t buffersize;
-	uint32_t timeout_capture;
-	uint32_t timeout_dissect;
-	uint32_t timeout_persist;
+	uint32_t timeout;
+} sensor_capture_opt;
+
+typedef struct {
+	uint32_t timeout;
+} sensor_dissect_opt;
+
+typedef struct {
+	uint32_t timeout;
+} sensor_persist_opt;
+
+typedef struct {
+	uint32_t survey_timeout;
 	bool enable_redirect;
+} sensor_balancing_opt;
+
+typedef struct {
+	char device_name[IF_NAMESIZE];
+	sensor_capture_opt capture;
+	sensor_dissect_opt dissect;
+	sensor_persist_opt persist;
+	sensor_balancing_opt balancing;
 } sensor_options_t;
 
 
+/*--------------------------------------*/
 struct sensor {
 	bool activated;
 	int sock;
