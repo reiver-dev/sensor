@@ -56,6 +56,7 @@ typedef struct {
 } sensor_persist_opt;
 
 typedef struct {
+	uint32_t timeout;
 	uint32_t survey_timeout;
 	bool enable_redirect;
 } sensor_balancing_opt;

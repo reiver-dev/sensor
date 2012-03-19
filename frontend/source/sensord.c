@@ -96,7 +96,7 @@ void forking() {
 
 int read_config(struct arguments *arguments) {
 	char *filename = arguments->config;
-	const char *sections[] = {"main", "capture", "dissection", "persistance", "misc"};
+	const char *sections[] = {"main", "capture", "dissection", "persistance", "balancing", "misc"};
 	kvset kvs = InitKVS(5, sections);
 
 	AddKVS(kvs, 0, KVS_STRING, "interface", arguments->interface);
@@ -117,6 +117,9 @@ int read_config(struct arguments *arguments) {
 	AddKVS(kvs, 3, KVS_STRING, "schema", arguments->db_schema);
 	AddKVS(kvs, 3, KVS_STRING, "table", arguments->db_table);
 	AddKVS(kvs, 3, KVS_UINT32, "timeout", &arguments->persist_period);
+
+	AddKVS(kvs, 4, KVS_UINT32, "timeout", &arguments->balancing_period);
+	AddKVS(kvs, 4, KVS_UINT32, "survey_timeout", &arguments->survey_period);
 
 	LoadKVS(kvs, filename);
 	DestroyKVS(kvs);
@@ -164,6 +167,9 @@ int main(int argc, char** argv) {
 	opts.persist.timeout = arguments.persist_period;
 	opts.dissect.timeout = arguments.dissection_period;
 	opts.balancing.enable_redirect = arguments.enable_redirect;
+
+	opts.balancing.survey_timeout = arguments.survey_period;
+	opts.balancing.timeout = arguments.balancing_period;
 
 	sensor_set_options(&sensor, opts);
 	sensor_set_dissection_default(&sensor);

@@ -136,6 +136,7 @@ struct Node *nodes_get() {
 	return Nodes;
 }
 
+
 struct Node *node_get(uint32_t ip) {
 	uint32_t index = get_node_index(ip);
 	return &Nodes[index];
@@ -144,6 +145,15 @@ struct Node *node_get(uint32_t ip) {
 
 int nodes_count() {
 	return NodeCount;
+}
+
+
+struct Node **nodes_get_owned() {
+	return OwnedNodes;
+}
+
+int nodes_owned_count() {
+	return OwnedCount;
 }
 
 void nodes_destroy() {
@@ -161,7 +171,7 @@ void node_answered(uint32_t ip4, uint8_t *hw) {
 	DINFO("Node last check was: %i\n", node->last_check);
 
 	if (node->is_online) {
-		DINFO("Node is still online");
+		DINFO("%s", "Node is still online");
 	} else {
 		node->type = NODE_CLIENT;
 		node->is_online = true;

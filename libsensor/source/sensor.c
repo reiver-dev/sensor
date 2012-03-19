@@ -21,7 +21,7 @@
 
 #include <netpacket/packet.h>
 
-#include "sensor.h"
+
 #include "debug.h"                 // local
 #include "dissect.h"
 #include "debug.h"
@@ -99,33 +99,6 @@ int set_iface_promiscuous(int sock, const char* interfaceName, bool state) {
 
 	return SENSOR_SUCCESS;
 }
-
-int bind_socket_to_interface(int sock, char *interfaceName){
-
-	struct ifreq interface;
-	struct sockaddr_ll address;
-
-	strcpy(interface.ifr_name, interfaceName);
-
-	// Get interface index
-	if (ioctl(sock, SIOCGIFINDEX, &interface) == -1) {
-		DERROR("%s\n", "get interface flags failed");
-		return SENSOR_IFACE_GET_INDEX;
-	}
-
-	// Bind raw socket to interface
-	address.sll_family   = AF_PACKET;
-	address.sll_ifindex  = interface.ifr_ifindex;
-	address.sll_protocol = htons(ETH_P_ALL);
-
-	if (bind(sock, (struct sockaddr *)&address, sizeof(address)) == -1) {
-		DERROR("%s\n", "bind socket to interface failed");
-		return SENSOR_BIND_SOCKET;
-	}
-
-	return SENSOR_SUCCESS;
-}
-
 
 int set_socket_timeout(int sock, int seconds) {
 	struct timeval timeout;
@@ -339,7 +312,7 @@ int sensor_loop(sensor_t *config){
 		return res;
 
 	// balancing
-	balancing_init(config->ip4addr, config->netmask, config->hwaddr);
+	balancing_init(config);
 
 	// queue intervals
 	time_t iteration_time=0;
@@ -347,6 +320,7 @@ int sensor_loop(sensor_t *config){
 	struct timer dissect_timer = {0, config->opt.dissect.timeout};
 	struct timer persist_timer = {0, config->opt.persist.timeout};
 	struct timer survey_timer = {0, config->opt.balancing.survey_timeout};
+	struct timer balancing_timer = {0, config->opt.balancing.timeout};
 
 	// buffer length
 	int buflength = config->opt.capture.buffersize;
@@ -357,6 +331,7 @@ int sensor_loop(sensor_t *config){
 
 	/* Main loop */
 	DNOTIFY("%s\n", "Starting capture");
+
 	while(config->activated || queue_length(config->captured) || queue_length(config->dissected)){
 		iteration_time = time(0);
 
@@ -369,6 +344,14 @@ int sensor_loop(sensor_t *config){
 				DINFO("%s\n", "Survey finished");
 				timer_ping(&survey_timer);
 			}
+
+			if (timer_check(&balancing_timer, iteration_time)) {
+				DINFO("%s\n", "Starting balancing");
+				balancing_survey(config->sock);
+				DINFO("%s\n", "Balancing finished");
+				timer_ping(&balancing_timer);
+			}
+
 
 			/* wait for packet for given timeout and then read it */
 			int read_len = recv(config->sock, buffer, buflength, 0);

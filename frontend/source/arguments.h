@@ -5,24 +5,36 @@
 
 struct arguments {
 	char *config;
+
 	/* main */
 	char *interface;
+	bool enable_fork;
+	bool background;
+
+	/* capture */
 	bool promiscuous;
 	int buffersize;
-	/* mysql */
+	int capture_timeout;
+
+	/* dissection */
+	int dissection_period;
+
+	/* persistance */
 	char *db_host, *db_username, *db_password, *db_schema, *db_table;
 	int db_port;
-	/* periods */
-	int capture_timeout;
-	int dissection_period;
 	int persist_period;
-	/* debug */
 	bool enable_persistance;
+
+	/* balancing */
+	int survey_period;
+	int balancing_period;
+
+	/* debug */
 	bool enable_redirect;
-	bool enable_fork;
+
 	/* misc */
 	bool verbose;
-	bool background;
+
 
 };
 

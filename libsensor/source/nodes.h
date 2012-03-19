@@ -41,10 +41,14 @@ struct Node {
 };
 
 void nodes_init(const uint32_t ip4addr, const uint32_t netmask);
+void nodes_destroy();
+
 int nodes_count();
 struct Node *nodes_get();
 struct Node *node_get(uint32_t ip);
-void nodes_destroy();
+
+int nodes_owned_count();
+struct Node **nodes_get_owned();
 
 void node_answered(uint32_t ip4, uint8_t *hw);
 
