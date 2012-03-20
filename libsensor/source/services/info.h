@@ -7,8 +7,11 @@
 #include "services.h"
 
 
+#define INFO_TYPE_PUSH 0
+#define INFO_TYPE_POP  1
+
 typedef struct {
-	struct Node *node;
+	int type;
 } InfoRequest;
 
 Service get_info_service();

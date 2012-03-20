@@ -56,3 +56,8 @@ int bind_socket_to_interface(int sock, char *interfaceName) {
 
 	return 0;
 }
+
+void AddToBuffer(uint8_t *bufpointer, void *data, size_t ofData) {
+	memcpy(bufpointer, data, ofData);
+	bufpointer += ofData;
+}

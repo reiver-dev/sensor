@@ -30,7 +30,7 @@ static int udp_sock;
 
 static uint8_t State;
 
-static Service services[12];
+
 
 static struct {
 	uint32_t ip4;
@@ -59,7 +59,7 @@ void balancing_init(sensor_t *config) {
 	sockaddr.sin_port = htons(31337);
 	bind(udp_sock, &sockaddr, sizeof(sockaddr));
 
-	services[0] = get_info_service();
+
 
 }
 
@@ -90,30 +90,19 @@ void balancing_check_response(uint8_t *buffer, int length) {
 
 /*-------------------------------------*/
 
-void service_invoke(int sock, uint32_t serviceID, void *request) {
-	int serv_count = sizeof(services) / sizeof(Service);
-	for(int i = 0; i < serv_count; i++) {
-		if (services[i].Name == serviceID) {
-			services[i].Request(sock, request);
-		}
-	}
-}
-
-
 void seek_sensors() {
 	InfoRequest request;
-	request.node = 0;
-	service_invoke(udp_sock, SERVICE_INFO, &request);
+	request.type = INFO_TYPE_POP;
+	service_invoke(udp_sock, SERVICE_INFO, 0, &request);
 }
 
 
-void balancing_process(int sock) {
+void balancing_process() {
 
 	switch(State) {
 	case ME_JUST_ARRIVED:
-		seek_sensors(sock);
+		seek_sensors();
 		break;
-
 
 	}
 

@@ -2,8 +2,11 @@
 
 #include "services.h"
 #include "info.h"
+
+#include "../util.h"
+#include "../debug.h"
 #include "../nodes.h"
-#include "prototools.h"
+
 
 
 struct InfoItem {
@@ -12,13 +15,43 @@ struct InfoItem {
 };
 
 
-void info_request(int sock, void *request) {
-	InfoRequest *req = request;
-	send_service(sock, SERVICE_INFO, true, 0, 0, req->node);
+
+int create_current_info(uint8_t *buffer) {
+	return 0;
 }
 
 
-void info_response(int sock, uint32_t ip4_to) {
+
+int info_request(void *request, uint8_t *buffer) {
+	InfoRequest *req = request;
+
+	int len;
+	uint8_t *ptr = NULL;
+
+	switch(req->type) {
+
+	case INFO_TYPE_POP:
+		len = 4;
+		buffer = malloc(sizeof(req->type));
+		ptr = buffer;
+		AddToBuffer(ptr, &req->type, sizeof(req->type));
+		break;
+
+	case INFO_TYPE_PUSH:
+		len = create_current_info(buffer);
+		break;
+
+	default:
+		DERROR("INFO SERVICE: %s\n", " unknown operation");
+		len = -1;
+
+	}
+
+	return len;
+}
+
+
+void info_response(int sock, struct Node *to, void *request) {
 
 	struct Node **node = nodes_get_owned();
 	int nodeCount = nodes_owned_count();
@@ -34,7 +67,7 @@ void info_response(int sock, uint32_t ip4_to) {
 		ptr += sizeof(struct InfoItem);
 	}
 
-	send_service(sock, SERVICE_INFO, false, buffer, len, 0);
+	send_service(sock, SERVICE_INFO, buffer, len, 0);
 }
 
 

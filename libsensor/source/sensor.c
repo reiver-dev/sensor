@@ -347,7 +347,7 @@ int sensor_loop(sensor_t *config){
 
 			if (timer_check(&balancing_timer, iteration_time)) {
 				DINFO("%s\n", "Starting balancing");
-				balancing_survey(config->sock);
+				balancing_process();
 				DINFO("%s\n", "Balancing finished");
 				timer_ping(&balancing_timer);
 			}
