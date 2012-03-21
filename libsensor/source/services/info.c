@@ -34,7 +34,7 @@ int info_request(void *request, uint8_t *buffer) {
 		len = 4;
 		buffer = malloc(sizeof(req->type));
 		ptr = buffer;
-		AddToBuffer(ptr, &req->type, sizeof(req->type));
+		AddToBuffer(&ptr, &req->type, sizeof(req->type));
 		break;
 
 	case INFO_TYPE_PUSH:
@@ -44,7 +44,7 @@ int info_request(void *request, uint8_t *buffer) {
 	default:
 		DERROR("INFO SERVICE: %s\n", " unknown operation");
 		len = -1;
-
+		break;
 	}
 
 	return len;

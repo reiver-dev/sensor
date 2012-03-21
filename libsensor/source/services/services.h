@@ -21,6 +21,8 @@ typedef struct {
 
 void service_invoke(int sock, uint32_t serviceID, struct Node *to, void *request);
 
+void service_request(int sock, Service *service, struct Node *to, void *request);
+
 void send_service(int sock, int serviceID, uint8_t *data, int len, struct Node *to);
 
 #endif /* SERVICES_H_ */

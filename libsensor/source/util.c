@@ -57,7 +57,72 @@ int bind_socket_to_interface(int sock, char *interfaceName) {
 	return 0;
 }
 
-void AddToBuffer(uint8_t *bufpointer, void *data, size_t ofData) {
-	memcpy(bufpointer, data, ofData);
-	bufpointer += ofData;
+void AddToBuffer(uint8_t **bufpointer, void *data, size_t ofData) {
+	memcpy(*bufpointer, data, ofData);
+	*bufpointer += ofData;
+}
+
+
+void AddToBuffer32(uint8_t **bufpointer, uint32_t data) {
+	uint32_t toWrite = htonl(data);
+	memcpy(*bufpointer, &toWrite, 4);
+	*bufpointer += 4;
+}
+
+void AddToBuffer16(uint8_t **bufpointer, uint16_t data) {
+	uint16_t toWrite = htons(data);
+	memcpy(*bufpointer, &toWrite, 2);
+	*bufpointer += 2;
+}
+
+void AddToBuffer8(uint8_t **bufpointer, uint8_t data) {
+	**bufpointer = data;
+	(*bufpointer)++;
+}
+
+void AddToBuffer4(uint8_t **bufpointer, uint8_t data8, uint8_t data4) {
+	uint8_t toWrite = (data8 << 4) & (data4 | 0xf0);
+	**bufpointer = toWrite;
+	(*bufpointer)++;
+}
+
+void AddToBuffer1(uint8_t *bufpointer, uint8_t data, int place) {
+	uint8_t toWrite = (data & 0xFE) << place;
+	*bufpointer = toWrite;
+}
+
+uint32_t GetFromBuffer32(uint8_t **bufpointer) {
+	uint8_t get[4];
+	memcpy(get, *bufpointer, 4);
+	uint32_t *data = (uint32_t *)get;
+	bufpointer += 4;
+	return ntohl(*data);
+}
+
+uint16_t GetFromBuffer16(uint8_t **bufpointer) {
+	uint8_t get[2];
+	memcpy(get, *bufpointer, 2);
+	uint16_t *data = (uint16_t *)get;
+	bufpointer += 2;
+	return ntohs(*data);
+}
+
+uint8_t GetFromBuffer8(uint8_t **bufpointer) {
+	uint8_t data = **bufpointer;
+	bufpointer++;
+	return data;
+}
+
+void GetFromBuffer4(uint8_t **bufpointer, uint8_t *data8, uint8_t *data4) {
+	if (data8 != NULL) {
+		*data8 = **bufpointer >> 4;
+	}
+	if (data4 != NULL) {
+		*data4 = **bufpointer & 0xF0;
+	}
+	bufpointer++;
+}
+
+uint8_t GetFromBuffer1(const uint8_t *bufpointer, int place) {
+	return (*bufpointer >> place) & 0xFE;
 }

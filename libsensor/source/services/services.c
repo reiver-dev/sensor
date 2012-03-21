@@ -44,23 +44,49 @@ int extract_service(uint8_t *data, int len) {
 /* ---------------------------*/
 static Service services[12];
 
-void service_invoke(int sock, uint32_t serviceID, struct Node *to, void *request) {
-	int len = 0;
-	uint8_t *buffer = NULL;
+
+
+
+Service *service_get(uint32_t serviceID) {
 	int serv_count = sizeof(services) / sizeof(Service);
 	for(int i = 0; i < serv_count; i++) {
 
 		if (services[i].Name == serviceID) {
-			len = services[i].Request(request, buffer);
-			if (len < 0) {
-				DERROR("Service request failed: service=%i\n", services[i].Name);
-			} else {
-				send_service(sock, serviceID, buffer, len, to);
-				free(buffer);
-				DINFO("Service request successful: service=%i\n", services[i].Name);
-			}
+			return &services[i];
+		}
+
+	}
+
+	DWARNING("Service with id not found: service=%i\n", serviceID);
+	return NULL;
+}
+
+void service_invoke(int sock, uint32_t serviceID, struct Node *to, void *request) {
+
+	int serv_count = sizeof(services) / sizeof(Service);
+	for(int i = 0; i < serv_count; i++) {
+
+		if (services[i].Name == serviceID) {
+			service_request(sock, &services[i], to, request);
 			return;
 		}
 
-	} /* for */
+	}
+
+	DWARNING("Service with id not found: service=%i\n", serviceID);
+}
+
+void service_request(int sock, Service *service, struct Node *to, void *request) {
+	int len = 0;
+	uint8_t *buffer = NULL;
+
+	len = service->Request(request, buffer);
+
+	if (len < 0) {
+		DERROR("Service request failed: service=%i\n", service->Name);
+	} else {
+		send_service(sock, service->Name, buffer, len, to);
+		free(buffer);
+		DINFO("Service request successful: service=%i\n", service->Name);
+	}
 }
