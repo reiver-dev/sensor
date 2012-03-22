@@ -14,7 +14,7 @@
 
 #include <arpa/inet.h>
 
-#include "sensor.h"
+#include "balancing.h"
 #include "survey.h"
 #include "debug.h"
 #include "util.h"
@@ -26,46 +26,48 @@
 #define ME_JUST_ARRIVED 0
 #define ME_ALONE 1
 
-static int udp_sock;
 
-static uint8_t State;
-
-
-
-static struct {
+struct current{
 	uint32_t ip4;
 	uint32_t network;
 	uint8_t hw[ETH_ALEN];
-} current;
+};
 
-bool is_same_network_ip4(uint32_t ip) {
-	return (current.network & ip) == current.network;
+struct balancer {
+	int udp_sock;
+	uint8_t State;
+	struct current current;
+};
+
+
+bool is_same_network_ip4(Balancer self, uint32_t ip) {
+	return (self->current.network & ip) == self->current.network;
 }
 
 /* ---------------------------------------------- */
-void balancing_init(sensor_t *config) {
+Balancer balancing_init(sensor_t *config) {
 	/* memorize current addreses */
-	current.ip4 = config->ip4addr;
-	memcpy(current.hw, config->hwaddr, ETH_ALEN);
-	current.network = config->ip4addr & config->netmask;
+	Balancer self = malloc(sizeof(*self));
 
-	nodes_init(config->ip4addr, config->netmask);
+	self->current.ip4 = config->ip4addr;
+	memcpy(self->current.hw, config->hwaddr, ETH_ALEN);
+	self->current.network = config->ip4addr & config->netmask;
 
-	udp_sock = socket(AF_INET, SOCK_DGRAM, 0);
+	self->udp_sock = socket(AF_INET, SOCK_DGRAM, 0);
 
 	struct sockaddr_in sockaddr;
 	sockaddr.sin_family = AF_INET;
 	sockaddr.sin_addr.s_addr = htonl(INADDR_ANY);
 	sockaddr.sin_port = htons(31337);
-	bind(udp_sock, &sockaddr, sizeof(sockaddr));
+	bind(self->udp_sock, &sockaddr, sizeof(sockaddr));
 
-
+	return self;
 
 }
 
-void balancing_survey(int packet_sock) {
+void balancing_survey(Balancer self, int packet_sock) {
 	int length;
-	uint8_t *survey_buf = survey_packet(&length, 0, current.ip4, current.hw);
+	uint8_t *survey_buf = survey_packet(&length, 0, self->current.ip4, self->current.hw);
 
 	assert(survey_buf != 0);
 	assert(length > 0);
@@ -83,25 +85,25 @@ void balancing_survey(int packet_sock) {
 	}
 }
 
-void balancing_check_response(uint8_t *buffer, int length) {
+void balancing_check_response(Balancer self, uint8_t *buffer, int length) {
 	survey_process_response(buffer, length);
 }
 
 
 /*-------------------------------------*/
 
-void seek_sensors() {
+void seek_sensors(Balancer self) {
 	InfoRequest request;
 	request.type = INFO_TYPE_POP;
-	service_invoke(udp_sock, SERVICE_INFO, 0, &request);
+	service_invoke(self->udp_sock, SERVICE_INFO, 0, &request);
 }
 
 
-void balancing_process() {
+void balancing_process(Balancer self) {
 
-	switch(State) {
+	switch(self->State) {
 	case ME_JUST_ARRIVED:
-		seek_sensors();
+		seek_sensors(self);
 		break;
 
 	}
@@ -110,8 +112,8 @@ void balancing_process() {
 }
 
 
-void balancing_destroy() {
-	shutdown(udp_sock, 2);
-	nodes_destroy();
+void balancing_destroy(Balancer self) {
+	shutdown(self->udp_sock, 2);
+	free(self);
 }
 

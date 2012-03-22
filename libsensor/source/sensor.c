@@ -27,6 +27,7 @@
 #include "debug.h"
 #include "redirect.h"
 #include "balancing.h"
+#include "nodes.h"
 #include "util.h"
 
 #define SENSOR_DEFAULT_READ_BUFFER_SIZE 65536
@@ -312,7 +313,8 @@ int sensor_loop(sensor_t *config){
 		return res;
 
 	// balancing
-	balancing_init(config);
+	Balancer balancer = balancing_init(config);
+	nodes_init(config->ip4addr, config->netmask);
 
 	// queue intervals
 	time_t iteration_time=0;
@@ -340,14 +342,14 @@ int sensor_loop(sensor_t *config){
 
 			if (timer_check(&survey_timer, iteration_time)) {
 				DINFO("%s\n", "Starting survey");
-				balancing_survey(config->sock);
+				balancing_survey(balancer, config->sock);
 				DINFO("%s\n", "Survey finished");
 				timer_ping(&survey_timer);
 			}
 
 			if (timer_check(&balancing_timer, iteration_time)) {
 				DINFO("%s\n", "Starting balancing");
-				balancing_process();
+				balancing_process(balancer);
 				DINFO("%s\n", "Balancing finished");
 				timer_ping(&balancing_timer);
 			}
@@ -360,7 +362,7 @@ int sensor_loop(sensor_t *config){
 			/* process the packet */
 			if (read_len > 0) {
 
-				balancing_check_response(buffer, read_len);
+				balancing_check_response(balancer, buffer, read_len);
 
 				/* TODO: obsolete */
 				/* perform redirect if enabled and packet addresses replacement */
@@ -379,9 +381,7 @@ int sensor_loop(sensor_t *config){
 		DINFO("Queue captured: %i\tDissection time: %i\n",
 				queue_length(config->captured), (uint32_t)dissect_timer.last);
 
-		if ((queue_length(config->captured)	&& timer_check(&dissect_timer, iteration_time))
-			|| !config->activated)
-		{
+		if ((queue_length(config->captured)	&& timer_check(&dissect_timer, iteration_time)) || !config->activated) {
 			DINFO("Dissecting: %d packets\n", queue_length(config->captured));
 			while(queue_length(config->captured)) {
 				captured = queue_pop(config->captured);
@@ -397,9 +397,7 @@ int sensor_loop(sensor_t *config){
 		DINFO("Queue dissected: %i\tPersistence time: %i\n",
 				queue_length(config->dissected), (uint32_t)persist_timer.last);
 
-		if ((queue_length(config->dissected) && timer_check(&persist_timer, iteration_time))
-			|| !config->activated)
-		{
+		if ((queue_length(config->dissected) && timer_check(&persist_timer, iteration_time)) || !config->activated)	{
 			while(queue_length(config->dissected) != 0) {
 				config->persist_function(config->dissected);
 			}
@@ -408,7 +406,8 @@ int sensor_loop(sensor_t *config){
 
 	} /* while */
 	DNOTIFY("%s\n","Capture ended");
-	balancing_destroy();
+	balancing_destroy(balancer);
+	nodes_destroy();
 	sensor_destroy(config);
 	return SENSOR_SUCCESS;
 }

@@ -17,7 +17,20 @@ struct InfoItem {
 
 
 int create_current_info(uint8_t *buffer) {
-	return 0;
+	struct Node **nodes = nodes_get_owned();
+	int nodeCount = nodes_owned_count();
+
+	int len = nodeCount * (sizeof(struct InfoItem)) + 4;
+	buffer = malloc(len);
+
+	AddToBuffer8(&buffer, INFO_TYPE_PUSH);
+	AddToBuffer32(&buffer, nodeCount);
+	for (int i = 0; i < nodeCount; i++) {
+		AddToBuffer32(&buffer, nodes[i]->ip4addr);
+		AddToBuffer32(&buffer, nodes[i]->info.client.load);
+	}
+
+	return len;
 }
 
 
@@ -34,7 +47,7 @@ int info_request(void *request, uint8_t *buffer) {
 		len = 4;
 		buffer = malloc(sizeof(req->type));
 		ptr = buffer;
-		AddToBuffer(&ptr, &req->type, sizeof(req->type));
+		AddToBuffer8(&ptr, req->type);
 		break;
 
 	case INFO_TYPE_PUSH:
@@ -45,6 +58,7 @@ int info_request(void *request, uint8_t *buffer) {
 		DERROR("INFO SERVICE: %s\n", " unknown operation");
 		len = -1;
 		break;
+
 	}
 
 	return len;
@@ -52,30 +66,17 @@ int info_request(void *request, uint8_t *buffer) {
 
 
 void info_response(int sock, struct Node *to, void *request) {
-
-	struct Node **node = nodes_get_owned();
-	int nodeCount = nodes_owned_count();
-
-	int len = nodeCount * sizeof(struct InfoItem);
-	uint8_t *buffer = malloc(len);
-	uint8_t *ptr = buffer;
-
-	for (int i = 0; i < nodeCount; i++) {
-		struct InfoItem *item = (struct InfoItem *)ptr;
-		item->ip4 = node[i]->ip4addr;
-		item->load = node[i]->info.client.load;
-		ptr += sizeof(struct InfoItem);
-	}
-
-	send_service(sock, SERVICE_INFO, buffer, len, 0);
+	uint8_t *buffer = request;
+	int type  = GetFromBuffer8(&buffer);
+	int count = GetFromBuffer32(&buffer);
 }
 
 
 Service get_info_service() {
 	Service service;
-	service.Request = info_request;
+	service.Request  = info_request;
 	service.Response = info_response;
-	service.Name = SERVICE_INFO;
+	service.Name     = SERVICE_INFO;
 
 	return service;
 }
