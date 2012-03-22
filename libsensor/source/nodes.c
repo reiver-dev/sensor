@@ -168,7 +168,7 @@ void node_answered(uint32_t ip4, uint8_t *hw) {
 	DINFO("Node last check was: %i\n", node->last_check);
 
 	if (node->is_online) {
-		DINFO("%s", "Node is still online");
+		DINFO("Node IP:%s is still online\n", Ip4ToStr(node->ip4addr));
 	} else {
 		node->type = NODE_CLIENT;
 		node->is_online = true;

@@ -92,14 +92,14 @@ void seek_sensors(Balancer self) {
 
 
 void balancing_process(Balancer self) {
-
+/*
 	switch(self->State) {
 	case ME_JUST_ARRIVED:
 		seek_sensors(self);
 		break;
 
 	}
-
+*/
 
 }
 

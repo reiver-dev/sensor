@@ -99,7 +99,7 @@ int read_config(struct arguments *arguments) {
 	const char *sections[] = {"main", "capture", "dissection", "persistance", "balancing", "misc"};
 	kvset kvs = InitKVS(5, sections);
 
-	AddKVS(kvs, 0, KVS_STRING, "interface", arguments->interface);
+	AddKVS(kvs, 0, KVS_STRING, "interface", &arguments->interface);
 	AddKVS(kvs, 0, KVS_BOOL, "fork", &arguments->enable_fork);
 	AddKVS(kvs, 0, KVS_BOOL, "background", &arguments->background);
 
@@ -110,12 +110,12 @@ int read_config(struct arguments *arguments) {
 	AddKVS(kvs, 2, KVS_UINT32, "timeout", &arguments->dissection_period);
 
 	AddKVS(kvs, 3, KVS_BOOL, "enable", &arguments->enable_persistance);
-	AddKVS(kvs, 3, KVS_STRING, "host", arguments->db_host);
+	AddKVS(kvs, 3, KVS_STRING, "host", &arguments->db_host);
 	AddKVS(kvs, 3, KVS_UINT32, "port", &arguments->db_port);
-	AddKVS(kvs, 3, KVS_STRING, "login", arguments->db_username);
-	AddKVS(kvs, 3, KVS_STRING, "password", arguments->db_password);
-	AddKVS(kvs, 3, KVS_STRING, "schema", arguments->db_schema);
-	AddKVS(kvs, 3, KVS_STRING, "table", arguments->db_table);
+	AddKVS(kvs, 3, KVS_STRING, "login", &arguments->db_username);
+	AddKVS(kvs, 3, KVS_STRING, "password", &arguments->db_password);
+	AddKVS(kvs, 3, KVS_STRING, "schema", &arguments->db_schema);
+	AddKVS(kvs, 3, KVS_STRING, "table", &arguments->db_table);
 	AddKVS(kvs, 3, KVS_UINT32, "timeout", &arguments->persist_period);
 
 	AddKVS(kvs, 4, KVS_UINT32, "timeout", &arguments->balancing_period);

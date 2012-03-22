@@ -11,6 +11,8 @@
 
 #include "kvset.h"
 
+#define MAXSTRING 255
+
 struct value {
 	int type;
 	char *name;
@@ -130,27 +132,43 @@ static int get_key_value(char *key, char *value, char *buffer, int keylen, int v
 
 
 static int parseValue(int type, char *value, void *ptr) {
+	char **buf;
+
 	switch(type) {
+
 	case KVS_STRING:
-		strcpy((char *)ptr, value);
+		buf = ptr;
+		int len = strlen(value);
+		if (len > MAXSTRING)
+			len = MAXSTRING;
+		*buf = malloc(len + 1);
+		memset(*buf, 0, len + 1);
+		strncpy(*(char **)ptr, value, len);
 		break;
+
 	case KVS_INT32:
 		*(int32_t *)ptr = (int32_t) strtol(value, 0, 10);
 		break;
+
 	case KVS_INT8:
 		*(int8_t *)ptr = (int8_t)strtol(value, 0, 10);
 		break;
+
 	case KVS_UINT32:
 		*(uint32_t *)ptr = (uint32_t)strtol(value, 0, 10);
 		break;
+
 	case KVS_UINT8:
 		*(uint8_t *)ptr = (uint8_t)strtol(value, 0, 10);
 		break;
+
 	case KVS_BOOL:
 		*(bool *)ptr = !strcmp(value, "1") || !strcmp(value, "true") ? true : false;
 		break;
+
 	default:
 		break;
+
 	}
 
 	return 0;

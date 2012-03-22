@@ -219,15 +219,7 @@ sensor_t sensor_init(){
 
 void sensor_destroy(sensor_t config){
 	assert(config);
-	DNOTIFY("%s\n", "Destroying sensor");
-	queue_destroy(config->captured);
-	queue_destroy(config->dissected);
-	if (config->opt.capture.promiscuous) {
-		int res;
-		if (!(res = set_iface_promiscuous(config->sock, config->opt.device_name, false)))
-			return;
-	}
-	close_socket(config->sock);
+	free(config);
 }
 
 int sensor_set_options(sensor_t config, sensor_options_t options){
@@ -424,5 +416,6 @@ int sensor_loop(sensor_t config) {
 	DNOTIFY("%s\n","Capture ended");
 	balancing_destroy(balancer);
 	nodes_destroy();
+	sensor_clean(config);
 	return SENSOR_SUCCESS;
 }
