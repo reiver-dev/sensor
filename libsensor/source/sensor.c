@@ -21,7 +21,7 @@
 
 #include <netpacket/packet.h>
 
-
+#include "sensor_private.h"
 #include "debug.h"                 // local
 #include "dissect.h"
 #include "debug.h"
@@ -124,7 +124,7 @@ int empty_persist(Queue_t in){
 
 
 
-int commit_config(sensor_t *config){
+int commit_config(sensor_t config){
 	config->captured = queue_init();
 	config->dissected = queue_init();
 
@@ -162,7 +162,8 @@ int commit_config(sensor_t *config){
 	return 0;
 }
 
-int sensor_destroy(sensor_t *config){
+int sensor_clean(sensor_t config){
+	assert(config);
 	DNOTIFY("%s\n", "Destroying sensor");
 	queue_destroy(config->captured);
 	queue_destroy(config->dissected);
@@ -174,6 +175,8 @@ int sensor_destroy(sensor_t *config){
 	close_socket(config->sock);
 	return 0;
 }
+
+
 //------------------------------------------------
 
 /*
@@ -182,7 +185,7 @@ int sensor_destroy(sensor_t *config){
  *
  * returns true if rewrite occurred, false otherwise
  */
-bool prepare_redirect(sensor_t *sensor, uint8_t* buffer, int captured) {
+bool prepare_redirect(sensor_t sensor, uint8_t* buffer, int captured) {
 	if (captured < (sizeof(struct ether_header) + sizeof(struct iphdr))) {
 		return false;
 	}
@@ -205,16 +208,29 @@ bool prepare_redirect(sensor_t *sensor, uint8_t* buffer, int captured) {
 //-----------------interfaces---------------------
 sensor_t sensor_init(){
 	sensor_options_t options;
-	struct sensor result;
-	result.activated = false;
-	result.sock = 0;
-	result.opt = options;
-	result.dissect_function = sensor_dissect_simple;
-	result.persist_function = sensor_empty;
+	sensor_t result = malloc(sizeof(*result));
+	result->activated = false;
+	result->sock = 0;
+	result->opt = options;
+	result->dissect_function = sensor_dissect_simple;
+	result->persist_function = sensor_empty;
 	return result;
 }
 
-int sensor_set_options(sensor_t *config, sensor_options_t options){
+void sensor_destroy(sensor_t config){
+	assert(config);
+	DNOTIFY("%s\n", "Destroying sensor");
+	queue_destroy(config->captured);
+	queue_destroy(config->dissected);
+	if (config->opt.capture.promiscuous) {
+		int res;
+		if (!(res = set_iface_promiscuous(config->sock, config->opt.device_name, false)))
+			return;
+	}
+	close_socket(config->sock);
+}
+
+int sensor_set_options(sensor_t config, sensor_options_t options){
 	if (config->activated) {
 		return SENSOR_ALREADY_ACTIVATED;
 	}
@@ -222,7 +238,7 @@ int sensor_set_options(sensor_t *config, sensor_options_t options){
 	return SENSOR_SUCCESS;
 }
 
-int sensor_set_dissection_default(sensor_t *config){
+int sensor_set_dissection_default(sensor_t config){
 	if (config->activated) {
 		return SENSOR_ALREADY_ACTIVATED;
 	}
@@ -230,7 +246,7 @@ int sensor_set_dissection_default(sensor_t *config){
 	return SENSOR_SUCCESS;
 }
 
-int sensor_set_dissection(sensor_t *config, sensor_dissect_f callback){
+int sensor_set_dissection(sensor_t config, sensor_dissect_f callback){
 	if (config->activated) {
 		return SENSOR_ALREADY_ACTIVATED;
 	}
@@ -238,7 +254,7 @@ int sensor_set_dissection(sensor_t *config, sensor_dissect_f callback){
 	return SENSOR_SUCCESS;
 }
 
-int sensor_set_persist_callback(sensor_t *config, sensor_persist_f callback){
+int sensor_set_persist_callback(sensor_t config, sensor_persist_f callback){
 	if (config->activated) {
 		return SENSOR_ALREADY_ACTIVATED;
 	}
@@ -297,11 +313,11 @@ void destroy_dissected(sensor_dissected_t *dissected){
 
 
 /* Main sensor loop */
-void sensor_breakloop(sensor_t *config){
+void sensor_breakloop(sensor_t config) {
 	config->activated = false;
 }
 
-int sensor_loop(sensor_t *config){
+int sensor_loop(sensor_t config) {
 
 	if (config->activated) {
 		return SENSOR_ALREADY_ACTIVATED;
@@ -408,6 +424,5 @@ int sensor_loop(sensor_t *config){
 	DNOTIFY("%s\n","Capture ended");
 	balancing_destroy(balancer);
 	nodes_destroy();
-	sensor_destroy(config);
 	return SENSOR_SUCCESS;
 }

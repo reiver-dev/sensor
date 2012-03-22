@@ -37,7 +37,7 @@ int persist_callback(Queue_t in){
 }
 
 void break_loop() {
-	sensor_breakloop(&sensor);
+	sensor_breakloop(sensor);
 }
 
 
@@ -153,9 +153,9 @@ int main(int argc, char** argv) {
 		db_init(&arguments);
 		db_connect();
 		db_prepare_statement();
-		sensor_set_persist_callback(&sensor, persist_callback);
+		sensor_set_persist_callback(sensor, persist_callback);
 	} else {
-		sensor_set_persist_callback(&sensor, 0);
+		sensor_set_persist_callback(sensor, 0);
 	}
 
 
@@ -171,15 +171,16 @@ int main(int argc, char** argv) {
 	opts.balancing.survey_timeout = arguments.survey_period;
 	opts.balancing.timeout = arguments.balancing_period;
 
-	sensor_set_options(&sensor, opts);
-	sensor_set_dissection_default(&sensor);
-	sensor_loop(&sensor);
+	sensor_set_options(sensor, opts);
+	sensor_set_dissection_default(sensor);
+	sensor_loop(sensor);
 
 	if (arguments.enable_persistance) {
 		db_close_statement();
 		db_disconnect();
 	}
 
+	sensor_destroy(sensor);
 
 	return EXIT_SUCCESS;
 }

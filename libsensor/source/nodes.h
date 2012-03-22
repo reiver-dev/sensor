@@ -5,7 +5,7 @@
 #include <time.h>
 #include <linux/if_ether.h>
 
-#include "sensor.h"
+#include "sensor_private.h"
 
 #define NODE_UNKNOWN 0
 #define NODE_SENSOR 1

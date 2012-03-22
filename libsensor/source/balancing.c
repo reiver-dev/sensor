@@ -40,7 +40,7 @@ bool is_same_network_ip4(Balancer self, uint32_t ip) {
 }
 
 /* ---------------------------------------------- */
-Balancer balancing_init(sensor_t *config) {
+Balancer balancing_init(sensor_t config) {
 	/* memorize current addreses */
 	Balancer self = malloc(sizeof(*self));
 
