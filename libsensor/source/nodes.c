@@ -7,6 +7,7 @@
 #include <netinet/in.h>
 #include <netinet/ether.h>
 
+#include "sensor.h"
 #include "nodes.h"
 #include "util.h"
 #include "debug.h"
@@ -24,16 +25,12 @@ static struct Node **SensorNodes;
 static int SensorCount;
 static int OwnedCount;
 
-static struct {
-	uint32_t ip4;
-	uint32_t network;
-	uint8_t hw[ETH_ALEN];
-} current;
 
+static struct current *current;
 
 static uint32_t get_node_index(uint32_t ip) {
-	uint32_t ind = ntohl(ip) - ntohl(current.network) - 1;
-	return ntohl(ip) < ntohl(current.ip4) ? ind : ind - 1;
+	uint32_t ind = ntohl(ip) - ntohl(current->ip4addr & current->netmask) - 1;
+	return ntohl(ip) < ntohl(current->ip4addr) ? ind : ind - 1;
 }
 
 
@@ -105,19 +102,19 @@ int release_ownership(int index) {
 }
 
 /*-----------------------------------------------*/
-void nodes_init(const uint32_t ip4addr, const uint32_t netmask) {
+void nodes_init(struct current *curr) {
 	/* memorize current addreses */
-	current.ip4 = ip4addr;
-	current.network = ip4addr & netmask;
 
-	NodeCount = (1 << (32 - bitcount(netmask))) - 2;
+	current = curr;
+
+	NodeCount = (1 << (32 - bitcount(current->netmask))) - 2;
 	Nodes = malloc(NodeCount * sizeof(*Nodes));
 	memset(Nodes, '\0', NodeCount);
 
-	uint32_t network = ntohl(current.network);
+	uint32_t network = ntohl(current->ip4addr & current->netmask);
 	DNOTIFY("Node count is: %i\n", NodeCount);
 	uint32_t tmp;
-	uint32_t curr_ip = ntohl(current.ip4);
+	uint32_t curr_ip = ntohl(current->ip4addr);
 	for (uint32_t i = 0; i < NodeCount; i++) {
 		struct Node *node = & Nodes[i];
 		tmp = network + i + 1;

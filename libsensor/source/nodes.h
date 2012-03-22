@@ -5,6 +5,8 @@
 #include <time.h>
 #include <linux/if_ether.h>
 
+#include "sensor.h"
+
 #define NODE_UNKNOWN 0
 #define NODE_SENSOR 1
 #define NODE_CLIENT 2
@@ -40,7 +42,7 @@ struct Node {
 	union node_info info;
 };
 
-void nodes_init(const uint32_t ip4addr, const uint32_t netmask);
+void nodes_init(struct current *curr);
 void nodes_destroy();
 
 int nodes_count();

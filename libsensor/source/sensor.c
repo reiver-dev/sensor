@@ -148,15 +148,15 @@ int commit_config(sensor_t *config){
 			return res;
 	}
 
-	get_current_mac_r(config->sock, config->opt.device_name, config->hwaddr);
-	config->ip4addr = get_current_address(config->sock, config->opt.device_name);
-	config->netmask = get_current_netmask(config->sock, config->opt.device_name);
-	config->gateway = read_default_gateway(config->opt.device_name);
+	get_current_mac_r(config->sock, config->opt.device_name, config->current.hwaddr);
+	config->current.ip4addr = get_current_address(config->sock, config->opt.device_name);
+	config->current.netmask = get_current_netmask(config->sock, config->opt.device_name);
+	config->current.gateway = read_default_gateway(config->opt.device_name);
 
-	DNOTIFY("Current MAC: %s\n",     EtherToStr(config->hwaddr));
-	DNOTIFY("Current IP4: %s\n",     Ip4ToStr(config->ip4addr));
-	DNOTIFY("Current NETMASK: %s\n", Ip4ToStr(config->netmask));
-	DNOTIFY("Current GATEWAY: %s\n", Ip4ToStr(config->gateway));
+	DNOTIFY("Current MAC: %s\n",     EtherToStr(config->current.hwaddr));
+	DNOTIFY("Current IP4: %s\n",     Ip4ToStr(config->current.ip4addr));
+	DNOTIFY("Current NETMASK: %s\n", Ip4ToStr(config->current.netmask));
+	DNOTIFY("Current GATEWAY: %s\n", Ip4ToStr(config->current.gateway));
 
 
 	return 0;
@@ -192,7 +192,7 @@ bool prepare_redirect(sensor_t *sensor, uint8_t* buffer, int captured) {
 
 	if (ethernet->ether_type == ETHERTYPE_IP) {
 		struct iphdr *ipheader = (struct iphdr*) (buffer + position);
-		if (ipheader->daddr != sensor->ip4addr) {
+		if (ipheader->daddr != sensor->current.ip4addr) {
 			read_arp_ip_to_mac_r(sensor->sock, sensor->opt.device_name, ipheader->daddr, ethernet->ether_dhost);
 			return true;
 		}
@@ -314,7 +314,7 @@ int sensor_loop(sensor_t *config){
 
 	// balancing
 	Balancer balancer = balancing_init(config);
-	nodes_init(config->ip4addr, config->netmask);
+	nodes_init(&config->current);
 
 	// queue intervals
 	time_t iteration_time=0;

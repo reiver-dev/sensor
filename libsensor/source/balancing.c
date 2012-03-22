@@ -27,21 +27,16 @@
 #define ME_ALONE 1
 
 
-struct current{
-	uint32_t ip4;
-	uint32_t network;
-	uint8_t hw[ETH_ALEN];
-};
-
 struct balancer {
 	int udp_sock;
 	uint8_t State;
-	struct current current;
+	struct current *current;
 };
 
 
 bool is_same_network_ip4(Balancer self, uint32_t ip) {
-	return (self->current.network & ip) == self->current.network;
+	uint32_t network = self->current->ip4addr & self->current->netmask;
+	return (network & ip) == network;
 }
 
 /* ---------------------------------------------- */
@@ -49,12 +44,9 @@ Balancer balancing_init(sensor_t *config) {
 	/* memorize current addreses */
 	Balancer self = malloc(sizeof(*self));
 
-	self->current.ip4 = config->ip4addr;
-	memcpy(self->current.hw, config->hwaddr, ETH_ALEN);
-	self->current.network = config->ip4addr & config->netmask;
+	self->current = &config->current;
 
 	self->udp_sock = socket(AF_INET, SOCK_DGRAM, 0);
-
 	struct sockaddr_in sockaddr;
 	sockaddr.sin_family = AF_INET;
 	sockaddr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -67,7 +59,7 @@ Balancer balancing_init(sensor_t *config) {
 
 void balancing_survey(Balancer self, int packet_sock) {
 	int length;
-	uint8_t *survey_buf = survey_packet(&length, 0, self->current.ip4, self->current.hw);
+	uint8_t *survey_buf = survey_packet(&length, 0, self->current->ip4addr, self->current->hwaddr);
 
 	assert(survey_buf != 0);
 	assert(length > 0);

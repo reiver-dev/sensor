@@ -71,13 +71,17 @@ typedef struct {
 
 
 /*--------------------------------------*/
+struct current{
+	uint32_t ip4addr;
+	uint32_t netmask;
+	uint8_t hwaddr[ETH_ALEN];
+	uint32_t gateway;
+};
+
 struct sensor {
 	bool activated;
 	int sock;
-	uint8_t hwaddr[ETH_ALEN];
-	uint32_t ip4addr;
-	uint32_t netmask;
-	uint32_t gateway;
+	struct current current;
 	sensor_options_t opt;
 	Queue_t captured;
 	Queue_t dissected;
