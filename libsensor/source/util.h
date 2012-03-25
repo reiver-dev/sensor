@@ -2,6 +2,9 @@
 #define UTIL_H_
 #include <stdint.h>
 
+int RemoveElement(void *array, const size_t size, const int length, const int index);
+void *Reallocate(void *array, size_t size, const int length, const int index, const int period);
+
 char *Ip4ToStr(const uint32_t ip);
 
 char *EtherToStr(const uint8_t eth[ETH_ALEN]);

@@ -1,4 +1,6 @@
+#include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include <arpa/inet.h>
 #include <netinet/ether.h>
@@ -13,6 +15,39 @@
 
 #include "util.h"
 #include "debug.h"
+
+int RemoveElement(void *array, const size_t size, const int length, const int index) {
+	assert(array);
+	assert(size > 0);
+	assert(length > 0);
+	assert(index < length);
+
+	uint8_t *arr = array;
+	memcpy(&arr[index], &arr[length], size);
+	memset(&arr[length], 0, size);
+
+	return length - 1;
+}
+
+#define PERIODS_COUNT(i, period) (i / period + length % period ? 1 : 0)
+void *Reallocate(void *array, const size_t size, const int length, const int index, const int period) {
+	assert(array);
+	assert(size > 0);
+	assert(length >= 0);
+	assert(index >= 0);
+	assert(period > 0);
+
+	int allocated_periods = PERIODS_COUNT(length, period);
+	int requested_periods = PERIODS_COUNT(index, period);
+
+	if (requested_periods > allocated_periods) {
+		int newSize = size * requested_periods * period;
+		array = realloc(array, newSize);
+	}
+
+	return array;
+}
+
 
 char *Ip4ToStr(const uint32_t ip) {
 	return inet_ntoa(*(struct in_addr *)&ip);

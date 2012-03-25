@@ -7,7 +7,7 @@
 #include "sensor.h"
 
 
-enum sensor_error_e{
+enum sensor_error_e {
 	SENSOR_SUCCESS,
 	SENSOR_ALREADY_ACTIVATED,
 	SENSOR_CREATE_SOCKET,
@@ -18,7 +18,7 @@ enum sensor_error_e{
 };
 
 
-struct current{
+struct CurrentAddress {
 	uint32_t ip4addr;
 	uint32_t netmask;
 	uint8_t hwaddr[ETH_ALEN];
@@ -28,7 +28,7 @@ struct current{
 struct sensor {
 	bool activated;
 	int sock;
-	struct current current;
+	struct CurrentAddress current;
 	sensor_options_t opt;
 	Queue_t captured;
 	Queue_t dissected;

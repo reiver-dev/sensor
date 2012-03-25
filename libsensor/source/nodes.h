@@ -17,9 +17,11 @@
 
 
 /* Types */
+
 struct Node_sensor {
 	char id[16];
 	int clients_count;
+	struct Node **clients;
 };
 
 struct Node_client {
@@ -42,7 +44,7 @@ struct Node {
 	union node_info info;
 };
 
-void nodes_init(struct current *curr);
+void nodes_init(struct CurrentAddress *curr);
 void nodes_destroy();
 
 int nodes_count();
@@ -53,5 +55,6 @@ int nodes_owned_count();
 struct Node **nodes_get_owned();
 
 void node_answered(uint32_t ip4, uint8_t *hw);
+void node_set_owned_by(struct Node *sensor, uint32_t ip4addr, int load);
 
 #endif /* NODES_H_ */

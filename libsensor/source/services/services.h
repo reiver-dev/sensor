@@ -5,12 +5,13 @@
 #include <stdint.h>
 #include "../nodes.h"
 
-typedef struct {
-	uint32_t serviceID;
-} Service_request;
+struct RequestData {
+	int len;
+	uint8_t *buffer;
+};
 
-typedef int (*service_request_f) (void *request, uint8_t *buffer);
-typedef void (*service_response_f)(int sock, struct Node *from, void *request);
+typedef struct RequestData (*service_request_f) (void *request);
+typedef void (*service_response_f)(int sock, struct Node *from, struct RequestData request);
 
 typedef struct {
 	uint32_t Name;

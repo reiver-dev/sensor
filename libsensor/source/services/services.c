@@ -77,16 +77,15 @@ void service_invoke(int sock, uint32_t serviceID, struct Node *to, void *request
 }
 
 void service_request(int sock, Service *service, struct Node *to, void *request) {
-	int len = 0;
-	uint8_t *buffer = NULL;
+	struct RequestData data;
 
-	len = service->Request(request, buffer);
+	data = service->Request(request);
 
-	if (len < 0) {
+	if (data.len < 0) {
 		DERROR("Service request failed: service=%i\n", service->Name);
 	} else {
-		send_service(sock, service->Name, buffer, len, to);
-		free(buffer);
+		send_service(sock, service->Name, data.buffer, data.len, to);
+		free(data.buffer);
 		DINFO("Service request successful: service=%i\n", service->Name);
 	}
 }

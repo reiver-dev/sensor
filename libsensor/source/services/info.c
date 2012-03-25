@@ -8,67 +8,99 @@
 #include "../nodes.h"
 
 
+#define ITEM_SIZE sizeof(uint32_t) * 2
 
-struct InfoItem {
-	uint32_t ip4;
-	uint32_t load;
-};
+static struct RequestData put_type(int type) {
+	uint8_t *buffer, *ptr;
+	int len = 4;
 
+	buffer = malloc(len);
+	ptr = buffer;
 
+	AddToBuffer8(&ptr, type);
 
-int create_current_info(uint8_t *buffer) {
+	struct RequestData result = {len, buffer};
+	return result;
+}
+
+static struct RequestData put_info() {
+	uint8_t *buffer, *ptr;
+
 	struct Node **nodes = nodes_get_owned();
 	int nodeCount = nodes_owned_count();
 
-	int len = nodeCount * (sizeof(struct InfoItem)) + 4;
-	buffer = malloc(len);
+	int len = nodeCount * (ITEM_SIZE) + 4;
 
-	AddToBuffer8(&buffer, INFO_TYPE_PUSH);
-	AddToBuffer32(&buffer, nodeCount);
+	buffer = malloc(len);
+	ptr = buffer;
+
+	AddToBuffer8(&ptr, INFO_TYPE_PUSH);
+	AddToBuffer32(&ptr, nodeCount);
 	for (int i = 0; i < nodeCount; i++) {
-		AddToBuffer32(&buffer, nodes[i]->ip4addr);
-		AddToBuffer32(&buffer, nodes[i]->info.client.load);
+		AddToBuffer32(&ptr, nodes[i]->ip4addr);
+		AddToBuffer32(&ptr, nodes[i]->info.client.load);
 	}
 
-	return len;
+	struct RequestData result = {len, buffer};
+	return result;
 }
 
-
-
-int info_request(void *request, uint8_t *buffer) {
+static struct RequestData info_request(void *request) {
 	InfoRequest *req = request;
 
-	int len;
-	uint8_t *ptr = NULL;
+	struct RequestData data;
 
 	switch(req->type) {
 
 	case INFO_TYPE_POP:
-		len = 4;
-		buffer = malloc(sizeof(req->type));
-		ptr = buffer;
-		AddToBuffer8(&ptr, req->type);
+		data = put_type(req->type);
 		break;
 
 	case INFO_TYPE_PUSH:
-		len = create_current_info(buffer);
+		data = put_info();
 		break;
 
 	default:
 		DERROR("INFO SERVICE: %s\n", " unknown operation");
-		len = -1;
+		data.len = -1;
+		data.buffer = NULL;
 		break;
-
 	}
 
-	return len;
+	return data;
 }
 
 
-void info_response(int sock, struct Node *to, void *request) {
-	uint8_t *buffer = request;
-	int type  = GetFromBuffer8(&buffer);
-	int count = GetFromBuffer32(&buffer);
+static void info_response(int sock, struct Node *from, struct RequestData data) {
+	uint8_t *ptr = data.buffer;
+
+	int type  = GetFromBuffer8(&ptr);
+
+	if (type == INFO_TYPE_POP) {
+
+		InfoRequest request;
+		request.type = INFO_TYPE_PUSH;
+		service_invoke(sock, SERVICE_INFO, 0, &request);
+
+	} else if (type == INFO_TYPE_PUSH) {
+
+		int count = GetFromBuffer32(&ptr);
+
+		if (data.len - 1 < count * ITEM_SIZE) {
+			DWARNING("INFO SERVICE: info length is insufficient = %i", data.len - 1);
+			return;
+		}
+
+		int ip4addr;
+		int load;
+		for (int i = 0; i < count; i++) {
+			ip4addr = GetFromBuffer32(&ptr);
+			load = GetFromBuffer32(&ptr);
+			node_set_owned_by(from, ip4addr, load);
+		}
+
+	}
+
 }
 
 

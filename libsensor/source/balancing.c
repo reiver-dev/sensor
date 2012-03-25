@@ -30,7 +30,7 @@
 struct balancer {
 	int udp_sock;
 	uint8_t State;
-	struct current *current;
+	struct CurrentAddress *current;
 };
 
 

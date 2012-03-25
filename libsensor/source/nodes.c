@@ -26,15 +26,18 @@ static int SensorCount;
 static int OwnedCount;
 
 
-static struct current *current;
+static struct CurrentAddress *current;
 
+
+
+/* private utils */
 static uint32_t get_node_index(uint32_t ip) {
 	uint32_t ind = ntohl(ip) - ntohl(current->ip4addr & current->netmask) - 1;
 	return ntohl(ip) < ntohl(current->ip4addr) ? ind : ind - 1;
 }
 
 
-int get_owned_index(struct Node *node) {
+static int get_owned_index(struct Node *node) {
 	int i;
 	for (i = 0; i < OwnedCount; i ++) {
 		if (OwnedNodes[i] == node) {
@@ -43,6 +46,57 @@ int get_owned_index(struct Node *node) {
 	}
 	return -1;
 }
+
+/* node conditions*/
+bool is_owned_by_me(struct Node *client) {
+	assert(client);
+	bool result = false;
+
+	if (client->type != NODE_CLIENT) {
+		DWARNING("Node %s is not client", Ip4ToStr(client->ip4addr));
+	} else if (OwnedCount == 0) {
+		DNOTIFY("I (%s) have 0 nodes", Ip4ToStr(current->ip4addr));
+	} else {
+
+		for (int i = 0; i < OwnedCount; i++) {
+			struct Node *node = OwnedNodes[i];
+			if (node == client) {
+				result = true;
+				break;
+			}
+		}
+
+	} /* if */
+
+	return result;
+}
+
+bool is_owned_by(struct Node *sensor, struct Node *client) {
+	assert(sensor);
+	assert(client);
+
+	bool result = false;
+	if (sensor->type != NODE_SENSOR) {
+		DWARNING("Node %s is not sensor", Ip4ToStr(sensor->ip4addr));
+	} else if (client->type != NODE_CLIENT) {
+		DWARNING("Node %s is not client", Ip4ToStr(client->ip4addr));
+	} else if (sensor->info.sensor.clients_count == 0) {
+		DNOTIFY("Sensor %s has 0 nodes", Ip4ToStr(sensor->ip4addr));
+	} else {
+
+		for (int i = 0; i < sensor->info.sensor.clients_count; i++) {
+			struct Node *node = sensor->info.sensor.clients[i];
+			if (node == client) {
+				result = true;
+				break;
+			}
+		}
+
+	} /* if */
+
+	return result;
+}
+
 
 
 int take_ownership(int index) {
@@ -68,10 +122,20 @@ int take_ownership(int index) {
 	OwnedCount++;
 
 	return 0;
-
 }
 
 
+void add_owned_to(struct Node *sensor, struct Node *client) {
+	assert(sensor);
+	assert(client);
+
+	int count = sensor->info.sensor.clients_count;
+	struct Node **clients = sensor->info.sensor.clients;
+	Reallocate(clients, sizeof(void **), count, count + 1, 10);
+
+	clients[count] = client;
+
+}
 
 int release_ownership(int index) {
 	assert(index >= 0);         /* in array bounds   */
@@ -101,8 +165,9 @@ int release_ownership(int index) {
 	return 0;
 }
 
-/*-----------------------------------------------*/
-void nodes_init(struct current *curr) {
+
+/*-----------Main functions-------------*/
+void nodes_init(struct CurrentAddress *curr) {
 	/* memorize current addreses */
 
 	current = curr;
@@ -129,13 +194,32 @@ void nodes_init(struct current *curr) {
 	SensorCount = 0;
 }
 
+void nodes_destroy() {
+
+	for (int i = 0; i < SensorCount; i++) {
+		if (SensorNodes[i]->info.sensor.clients != NULL) {
+			free(SensorNodes[i]->info.sensor.clients);
+		}
+	}
+
+	free(SensorNodes);
+	free(OwnedNodes);
+	free(Nodes);
+
+	NodeCount = 0;
+}
+
+
 struct Node *nodes_get() {
 	return Nodes;
 }
 
-
 struct Node *node_get(uint32_t ip) {
 	uint32_t index = get_node_index(ip);
+	if (index < 0 || index > NodeCount) {
+		DERROR("Node with address %s not found", Ip4ToStr(ip));
+		return NULL;
+	}
 	return &Nodes[index];
 }
 
@@ -149,18 +233,12 @@ struct Node **nodes_get_owned() {
 	return OwnedNodes;
 }
 
+
 int nodes_owned_count() {
 	return OwnedCount;
 }
 
-void nodes_destroy() {
-	free(Nodes);
-	free(OwnedNodes);
-	NodeCount = 0;
-}
-
 /*----------------------------------------*/
-
 void node_answered(uint32_t ip4, uint8_t *hw) {
 
 	struct Node *node = node_get(ip4);
@@ -181,5 +259,22 @@ void node_answered(uint32_t ip4, uint8_t *hw) {
 }
 
 void node_as_sensor() {
+
+}
+
+void node_set_owned_by(struct Node *sensor, uint32_t ip4addr, int load) {
+	struct Node *client = node_get(ip4addr);
+
+	if (client == NULL) {
+		DWARNING("Node received from %s not found", Ip4ToStr(sensor->ip4addr));
+	} else if (is_owned_by_me(client)) {
+		DWARNING("Node conflict: sensor %s claims node as his", Ip4ToStr(sensor->ip4addr));
+		DWARNING("Node conflict: conflicted node is %s", Ip4ToStr(client->ip4addr));
+	} else if (is_owned_by(sensor, client)) {
+		client->info.client.load = load;
+	} else {
+		add_owned_to(sensor, client);
+		client->info.client.load = load;
+	}
 
 }
