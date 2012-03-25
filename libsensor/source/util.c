@@ -29,9 +29,8 @@ int RemoveElement(void *array, const size_t size, const int length, const int in
 	return length - 1;
 }
 
-#define PERIODS_COUNT(i, period) (i / period + length % period ? 1 : 0)
+#define PERIODS_COUNT(i, period) (i / period + i % period ? 1 : 0)
 void *Reallocate(void *array, const size_t size, const int length, const int index, const int period) {
-	assert(array);
 	assert(size > 0);
 	assert(length >= 0);
 	assert(index >= 0);
@@ -42,7 +41,11 @@ void *Reallocate(void *array, const size_t size, const int length, const int ind
 
 	if (requested_periods > allocated_periods) {
 		int newSize = size * requested_periods * period;
-		array = realloc(array, newSize);
+		if (array == NULL) {
+			array = malloc(newSize);
+		} else {
+			array = realloc(array, newSize);
+		}
 	}
 
 	return array;

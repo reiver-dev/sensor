@@ -130,10 +130,19 @@ void add_owned_to(struct Node *sensor, struct Node *client) {
 	assert(client);
 
 	int count = sensor->info.sensor.clients_count;
-	struct Node **clients = sensor->info.sensor.clients;
-	Reallocate(clients, sizeof(void **), count, count + 1, 10);
+	struct Node **clients;
 
+	if (count == 0) {
+		clients = NULL;
+	} else {
+		clients = sensor->info.sensor.clients;
+	}
+
+	clients = Reallocate(clients, sizeof(void **), count, count + 1, 10);
 	clients[count] = client;
+
+	sensor->info.sensor.clients_count++;
+	clients = sensor->info.sensor.clients = clients;
 
 }
 
