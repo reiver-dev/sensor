@@ -2,8 +2,8 @@
 #define UTIL_H_
 #include <stdint.h>
 
-int RemoveElement(void *array, const size_t size, const int length, const int index);
-void *Reallocate(void *array, size_t size, const int length, const int index, const int period);
+int RemoveElement(void *array, size_t size, int length, int index);
+void *Reallocate(void *array, size_t size, int length, int index, int period);
 
 char *Ip4ToStr(const uint32_t ip);
 
@@ -27,5 +27,6 @@ uint8_t GetFromBuffer8(uint8_t **bufpointer);
 void GetFromBuffer4(uint8_t **bufpointer, uint8_t *data8, uint8_t *data4);
 uint8_t GetFromBuffer1(const uint8_t *bufpointer, int place);
 
+#define ADD_TO_BUFFER(buf, data, size) (memcpy(buf, data, size), buf+=size)
 
 #endif /* UTIL_H_ */

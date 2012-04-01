@@ -16,7 +16,7 @@
 #include "util.h"
 #include "debug.h"
 
-int RemoveElement(void *array, const size_t size, const int length, const int index) {
+int RemoveElement(void *array, size_t size, int length, int index) {
 	assert(array);
 	assert(size > 0);
 	assert(length > 0);
@@ -30,7 +30,7 @@ int RemoveElement(void *array, const size_t size, const int length, const int in
 }
 
 #define PERIODS_COUNT(i, period) (i / period + i % period ? 1 : 0)
-void *Reallocate(void *array, const size_t size, const int length, const int index, const int period) {
+void *Reallocate(void *array, size_t size, int length, int index, int period) {
 	assert(size > 0);
 	assert(length >= 0);
 	assert(index >= 0);
