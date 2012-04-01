@@ -87,7 +87,7 @@ void balancing_check_response(Balancer self, uint8_t *buffer, int length) {
 void seek_sensors(Balancer self) {
 	InfoRequest request;
 	request.type = INFO_TYPE_POP;
-	service_invoke(self->udp_sock, SERVICE_INFO, 0, &request);
+	Services_Invoke(self->udp_sock, SERVICE_INFO, 0, &request);
 }
 
 

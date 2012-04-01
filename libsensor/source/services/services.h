@@ -5,25 +5,13 @@
 #include <stdint.h>
 #include "../nodes.h"
 
-struct RequestData {
-	int len;
-	uint8_t *buffer;
-};
+#define SERVICE_INFO 0
+#define SERVICE_NODE 1
 
-typedef struct RequestData (*service_request_f) (void *request);
-typedef void (*service_response_f)(int sock, struct Node *from, struct RequestData request);
+typedef struct Service *Service;
 
-typedef struct {
-	uint32_t Name;
-	service_request_f Request;
-	service_response_f Response;
-	bool broadcast_allowed;
-} Service;
-
-void service_invoke(int sock, uint32_t serviceID, struct Node *to, void *request);
-
-void service_request(int sock, Service *service, struct Node *to, void *request);
-
-void send_service(int sock, int serviceID, uint8_t *data, int len, struct Node *to);
+void Services_Init();
+void Services_Destroy();
+void Services_Invoke(int sock, uint32_t serviceID, struct Node *to, void *request);
 
 #endif /* SERVICES_H_ */

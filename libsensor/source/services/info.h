@@ -1,7 +1,6 @@
 #ifndef INFO_H_
 #define INFO_H_
 
-#define SERVICE_INFO 0
 #include "services.h"
 
 #define INFO_TYPE_PUSH 0
@@ -11,6 +10,6 @@ typedef struct {
 	int type;
 } InfoRequest;
 
-Service get_info_service();
+Service InfoService_Get();
 
 #endif /* INFO_H_ */

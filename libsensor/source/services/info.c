@@ -1,6 +1,7 @@
 #include <stdlib.h>
 
 #include "services.h"
+#include "services_private.h"
 #include "info.h"
 
 #include "../util.h"
@@ -9,6 +10,17 @@
 
 
 #define ITEM_SIZE sizeof(uint32_t) * 2
+
+/* prototypes */
+static struct RequestData info_request(void *request);
+static void info_response(int sock, struct Node *from, struct RequestData data);
+
+
+static struct Service infoService = {
+	.Request  = info_request,
+	.Response = info_response,
+	.Name     = SERVICE_INFO
+};
 
 static struct RequestData put_type(int type) {
 	uint8_t *buffer, *ptr;
@@ -80,7 +92,7 @@ static void info_response(int sock, struct Node *from, struct RequestData data) 
 
 		InfoRequest request;
 		request.type = INFO_TYPE_PUSH;
-		service_invoke(sock, SERVICE_INFO, 0, &request);
+		Service_Request(sock, InfoService_Get(), 0, &request);
 
 	} else if (type == INFO_TYPE_PUSH) {
 
@@ -98,18 +110,11 @@ static void info_response(int sock, struct Node *from, struct RequestData data) 
 			load = GetFromBuffer32(&ptr);
 			node_set_owned_by(from, ip4addr, load);
 		}
-
 	}
-
 }
 
 
-Service get_info_service() {
-	Service service;
-	service.Request  = info_request;
-	service.Response = info_response;
-	service.Name     = SERVICE_INFO;
-
-	return service;
+Service InfoService_Get() {
+	return &infoService;
 }
 
