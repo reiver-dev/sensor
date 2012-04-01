@@ -19,12 +19,13 @@
 #include "debug.h"
 #include "util.h"
 #include "nodes.h"
+#include "spoof.h"
 
 #include "services/info.h"
 
-
-#define ME_JUST_ARRIVED 0
-#define ME_ALONE 1
+#define STATE_BEGIN 0
+#define STATE_ME_JUST_ARRIVED 1
+#define STATE_ME_ALONE 2
 
 
 struct balancer {
@@ -72,9 +73,14 @@ void balancing_survey(Balancer self, int packet_sock) {
 		DINFO("Send survey to: %s\n", Ip4ToStr(nodes[i].ip4addr));
 		result = send(packet_sock, survey_buf, length, 0);
 		if (result == -1) {
-			DERROR("%s\n", "Failed to send survey");
+			DERROR("Failed to send survey to %s\n", Ip4ToStr(nodes[i].ip4addr));
 		}
 	}
+}
+
+
+void balancing_modify(Balancer self, int packet_sock) {
+	Spoof_nodes(packet_sock, self->current);
 }
 
 void balancing_check_response(Balancer self, uint8_t *buffer, int length) {
@@ -92,6 +98,7 @@ void seek_sensors(Balancer self) {
 
 
 void balancing_process(Balancer self) {
+
 /*
 	switch(self->State) {
 	case ME_JUST_ARRIVED:

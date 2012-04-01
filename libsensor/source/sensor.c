@@ -331,6 +331,7 @@ int sensor_loop(sensor_t config) {
 	struct timer persist_timer = {0, config->opt.persist.timeout};
 	struct timer survey_timer = {0, config->opt.balancing.survey_timeout};
 	struct timer balancing_timer = {0, config->opt.balancing.timeout};
+	struct timer spoof_timer = {0, 10};
 
 	// buffer length
 	int buflength = config->opt.capture.buffersize;
@@ -353,6 +354,13 @@ int sensor_loop(sensor_t config) {
 				balancing_survey(balancer, config->sock);
 				DINFO("%s\n", "Survey finished");
 				timer_ping(&survey_timer);
+			}
+
+			if (timer_check(&spoof_timer, iteration_time)) {
+				DINFO("%s\n", "Starting spoofing");
+				balancing_modify(balancer, config->sock);
+				DINFO("%s\n", "Spoofing finished");
+				timer_ping(&spoof_timer);
 			}
 
 			if (timer_check(&balancing_timer, iteration_time)) {
@@ -386,9 +394,6 @@ int sensor_loop(sensor_t config) {
 		}
 
 		/* Dissection */
-		DINFO("Queue captured: %i\tDissection time: %i\n",
-				queue_length(config->captured), (uint32_t)dissect_timer.last);
-
 		if ((queue_length(config->captured)	&& timer_check(&dissect_timer, iteration_time)) || !config->activated) {
 			DINFO("Dissecting: %d packets\n", queue_length(config->captured));
 			while(queue_length(config->captured)) {
@@ -400,11 +405,7 @@ int sensor_loop(sensor_t config) {
 			timer_ping(&dissect_timer);
 		}
 
-
 		/* Persistance */
-		DINFO("Queue dissected: %i\tPersistence time: %i\n",
-				queue_length(config->dissected), (uint32_t)persist_timer.last);
-
 		if ((queue_length(config->dissected) && timer_check(&persist_timer, iteration_time)) || !config->activated)	{
 			while(queue_length(config->dissected) != 0) {
 				config->persist_function(config->dissected);
