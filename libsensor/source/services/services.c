@@ -5,11 +5,12 @@
 
 #include "services.h"
 #include "services_private.h"
+#include "info.h"
 #include "../debug.h"
 
 #define MAX_SERVICES 2
 
-static struct Service services[MAX_SERVICES];
+static Service *services;
 
 struct Header {
 	uint8_t m_version;
@@ -47,11 +48,12 @@ int extract_service(uint8_t *data, int len) {
 
 
 static Service service_get(uint32_t serviceID) {
-	int serv_count = sizeof(services) / sizeof(Service);
-	for(int i = 0; i < serv_count; i++) {
-		if (services[i].Name == serviceID) {
-			return &services[i];
+	int i = 0;
+	while (services[i] != NULL) {
+		if (services[i]->ID == serviceID) {
+			return services[i];
 		}
+		i++;
 	}
 
 	DWARNING("Service with id not found: service=%i\n", serviceID);
@@ -66,22 +68,33 @@ void Service_Request(int sock, Service service, struct Node *to, void *request) 
 	data = service->Request(request);
 
 	if (data.len < 0) {
-		DERROR("Service request failed: service=%i\n", service->Name);
+		DERROR("Service request failed: %s\n", service->Name);
 	} else {
-		makeRequest(sock, service->Name, data.buffer, data.len, to);
+		makeRequest(sock, service->ID, data.buffer, data.len, to);
 		free(data.buffer);
-		DINFO("Service request successful: service=%i\n", service->Name);
+		DINFO("Service request successful: %s\n", service->Name);
 	}
 }
+
+
+void Services_Init() {
+	services = malloc(sizeof(Service) * MAX_SERVICES);
+	services[0] = InfoService_Get();
+	services[1] = 0;
+}
+
+void Services_Destroy() {
+	free(services);
+}
+
 
 void Services_Invoke(int sock, uint32_t serviceID, struct Node *to, void *request) {
 
 	Service service = service_get(serviceID);
 	if (service != NULL) {
 		Service_Request(sock, service, to, request);
+	} else {
+		DWARNING("Service with id not found: service=%i\n", serviceID);
 	}
-
-	DWARNING("Service with id not found: service=%i\n", serviceID);
-
 }
 

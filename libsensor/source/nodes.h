@@ -54,7 +54,12 @@ struct Node *node_get(uint32_t ip);
 int nodes_owned_count();
 struct Node **nodes_get_owned();
 
+int nodes_sensor_count();
+struct Node **nodes_get_sensors();
+
 void node_answered(uint32_t ip4, uint8_t *hw);
 void node_set_owned_by(struct Node *sensor, uint32_t ip4addr, int load);
+
+void node_take(struct Node *node);
 
 #endif /* NODES_H_ */

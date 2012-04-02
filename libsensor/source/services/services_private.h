@@ -12,7 +12,8 @@ typedef struct RequestData (*service_request_f) (void *request);
 typedef void (*service_response_f)(int sock, struct Node *from, struct RequestData request);
 
 struct Service {
-	uint32_t Name;
+	char *Name;
+	uint32_t ID;
 	service_request_f Request;
 	service_response_f Response;
 	bool broadcast_allowed;

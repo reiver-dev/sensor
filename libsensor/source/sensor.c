@@ -28,6 +28,7 @@
 #include "redirect.h"
 #include "balancing.h"
 #include "nodes.h"
+#include "services/services.h"
 #include "util.h"
 
 #define SENSOR_DEFAULT_READ_BUFFER_SIZE 65536
@@ -311,6 +312,13 @@ void sensor_breakloop(sensor_t config) {
 
 int sensor_loop(sensor_t config) {
 
+	sensor_captured_t *captured;
+	sensor_dissected_t *dissected;
+	int buflength;
+	uint8_t *buffer;
+	Balancer balancer;
+	time_t iteration_time;
+
 	if (config->activated) {
 		return SENSOR_ALREADY_ACTIVATED;
 	}
@@ -320,29 +328,45 @@ int sensor_loop(sensor_t config) {
 	if (res)
 		return res;
 
-	// balancing
-	Balancer balancer = balancing_init(config);
-	nodes_init(&config->current);
-
-	// queue intervals
-	time_t iteration_time=0;
-
-	struct timer dissect_timer = {0, config->opt.dissect.timeout};
-	struct timer persist_timer = {0, config->opt.persist.timeout};
-	struct timer survey_timer = {0, config->opt.balancing.survey_timeout};
-	struct timer balancing_timer = {0, config->opt.balancing.timeout};
-	struct timer spoof_timer = {0, 10};
-
 	// buffer length
-	int buflength = config->opt.capture.buffersize;
-	uint8_t *buffer = malloc(buflength);
+	buflength = config->opt.capture.buffersize;
+	buffer = malloc(buflength);
 
-	sensor_captured_t  *captured;
-	sensor_dissected_t *dissected;
+	balancer = balancing_init(config);
+	nodes_init(&config->current);
+	Services_Init();
+
+	/* Initial */
+	iteration_time = time(0);
+	balancing_survey(balancer, config->sock);
+	while ((time(0) - iteration_time) < 5) {
+		int read_len = recv(config->sock, buffer, buflength, 0);
+		if (read_len > 0) {
+			balancing_check_response(balancer, buffer, read_len);
+		}
+	}
+
+	iteration_time = time(0);
+	balancing_process(balancer);
+	while ((time(0) - iteration_time) < 5) {
+		int read_len = recv(config->sock, buffer, buflength, 0);
+		if (read_len > 0) {
+			balancing_check_response(balancer, buffer, read_len);
+		}
+	}
+	balancing_process(balancer);
+	balancing_modify(balancer, config->sock);
+
+	iteration_time = time(0);
+	struct timer dissect_timer   = {iteration_time, config->opt.dissect.timeout};
+	struct timer persist_timer   = {iteration_time, config->opt.persist.timeout};
+	struct timer survey_timer    = {iteration_time, config->opt.balancing.survey_timeout};
+	struct timer balancing_timer = {iteration_time, config->opt.balancing.timeout};
+	struct timer spoof_timer     = {iteration_time, 10};
+
 
 	/* Main loop */
 	DNOTIFY("%s\n", "Starting capture");
-
 	while(config->activated || queue_length(config->captured) || queue_length(config->dissected)){
 		iteration_time = time(0);
 
@@ -350,23 +374,17 @@ int sensor_loop(sensor_t config) {
 		if (config->activated) {
 
 			if (timer_check(&survey_timer, iteration_time)) {
-				DINFO("%s\n", "Starting survey");
 				balancing_survey(balancer, config->sock);
-				DINFO("%s\n", "Survey finished");
 				timer_ping(&survey_timer);
 			}
 
 			if (timer_check(&spoof_timer, iteration_time)) {
-				DINFO("%s\n", "Starting spoofing");
 				balancing_modify(balancer, config->sock);
-				DINFO("%s\n", "Spoofing finished");
 				timer_ping(&spoof_timer);
 			}
 
 			if (timer_check(&balancing_timer, iteration_time)) {
-				DINFO("%s\n", "Starting balancing");
 				balancing_process(balancer);
-				DINFO("%s\n", "Balancing finished");
 				timer_ping(&balancing_timer);
 			}
 
@@ -417,6 +435,7 @@ int sensor_loop(sensor_t config) {
 	DNOTIFY("%s\n","Capture ended");
 	balancing_destroy(balancer);
 	nodes_destroy();
+	Services_Destroy();
 	sensor_clean(config);
 	return SENSOR_SUCCESS;
 }

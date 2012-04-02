@@ -19,7 +19,8 @@ static void info_response(int sock, struct Node *from, struct RequestData data);
 static struct Service infoService = {
 	.Request  = info_request,
 	.Response = info_response,
-	.Name     = SERVICE_INFO
+	.ID       = SERVICE_INFO,
+	.Name     = "Info Service"
 };
 
 static struct RequestData put_type(int type) {

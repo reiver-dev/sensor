@@ -47,6 +47,7 @@ static int get_owned_index(struct Node *node) {
 	return -1;
 }
 
+
 /* node conditions*/
 bool is_owned_by_me(struct Node *client) {
 	assert(client);
@@ -98,21 +99,15 @@ bool is_owned_by(struct Node *sensor, struct Node *client) {
 }
 
 
-
-int take_ownership(int index) {
-	assert(index >= 0);         /* in array bounds   */
-	assert(index < NodeCount);  /* in array bounds   */
-	assert(index > OwnedCount); /* not already owned */
-
-	if (index > MAXOWNED) {
-		return 1; /* max owned reached */
-	}
-
-	struct Node *node = &Nodes[index];
+int take_ownership(struct Node *node) {
+	assert(node);         /* in array bounds   */
 	assert(node->is_online);
 
 	if (node->type == NODE_SENSOR) {
 		DWARNING("Tried to take ownership over sensor: IP4 = %s", Ip4ToStr(node->ip4addr));
+		return 1;
+	} else if (OwnedCount == MAXOWNED - 1) {
+		DWARNING("%s", "Max nodes reached");
 		return 1;
 	}
 
@@ -175,7 +170,7 @@ int release_ownership(int index) {
 }
 
 
-/*-----------Main functions-------------*/
+/* Main functions */
 void nodes_init(struct CurrentAddress *curr) {
 	/* memorize current addreses */
 
@@ -219,6 +214,10 @@ void nodes_destroy() {
 }
 
 
+int nodes_count() {
+	return NodeCount;
+}
+
 struct Node *nodes_get() {
 	return Nodes;
 }
@@ -232,22 +231,24 @@ struct Node *node_get(uint32_t ip) {
 	return &Nodes[index];
 }
 
-
-int nodes_count() {
-	return NodeCount;
-}
-
-
 struct Node **nodes_get_owned() {
 	return OwnedNodes;
 }
-
 
 int nodes_owned_count() {
 	return OwnedCount;
 }
 
-/*----------------------------------------*/
+struct Node **nodes_get_sensors() {
+	return SensorNodes;
+}
+
+int nodes_sensor_count() {
+	return SensorCount;
+}
+
+
+/* services */
 void node_answered(uint32_t ip4, uint8_t *hw) {
 
 	struct Node *node = node_get(ip4);
@@ -286,4 +287,9 @@ void node_set_owned_by(struct Node *sensor, uint32_t ip4addr, int load) {
 		client->info.client.load = load;
 	}
 
+}
+
+void node_take(struct Node *node) {
+	assert(node);
+	take_ownership(node);
 }
