@@ -177,11 +177,12 @@ void nodes_init(struct CurrentAddress *curr) {
 	current = curr;
 
 	NodeCount = (1 << (32 - bitcount(current->netmask))) - 2;
+	DNOTIFY("Node count is: %i\n", NodeCount);
+	assert(NodeCount > 0);
 	Nodes = malloc(NodeCount * sizeof(*Nodes));
 	memset(Nodes, '\0', NodeCount);
 
 	uint32_t network = ntohl(current->ip4addr & current->netmask);
-	DNOTIFY("Node count is: %i\n", NodeCount);
 	uint32_t tmp;
 	uint32_t curr_ip = ntohl(current->ip4addr);
 	for (uint32_t i = 0; i < NodeCount; i++) {

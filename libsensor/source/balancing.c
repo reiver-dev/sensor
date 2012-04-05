@@ -130,41 +130,46 @@ void take_all_nodes(Balancer self) {
 void balancing_process(Balancer self) {
 	DINFO("%s\n", "Starting balancing");
 
+	bool repeat ;
 	int State = self->State;
 
-	if (self->State <  sizeof(STATE_BEGIN)) {
+	if (self->State <  sizeof(state_text)) {
 		DINFO("Current State = %s\n", state_text[self->State]);
 	}
 
-	switch(self->State) {
-	case STATE_BEGIN:
-		seek_sensors(self);
-		self->State = STATE_WAIT_SENSORS;
-		break;
+	do {
+		repeat = false;
 
-	case STATE_WAIT_SENSORS:
-		if (!nodes_sensor_count()) {
-			self->State = STATE_ALONE;
-			balancing_process(self);
-		} else {
-			self->State = STATE_COUPLE;
-			balancing_process(self);
+		switch(self->State) {
+		case STATE_BEGIN:
+			seek_sensors(self);
+			self->State = STATE_WAIT_SENSORS;
+			break;
+
+		case STATE_WAIT_SENSORS:
+			if (!nodes_sensor_count()) {
+				self->State = STATE_ALONE;
+			} else {
+				self->State = STATE_COUPLE;
+			}
+			repeat = true;
+			break;
+
+		case STATE_ALONE:
+			take_all_nodes(self);
+			break;
+
+		case STATE_COUPLE:
+			DERROR("State not implemented yet: %s\n", state_text[STATE_COUPLE]);
+			exit(1);
+			break;
+
+		default:
+			DERROR("State is not specified: %i\n", self->State);
+			exit(1);
 		}
-		break;
 
-	case STATE_ALONE:
-		take_all_nodes(self);
-		break;
-
-	case STATE_COUPLE:
-		DERROR("State not implemented yet: %s\n", state_text[STATE_COUPLE]);
-		exit(1);
-		break;
-
-	default:
-		DERROR("State is not specified: %i\n", self->State);
-		exit(1);
-	}
+	} while (repeat);
 
 	if (State != self->State) {
 		DINFO("New State = %s\n", state_text[self->State]);
