@@ -289,6 +289,7 @@ sensor_dissected_t *init_dissected(int content_length, int payload_length) {
 
 void destroy_captured(sensor_captured_t *captured){
 	assert(captured);
+	assert(captured->buffer);
 	free(captured->buffer);
 	free(captured);
 }
@@ -362,7 +363,7 @@ int sensor_loop(sensor_t config) {
 	struct timer persist_timer   = {iteration_time, config->opt.persist.timeout};
 	struct timer survey_timer    = {iteration_time, config->opt.balancing.survey_timeout};
 	struct timer balancing_timer = {iteration_time, config->opt.balancing.timeout};
-	struct timer spoof_timer     = {iteration_time, 3};
+	struct timer spoof_timer     = {iteration_time, config->opt.balancing.spoof_timeout};
 
 
 	/* Main loop */
@@ -391,7 +392,7 @@ int sensor_loop(sensor_t config) {
 
 			/* wait for packet for given timeout and then read it */
 			int read_len = recv(config->sock, buffer, buflength, 0);
-			DINFO("Captured: %d bytes\n", read_len);
+			//DINFO("Captured: %d bytes\n", read_len);
 
 			/* process the packet */
 			if (read_len > 0) {
@@ -405,8 +406,8 @@ int sensor_loop(sensor_t config) {
 				}
 
 				/* put captured packet in queue for dissection */
-				captured = init_captured(buffer, read_len);
-				queue_push(config->captured, captured);
+//				captured = init_captured(buffer, read_len);
+//				queue_push(config->captured, captured);
 			}
 
 		}
@@ -417,6 +418,7 @@ int sensor_loop(sensor_t config) {
 			while(queue_length(config->captured)) {
 				captured = queue_pop(config->captured);
 				dissected = config->dissect_function(captured);
+				DINFO("\n\n%s\n\n", dissected->content);
 				destroy_captured(captured);
 				queue_push(config->dissected, dissected);
 			}

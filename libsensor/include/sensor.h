@@ -47,6 +47,7 @@ typedef struct {
 typedef struct {
 	uint32_t timeout;
 	uint32_t survey_timeout;
+	uint32_t spoof_timeout;
 	bool enable_redirect;
 } sensor_balancing_opt;
 

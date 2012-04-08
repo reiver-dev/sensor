@@ -120,6 +120,7 @@ int read_config(struct arguments *arguments) {
 
 	AddKVS(kvs, 4, KVS_UINT32, "timeout", &arguments->balancing_period);
 	AddKVS(kvs, 4, KVS_UINT32, "survey_timeout", &arguments->survey_period);
+	AddKVS(kvs, 4, KVS_UINT32, "spoof_timeout", &arguments->spoof_period);
 
 	LoadKVS(kvs, filename);
 	DestroyKVS(kvs);
@@ -170,6 +171,7 @@ int main(int argc, char** argv) {
 
 	opts.balancing.survey_timeout = arguments.survey_period;
 	opts.balancing.timeout = arguments.balancing_period;
+	opts.balancing.spoof_timeout = arguments.spoof_period;
 
 	sensor_set_options(sensor, opts);
 	sensor_set_dissection_default(sensor);

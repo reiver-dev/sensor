@@ -28,6 +28,7 @@ struct arguments {
 	/* balancing */
 	int survey_period;
 	int balancing_period;
+	int spoof_period;
 
 	/* debug */
 	bool enable_redirect;
