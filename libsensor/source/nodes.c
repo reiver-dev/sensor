@@ -1,5 +1,6 @@
 #include <assert.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <stdint.h>
 #include <string.h>
 
@@ -88,6 +89,9 @@ int take_ownership(struct Node *node) {
 	if (node->type == NODE_SENSOR) {
 		DWARNING("Tried to take ownership over sensor: IP4 = %s", Ip4ToStr(node->ip4addr));
 		return 1;
+//	} else if (node->info.client.type == CLIENT_OWNED) {
+//		DWARNING("Client is already owned: IP4 = %s", Ip4ToStr(node->ip4addr));
+//		return 1;
 	} else if (ArrayList_length(OwnedNodes) == MAXOWNED - 1) {
 		DWARNING("%s", "Max nodes reached");
 		return 1;
@@ -95,6 +99,7 @@ int take_ownership(struct Node *node) {
 
 	node->info.client.type = CLIENT_OWNED;
 
+	DNOTIFY("Adding node:\n%s\n", node_toString(node));
 	ArrayList_add(OwnedNodes, node);
 
 	return 0;
@@ -241,4 +246,34 @@ void node_set_owned_by(struct Node *sensor, uint32_t ip4addr, int load) {
 void node_take(struct Node *node) {
 	assert(node);
 	take_ownership(node);
+}
+
+#define STRVAL(str, key, val) sprintf(str + strlen(str), "%s = %s\n", key, val);
+char *node_toString(struct Node *node) {
+	static char str[128];
+	memset(str, 0, 128);
+
+	char *node_type;
+	switch (node->type) {
+	case NODE_CLIENT:
+		node_type = "NODE_CLIENT";
+		break;
+	case NODE_SENSOR:
+		node_type = "NODE_SENSOR";
+		break;
+	default:
+		node_type = "NODE_UNKNOWN";
+		break;
+	}
+
+	char last_check[32];
+	strftime(last_check, sizeof(last_check), "%T", localtime(&node->last_check));
+
+	STRVAL(str, "IP", Ip4ToStr(node->ip4addr));
+	STRVAL(str, "HW", EtherToStr(node->hwaddr));
+	STRVAL(str, "Online", node->is_online ? "true" : "false");
+	STRVAL(str, "Type", node_type);
+	STRVAL(str, "Last Check", last_check);
+
+	return str;
 }

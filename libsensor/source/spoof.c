@@ -21,6 +21,7 @@ struct arp_ip4 {
 
 void spoof_packet(uint8_t *buffer, uint32_t from_ip4, uint8_t from_hw[ETH_ALEN], uint32_t to_ip4, uint8_t to_hw[ETH_ALEN]) {
 	assert(buffer);
+	assert(from_ip4 != to_ip4);
 
 	struct ether_header *ethernet;
  	struct arphdr *header;

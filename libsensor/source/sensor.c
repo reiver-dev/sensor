@@ -406,8 +406,8 @@ int sensor_loop(sensor_t config) {
 				}
 
 				/* put captured packet in queue for dissection */
-//				captured = init_captured(buffer, read_len);
-//				queue_push(config->captured, captured);
+				captured = init_captured(buffer, read_len);
+				queue_push(config->captured, captured);
 			}
 
 		}

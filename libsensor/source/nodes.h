@@ -61,8 +61,6 @@ void node_set_owned_by(struct Node *sensor, uint32_t ip4addr, int load);
 
 void node_take(struct Node *node);
 
-void nodes_sensors_foreach(node_func);
-void nodes_neibours_foreach(node_func);
-void nodes_owned_foreach(node_func);
+char *node_toString(struct Node *node);
 
 #endif /* NODES_H_ */

@@ -31,7 +31,7 @@ static void ensureSize(ArrayList self, int more) {
 		if (newSize < newLength) {
 			newSize = newLength;
 		}
-		self->data = realloc(self->data, newSize);
+		self->data = realloc(self->data, newSize * sizeof(POINTER));
 		self->size = newSize;
 	}
 }

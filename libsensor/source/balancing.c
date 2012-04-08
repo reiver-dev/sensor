@@ -102,7 +102,7 @@ void balancing_modify(Balancer self, int packet_sock) {
 }
 
 void balancing_check_response(Balancer self, uint8_t *buffer, int length) {
-	survey_process_response(buffer, length);
+	survey_process_response(buffer, length, self->current);
 }
 
 

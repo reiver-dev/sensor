@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <netinet/if_ether.h>
 #include <netinet/in.h>
+#include <net/ethernet.h>
 
 #include "nodes.h"
 #include "util.h"
@@ -70,21 +71,26 @@ void survey_set_target_ip(uint8_t *buffer, uint32_t ip) {
 }
 
 
-bool survey_is_response(const uint8_t *buffer, int length) {
+bool survey_is_response(const uint8_t *buffer, int length, struct CurrentAddress *current) {
 	if (length < ARP_SURVEY_BUF_LENGTH) {
 		return false;
 	}
 
 	struct ether_header *ethernet;
-
 	ethernet = (struct ether_header *) &buffer[0];
-	if (ethernet->ether_type != ntohs(ETH_P_ARP)) {
-		return false;
-	}
 
 	struct arp_ip4 *arpheader;
 	arpheader = (struct arp_ip4 *) &buffer[ETHERNET_LENGTH];
-	if (arpheader->header.ar_op != ntohs(ARPOP_REPLY)) {
+
+
+	if (!memcmp(ethernet->ether_shost, current->hwaddr, ETH_ALEN)    /* source mac is not me */
+		|| memcmp(ethernet->ether_dhost, current->hwaddr, ETH_ALEN)  /* dest mac is me       */
+		|| ethernet->ether_type != ntohs(ETH_P_ARP)                  /* arp protocol         */
+		|| arpheader->header.ar_op != ntohs(ARPOP_REPLY)             /* arp reply operation  */
+		|| !memcmp(arpheader->ar_sha, current->hwaddr, ETH_ALEN)     /* source is not me     */
+		|| memcmp(arpheader->ar_tha, current->hwaddr, ETH_ALEN)      /* dest is me           */
+		) {
+
 		return false;
 	}
 
@@ -92,8 +98,8 @@ bool survey_is_response(const uint8_t *buffer, int length) {
 }
 
 
-void survey_process_response(const uint8_t *buffer, int length) {
-	if (!survey_is_response(buffer, length)) {
+void survey_process_response(const uint8_t *buffer, int length, struct CurrentAddress *current) {
+	if (!survey_is_response(buffer, length, current)) {
 		return;
 	}
 
@@ -107,6 +113,5 @@ void survey_process_response(const uint8_t *buffer, int length) {
 	DINFO("Got survey response from: IP4:%s HW:%s\n", Ip4ToStr(ip4), EtherToStr(hw));
 
 	node_answered(ip4, hw);
-
 
 }
