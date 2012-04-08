@@ -119,7 +119,7 @@ void take_all_nodes(Balancer self) {
 	struct Node *nodes = nodes_get();
 
 	for (int i = 0; i < node_count; i++) {
-		if (nodes[i].is_online) {
+		if (nodes[i].is_online && nodes[i].ip4addr != self->current->gateway) {
 			node_take(&nodes[i]);
 		}
 	}
@@ -147,7 +147,7 @@ void balancing_process(Balancer self) {
 			break;
 
 		case STATE_WAIT_SENSORS:
-			if (!nodes_sensor_count()) {
+			if (!ArrayList_length(nodes_get_sensors())) {
 				self->State = STATE_ALONE;
 			} else {
 				self->State = STATE_COUPLE;

@@ -194,7 +194,7 @@ bool prepare_redirect(sensor_t sensor, uint8_t* buffer, int captured) {
 	int position = sizeof(struct ether_header);
 	struct ether_header *ethernet = (struct ether_header*) (buffer);
 
-	if (ethernet->ether_type == ETHERTYPE_IP) {
+	if (ethernet->ether_type == ETH_P_IP) {
 		struct iphdr *ipheader = (struct iphdr*) (buffer + position);
 		if (ipheader->daddr != sensor->current.ip4addr) {
 			read_arp_ip_to_mac_r(sensor->sock, sensor->opt.device_name, ipheader->daddr, ethernet->ether_dhost);
@@ -362,7 +362,7 @@ int sensor_loop(sensor_t config) {
 	struct timer persist_timer   = {iteration_time, config->opt.persist.timeout};
 	struct timer survey_timer    = {iteration_time, config->opt.balancing.survey_timeout};
 	struct timer balancing_timer = {iteration_time, config->opt.balancing.timeout};
-	struct timer spoof_timer     = {iteration_time, 10};
+	struct timer spoof_timer     = {iteration_time, 3};
 
 
 	/* Main loop */

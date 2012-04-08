@@ -39,19 +39,19 @@ static struct RequestData put_type(int type) {
 static struct RequestData put_info() {
 	uint8_t *buffer, *ptr;
 
-	struct Node **nodes = nodes_get_owned();
-	int nodeCount = nodes_owned_count();
+	ArrayList ownedNodes = nodes_get_owned();
+	int ownedCount = ArrayList_length(ownedNodes);
 
-	int len = nodeCount * (ITEM_SIZE) + 4;
+	int len = ownedCount * (ITEM_SIZE) + 4;
 
 	buffer = malloc(len);
 	ptr = buffer;
 
 	AddToBuffer8(&ptr, INFO_TYPE_PUSH);
-	AddToBuffer32(&ptr, nodeCount);
-	for (int i = 0; i < nodeCount; i++) {
-		AddToBuffer32(&ptr, nodes[i]->ip4addr);
-		AddToBuffer32(&ptr, nodes[i]->info.client.load);
+	AddToBuffer32(&ptr, ownedCount);
+	for (int i = 0; i < ownedCount; i++) {
+		AddToBuffer32(&ptr, ARRAYLIST_GET(ownedNodes, struct Node*, i)->ip4addr);
+		AddToBuffer32(&ptr, ARRAYLIST_GET(ownedNodes, struct Node*, i)->info.client.load);
 	}
 
 	struct RequestData result = {len, buffer};

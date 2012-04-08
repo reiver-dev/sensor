@@ -11,6 +11,7 @@
 #include "nodes.h"
 #include "util.h"
 #include "debug.h"
+#include "arraylist.h"
 
 /* Locals */
 
@@ -20,31 +21,23 @@ static unsigned long NodeCount;
 
 #define MAXOWNED 255
 #define MAXSENSORS 255
-static struct Node **OwnedNodes;
-static struct Node **SensorNodes;
-static int SensorCount;
-static int OwnedCount;
 
+static ArrayList OwnedNodes;
+static ArrayList SensorNodes;
 
 static struct CurrentAddress *current;
 
 
 
 /* private utils */
-static uint32_t get_node_index(uint32_t ip) {
-	uint32_t ind = ntohl(ip) - ntohl(current->ip4addr & current->netmask) - 1;
-	return ntohl(ip) < ntohl(current->ip4addr) ? ind : ind - 1;
+static bool by_ip4(struct Node *a, struct Node *b) {
+	return a->ip4addr == b->ip4addr;
 }
 
 
-static int get_owned_index(struct Node *node) {
-	int i;
-	for (i = 0; i < OwnedCount; i ++) {
-		if (OwnedNodes[i] == node) {
-			return i;
-		}
-	}
-	return -1;
+static uint32_t get_node_index(uint32_t ip) {
+	uint32_t ind = ntohl(ip) - ntohl(current->ip4addr & current->netmask) - 1;
+	return ntohl(ip) < ntohl(current->ip4addr) ? ind : ind - 1;
 }
 
 
@@ -55,17 +48,11 @@ bool is_owned_by_me(struct Node *client) {
 
 	if (client->type != NODE_CLIENT) {
 		DWARNING("Node %s is not client", Ip4ToStr(client->ip4addr));
-	} else if (OwnedCount == 0) {
+	} else if (ArrayList_length(OwnedNodes) == 0) {
 		DNOTIFY("I (%s) have 0 nodes", Ip4ToStr(current->ip4addr));
 	} else {
 
-		for (int i = 0; i < OwnedCount; i++) {
-			struct Node *node = OwnedNodes[i];
-			if (node == client) {
-				result = true;
-				break;
-			}
-		}
+		result = ArrayList_contains(OwnedNodes, client, 0);
 
 	} /* if */
 
@@ -81,17 +68,12 @@ bool is_owned_by(struct Node *sensor, struct Node *client) {
 		DWARNING("Node %s is not sensor", Ip4ToStr(sensor->ip4addr));
 	} else if (client->type != NODE_CLIENT) {
 		DWARNING("Node %s is not client", Ip4ToStr(client->ip4addr));
-	} else if (sensor->info.sensor.clients_count == 0) {
+	} else if (ArrayList_isEmpty(sensor->info.sensor.clients)) {
 		DNOTIFY("Sensor %s has 0 nodes", Ip4ToStr(sensor->ip4addr));
 	} else {
 
-		for (int i = 0; i < sensor->info.sensor.clients_count; i++) {
-			struct Node *node = sensor->info.sensor.clients[i];
-			if (node == client) {
-				result = true;
-				break;
-			}
-		}
+		ArrayList clients = sensor->info.sensor.clients;
+		result = ArrayList_contains(clients, client, 0);
 
 	} /* if */
 
@@ -106,15 +88,14 @@ int take_ownership(struct Node *node) {
 	if (node->type == NODE_SENSOR) {
 		DWARNING("Tried to take ownership over sensor: IP4 = %s", Ip4ToStr(node->ip4addr));
 		return 1;
-	} else if (OwnedCount == MAXOWNED - 1) {
+	} else if (ArrayList_length(OwnedNodes) == MAXOWNED - 1) {
 		DWARNING("%s", "Max nodes reached");
 		return 1;
 	}
 
 	node->info.client.type = CLIENT_OWNED;
 
-	OwnedNodes[OwnedCount] = node;
-	OwnedCount++;
+	ArrayList_add(OwnedNodes, node);
 
 	return 0;
 }
@@ -124,48 +105,32 @@ void add_owned_to(struct Node *sensor, struct Node *client) {
 	assert(sensor);
 	assert(client);
 
-	int count = sensor->info.sensor.clients_count;
-	struct Node **clients;
+	ArrayList clients;
 
-	if (count == 0) {
-		clients = NULL;
+	if (sensor->info.sensor.clients == NULL) {
+		clients = ArrayList_init(0, 0);
 	} else {
 		clients = sensor->info.sensor.clients;
 	}
 
-	clients = Reallocate(clients, sizeof(void **), count, count + 1, 10);
-	clients[count] = client;
-
-	sensor->info.sensor.clients_count++;
-	clients = sensor->info.sensor.clients = clients;
+	ArrayList_add(clients, client);
+	sensor->info.sensor.clients = clients;
 
 }
 
-int release_ownership(int index) {
-	assert(index >= 0);         /* in array bounds   */
-	assert(index < NodeCount);  /* in array bounds   */
-	assert(index < OwnedCount); /* already owned     */
-
-	struct Node *node = &Nodes[index];
-
-	if (node->type != NODE_CLIENT && node->info.client.type != CLIENT_OWNED) {
-		DWARNING("Tried to release not owned node: IP4 = %s", Ip4ToStr(node->ip4addr));
+int release_ownership(struct Node *client) {
+	if (client->type != NODE_CLIENT && client->info.client.type != CLIENT_OWNED) {
+		DWARNING("Tried to release not owned node: IP4 = %s", Ip4ToStr(client->ip4addr));
 		return 1;
 	}
 
-	int owned = get_owned_index(node);
-	assert(owned >= 0);
+	int owned = ArrayList_indexOf(OwnedNodes, client, 0);
+	assert(owned);
 
-	node->info.client.type = CLIENT_FREE;
+	client->info.client.type = CLIENT_FREE;
+	ArrayList_remove(OwnedNodes, owned);
 
-	if (OwnedCount - 1 > 0 && OwnedCount - 1 != owned) {
-		/* fast delete */
-		OwnedNodes[owned] = OwnedNodes[OwnedCount - 1];
-		OwnedNodes[OwnedCount - 1] = 0;
-	} else {
-		OwnedNodes[owned] = 0;
-	}
-	OwnedCount--;
+
 	return 0;
 }
 
@@ -192,23 +157,15 @@ void nodes_init(struct CurrentAddress *curr) {
 		node->type    = NODE_UNKNOWN;
 	}
 
-	OwnedNodes = malloc(MAXOWNED * sizeof(void *));
-	OwnedCount = 0;
+	OwnedNodes = ArrayList_init(0, 0, 0);
+	SensorNodes = ArrayList_init(0, 0, 0);
 
-	SensorNodes = malloc(MAXSENSORS * sizeof(void *));
-	SensorCount = 0;
 }
 
 void nodes_destroy() {
 
-	for (int i = 0; i < SensorCount; i++) {
-		if (SensorNodes[i]->info.sensor.clients != NULL) {
-			free(SensorNodes[i]->info.sensor.clients);
-		}
-	}
-
-	free(SensorNodes);
-	free(OwnedNodes);
+	ArrayList_destroy(SensorNodes);
+	ArrayList_destroy(OwnedNodes);
 	free(Nodes);
 
 	NodeCount = 0;
@@ -232,22 +189,13 @@ struct Node *node_get(uint32_t ip) {
 	return &Nodes[index];
 }
 
-struct Node **nodes_get_owned() {
+ArrayList nodes_get_owned() {
 	return OwnedNodes;
 }
 
-int nodes_owned_count() {
-	return OwnedCount;
-}
-
-struct Node **nodes_get_sensors() {
+ArrayList nodes_get_sensors() {
 	return SensorNodes;
 }
-
-int nodes_sensor_count() {
-	return SensorCount;
-}
-
 
 /* services */
 void node_answered(uint32_t ip4, uint8_t *hw) {

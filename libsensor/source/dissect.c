@@ -60,7 +60,7 @@ sensor_dissected_t *sensor_dissect_simple(sensor_captured_t *captured){
 	uint16_t ethernet_type = ntohs(Ethernet->ether_type);
 
 	switch (ethernet_type) {
-	case ETHERTYPE_IP:
+	case ETH_P_IP:
 		IP4header = (struct iphdr*) (packet_begin + position);
 		strcat(content, dissect_ip(IP4header));
 		/* CHECK IP BOUNDS*/
@@ -99,7 +99,7 @@ sensor_dissected_t *sensor_dissect_simple(sensor_captured_t *captured){
 		}
 		break; /* IP4 protocol */
 
-	case ETHERTYPE_ARP:
+	case ETH_P_ARP:
 		break;
 	}
 
