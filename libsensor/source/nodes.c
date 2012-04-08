@@ -89,9 +89,8 @@ int take_ownership(struct Node *node) {
 	if (node->type == NODE_SENSOR) {
 		DWARNING("Tried to take ownership over sensor: IP4 = %s", Ip4ToStr(node->ip4addr));
 		return 1;
-//	} else if (node->info.client.type == CLIENT_OWNED) {
-//		DWARNING("Client is already owned: IP4 = %s", Ip4ToStr(node->ip4addr));
-//		return 1;
+	} else if (node->info.client.type == CLIENT_OWNED) {
+		return 1;
 	} else if (ArrayList_length(OwnedNodes) == MAXOWNED - 1) {
 		DWARNING("%s", "Max nodes reached");
 		return 1;

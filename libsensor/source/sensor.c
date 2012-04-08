@@ -418,7 +418,6 @@ int sensor_loop(sensor_t config) {
 			while(queue_length(config->captured)) {
 				captured = queue_pop(config->captured);
 				dissected = config->dissect_function(captured);
-				DINFO("\n\n%s\n\n", dissected->content);
 				destroy_captured(captured);
 				queue_push(config->dissected, dissected);
 			}
