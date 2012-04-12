@@ -83,10 +83,12 @@ void balancing_survey(Balancer self, int packet_sock) {
 	int nodeCount = nodes_count();
 	struct Node *nodes = nodes_get();
 	for (int i = 0; i < nodeCount;  i++) {
-		survey_set_target_ip(survey_buf, nodes[i].ip4addr);
-		result = send(packet_sock, survey_buf, length, 0);
-		if (result == -1) {
-			DERROR("Failed to send survey to %s\n", Ip4ToStr(nodes[i].ip4addr));
+		if (nodes[i].ip4addr != self->current->ip4addr) {
+			survey_set_target_ip(survey_buf, nodes[i].ip4addr);
+			result = send(packet_sock, survey_buf, length, 0);
+			if (result == -1) {
+				DERROR("Failed to send survey to %s\n", Ip4ToStr(nodes[i].ip4addr));
+			}
 		}
 	}
 

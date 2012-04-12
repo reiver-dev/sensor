@@ -30,7 +30,6 @@ struct NodeLoad {
 };
 
 struct Node_client {
-	int type;
 	struct Node *owned_by;
 	struct NodeLoad load;
 	ArrayList moment_load;

@@ -4,7 +4,6 @@
 #include <stdint.h>
 #include <string.h>
 
-
 #include <netinet/in.h>
 #include <netinet/ether.h>
 
@@ -15,27 +14,20 @@
 #include "arraylist.h"
 
 /* Locals */
-
 static struct Node *Nodes;
 static unsigned long NodeCount;
 
-
-#define MAXOWNED 255
-#define MAXSENSORS 255
-
-static ArrayList OwnedNodes;
+static struct Node *Me;
 static ArrayList SensorNodes;
 
 static struct CurrentAddress *current;
 
-
-
 /* node destructors */
 static void _client_init(struct Node *client) {
-	DINFO("Node IP=%s is now client", Ip4ToStr(client->ip4addr));
+	DINFO("Node (%s) is now client\n", Ip4ToStr(client->ip4addr));
 	memset(&client->info, 0, sizeof(client->info));
 	client->info.client.moment_load = ArrayList_init(0, free);
-	client->info.client.type = NODE_CLIENT_FREE;
+	client->info.client.owned_by = NULL;
 	client->type = NODE_TYPE_CLIENT;
 }
 
@@ -44,63 +36,53 @@ static void _client_destroy(struct Node *client) {
 }
 
 static void _sensor_init(struct Node *sensor) {
-	DINFO("Node IP=%s is now sensor", Ip4ToStr(sensor->ip4addr));
+	DINFO("Node (%s) is now sensor\n", Ip4ToStr(sensor->ip4addr));
 	memset(&sensor->info, 0, sizeof(sensor->info));
-	sensor->info.sensor.clients = ArrayList_init(0, 0);
+	sensor->info.sensor.clients = ArrayList_init(0, _client_destroy);
 	sensor->type = NODE_TYPE_SENSOR;
 }
 
 static void _sensor_destroy(struct Node *sensor) {
-	sensor->info.sensor.clients = ArrayList_init(0, 0);
+	ArrayList_destroy(sensor->info.sensor.clients);
 }
 
 static void _gateway_init(struct Node *gw) {
-	DINFO("Node IP=%s is now gateway", Ip4ToStr(gw->ip4addr));
+	DINFO("Node (%s) is now gateway\n", Ip4ToStr(gw->ip4addr));
 	gw->type = NODE_TYPE_GATEWAY;
 }
 
+static bool check_sensor_client(struct Node *sensor, struct Node *client) {
+	assert(sensor);
+	assert(client);
 
-/* private utils */
-static bool by_ip4(struct Node *a, struct Node *b) {
-	return a->ip4addr == b->ip4addr;
+	bool result = true;
+	if (sensor->type != NODE_TYPE_SENSOR) {
+		DWARNING("Node (%s) is not sensor\n", Ip4ToStr(sensor->ip4addr));
+		result = false;
+	} else if (client->type != NODE_TYPE_CLIENT) {
+		DWARNING("Node (%s) is not client\n", Ip4ToStr(client->ip4addr));
+		result = false;
+	}
+
+	return result;
+
 }
-
 
 static uint32_t get_node_index(uint32_t ip) {
 	uint32_t ind = ntohl(ip) - ntohl(current->ip4addr & current->netmask) - 1;
-	return ntohl(ip) < ntohl(current->ip4addr) ? ind : ind - 1;
+	return ind;
 }
 
 
 /* node conditions*/
-bool is_owned_by_me(struct Node *client) {
-	assert(client);
-	bool result = false;
-
-	if (client->type != NODE_TYPE_CLIENT) {
-		DWARNING("Node %s is not client", Ip4ToStr(client->ip4addr));
-	} else if (ArrayList_length(OwnedNodes) == 0) {
-		DNOTIFY("I (%s) have 0 nodes", Ip4ToStr(current->ip4addr));
-	} else {
-
-		result = ArrayList_contains(OwnedNodes, client, 0);
-
-	} /* if */
-
-	return result;
-}
-
 bool is_owned_by(struct Node *sensor, struct Node *client) {
-	assert(sensor);
-	assert(client);
 
-	bool result = false;
-	if (sensor->type != NODE_TYPE_SENSOR) {
-		DWARNING("Node %s is not sensor", Ip4ToStr(sensor->ip4addr));
-	} else if (client->type != NODE_TYPE_CLIENT) {
-		DWARNING("Node %s is not client", Ip4ToStr(client->ip4addr));
+	bool result;
+	if (!check_sensor_client(sensor, client)) {
+		result = false;
 	} else if (ArrayList_isEmpty(sensor->info.sensor.clients)) {
-		DNOTIFY("Sensor %s has 0 nodes", Ip4ToStr(sensor->ip4addr));
+		DNOTIFY("Sensor (%s) has 0 nodes", Ip4ToStr(sensor->ip4addr));
+		result = false;
 	} else {
 
 		ArrayList clients = sensor->info.sensor.clients;
@@ -112,35 +94,37 @@ bool is_owned_by(struct Node *sensor, struct Node *client) {
 }
 
 
-int set_owned_by_me(struct Node *node) {
-	assert(node);         /* in array bounds   */
-	assert(node->is_online);
-
-	if (node->type == NODE_TYPE_SENSOR) {
-		DWARNING("Tried to take ownership over sensor: IP4 = %s", Ip4ToStr(node->ip4addr));
-		return 1;
-	} else if (node->info.client.type == NODE_CLIENT_OWNED) {
-		return 1;
-	} else if (ArrayList_length(OwnedNodes) == MAXOWNED - 1) {
-		DWARNING("%s", "Max nodes reached");
-		return 1;
+bool unset_owned_by(struct Node *sensor, struct Node *client) {
+	if (!check_sensor_client(sensor, client)) {
+		return false;
 	}
 
-	node->info.client.type = NODE_CLIENT_OWNED;
+	ArrayList ownedNodes = sensor->info.sensor.clients;
+	int owned = ArrayList_indexOf(ownedNodes, client, 0);
+	assert(owned);
+	ArrayList_remove(ownedNodes, owned);
+	client->info.client.owned_by = NULL;
 
-	DNOTIFY("Adding node:\n%s\n", node_toString(node));
-	ArrayList_add(OwnedNodes, node);
-
-	return 0;
+	return true;
 }
 
 
-void set_owned_by(struct Node *sensor, struct Node *client) {
-	assert(sensor);
-	assert(client);
+bool set_owned_by(struct Node *sensor, struct Node *client) {
+	if (!check_sensor_client(sensor, client)) {
+		return false;
+	}
+
+
+	if (client->info.client.owned_by != NULL) {
+		if (client->info.client.owned_by == sensor) {
+			return true;
+		} else {
+			struct Node *owner = client->info.client.owned_by;
+			unset_owned_by(owner, client);
+		}
+	}
 
 	ArrayList clients;
-
 	if (sensor->info.sensor.clients == NULL) {
 		clients = ArrayList_init(0, 0);
 	} else {
@@ -149,22 +133,9 @@ void set_owned_by(struct Node *sensor, struct Node *client) {
 
 	ArrayList_add(clients, client);
 	sensor->info.sensor.clients = clients;
+	client->info.client.owned_by = sensor;
 
-}
-
-int unset_owned_by_me(struct Node *client) {
-	if (client->type != NODE_TYPE_CLIENT && client->info.client.type != NODE_CLIENT_OWNED) {
-		DWARNING("Tried to release not owned node: IP4 = %s", Ip4ToStr(client->ip4addr));
-		return 1;
-	}
-
-	int owned = ArrayList_indexOf(OwnedNodes, client, 0);
-	assert(owned);
-
-	client->info.client.type = NODE_CLIENT_FREE;
-	ArrayList_remove(OwnedNodes, owned);
-
-	return 0;
+	return true;
 }
 
 
@@ -181,16 +152,15 @@ void nodes_init(struct CurrentAddress *curr) {
 	memset(Nodes, '\0', NodeCount);
 
 	uint32_t network = ntohl(current->ip4addr & current->netmask);
-	uint32_t tmp;
-	uint32_t curr_ip = ntohl(current->ip4addr);
+
 	for (uint32_t i = 0; i < NodeCount; i++) {
 		struct Node *node = & Nodes[i];
-		tmp = network + i + 1;
-		node->ip4addr = htonl(tmp < curr_ip ? tmp : tmp + 1);
+		node->ip4addr = htonl(network + i + 1);
 		node->type    = NODE_TYPE_UNKNOWN;
 	}
 
-	OwnedNodes = ArrayList_init(0, 0, _client_destroy);
+	Me = node_get(curr->ip4addr);
+	_sensor_init(Me);
 	SensorNodes = ArrayList_init(0, 0, _sensor_destroy);
 
 	struct Node *gw = node_get(curr->gateway);
@@ -200,7 +170,7 @@ void nodes_init(struct CurrentAddress *curr) {
 
 void nodes_destroy() {
 	ArrayList_destroy(SensorNodes);
-	ArrayList_destroy(OwnedNodes);
+	_sensor_destroy(Me);
 	free(Nodes);
 	NodeCount = 0;
 }
@@ -208,51 +178,42 @@ void nodes_destroy() {
 
 
 /* services */
-void node_answered(uint32_t ip4, uint8_t *hw) {
-
-	struct Node *node = node_get(ip4);
-
-	DINFO("Node last check was: %i\n", node->last_check);
-
-	if (node->is_online) {
-		DINFO("Node IP:%s is still online\n", Ip4ToStr(node->ip4addr));
-	} else {
-		node->type = NODE_TYPE_CLIENT;
-		node->is_online = true;
-		struct NodeLoad load = {0, 0};
-		node->info.client.load = load;
-		node->info.client.type = NODE_CLIENT_FREE;
-		memcpy(node->hwaddr, hw, ETH_ALEN);
-	}
-
-	node->last_check = time(0);
-}
-
-void node_set_sensor(struct Node *node) {
-	if (node->type == NODE_TYPE_CLIENT) {
+void node_unset(struct Node *node) {
+	switch (node->type) {
+	case NODE_TYPE_CLIENT:
 		_client_destroy(node);
-		_sensor_init(node);
-	}
-}
-
-void node_set_client(struct Node *node) {
-	if (node->type == NODE_TYPE_SENSOR) {
+		struct Node *owner = node->info.client.owned_by;
+		if (owner)
+			unset_owned_by(owner, node);
+		break;
+	case NODE_TYPE_SENSOR:
 		_sensor_destroy(node);
 		int i = ArrayList_indexOf(SensorNodes, node, 0);
 		ArrayList_remove(SensorNodes, i);
+		break;
 	}
+}
+
+void node_set_sensor(struct Node *node) {
+	node_unset(node);
+	_sensor_init(node);
+}
+
+void node_set_client(struct Node *node) {
+	node_unset(node);
 	_client_init(node);
 }
 
 void node_set_gateway(struct Node *node) {
-
+	node_unset(node);
+	_gateway_init(node);
 }
 
 void node_set_owned_by(struct Node *sensor, uint32_t ip4addr, struct NodeLoad load) {
 	struct Node *client = node_get(ip4addr);
 	if (client == NULL) {
 		DWARNING("Node received from %s not found", Ip4ToStr(sensor->ip4addr));
-	} else if (is_owned_by_me(client)) {
+	} else if (is_owned_by(Me, client)) {
 		DWARNING("Node conflict: sensor %s claims node as his", Ip4ToStr(sensor->ip4addr));
 		DWARNING("Node conflict: conflicted node is %s", Ip4ToStr(client->ip4addr));
 	} else if (is_owned_by(sensor, client)) {
@@ -263,9 +224,28 @@ void node_set_owned_by(struct Node *sensor, uint32_t ip4addr, struct NodeLoad lo
 	}
 }
 
+void node_answered(uint32_t ip4, uint8_t *hw) {
+
+	struct Node *node = node_get(ip4);
+
+	DINFO("Node last check was: %i\n", node->last_check);
+
+	if (node->is_online) {
+		DINFO("Node (%s) is still online\n", Ip4ToStr(node->ip4addr));
+	} else {
+		if (node->type == NODE_TYPE_UNKNOWN) {
+			node_set_client(node);
+		}
+		memcpy(node->hwaddr, hw, ETH_ALEN);
+		node->is_online = true;
+	}
+
+	node->last_check = time(0);
+}
+
 void node_take(struct Node *node) {
 	assert(node);
-	set_owned_by_me(node);
+	set_owned_by(Me, node);
 }
 
 struct Node *node_get(uint32_t ip) {
@@ -286,7 +266,7 @@ struct Node *nodes_get() {
 }
 
 ArrayList nodes_get_owned() {
-	return OwnedNodes;
+	return Me->info.sensor.clients;
 }
 
 ArrayList nodes_get_sensors() {
