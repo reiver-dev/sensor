@@ -51,7 +51,8 @@ static struct RequestData put_info() {
 	AddToBuffer32(&ptr, ownedCount);
 	for (int i = 0; i < ownedCount; i++) {
 		AddToBuffer32(&ptr, ARRAYLIST_GET(ownedNodes, struct Node*, i)->ip4addr);
-		AddToBuffer32(&ptr, ARRAYLIST_GET(ownedNodes, struct Node*, i)->info.client.load);
+		AddToBuffer32(&ptr, ARRAYLIST_GET(ownedNodes, struct Node*, i)->info.client.load.timestamp);
+		AddToBuffer32(&ptr, ARRAYLIST_GET(ownedNodes, struct Node*, i)->info.client.load.load);
 	}
 
 	struct RequestData result = {len, buffer};
@@ -105,10 +106,12 @@ static void info_response(int sock, struct Node *from, struct RequestData data) 
 		}
 
 		int ip4addr;
-		int load;
+		struct NodeLoad load;
 		for (int i = 0; i < count; i++) {
 			ip4addr = GetFromBuffer32(&ptr);
-			load = GetFromBuffer32(&ptr);
+			load.timestamp = GetFromBuffer32(&ptr);
+			load.load = GetFromBuffer32(&ptr);
+
 			node_set_owned_by(from, ip4addr, load);
 		}
 	}
