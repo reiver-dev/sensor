@@ -194,11 +194,26 @@ bool prepare_redirect(sensor_t sensor, uint8_t* buffer, int captured) {
 	int position = sizeof(struct ether_header);
 	struct ether_header *ethernet = (struct ether_header*) (buffer);
 
-	if (ethernet->ether_type == ETH_P_IP) {
+	uint16_t ethernetType = htons(ethernet->ether_type);
+	if (ethernetType == ETH_P_IP) {
 		struct iphdr *ipheader = (struct iphdr*) (buffer + position);
-		if (ipheader->daddr != sensor->current.ip4addr) {
-			read_arp_ip_to_mac_r(sensor->sock, sensor->opt.device_name, ipheader->daddr, ethernet->ether_dhost);
+
+		if (ipheader->daddr != sensor->current.ip4addr
+			&& ipheader->saddr != sensor->current.ip4addr
+			&& !memcmp(ethernet->ether_dhost, sensor->current.hwaddr, ETH_ALEN)
+			&& memcmp(ethernet->ether_shost, sensor->current.hwaddr, ETH_ALEN)) {
+
+			struct Node *dest = node_get_destination(ipheader->daddr);
+			DINFO("%s", "Changed destination:\n");
+			DINFO("from: %s\n", EtherToStr(ethernet->ether_dhost));
+			DINFO("  to: %s\n", EtherToStr(dest->hwaddr));
+			DINFO("%s", "Changed source:\n");
+			DINFO("from: %s\n", EtherToStr(ethernet->ether_shost));
+			DINFO("  to: %s\n", EtherToStr(sensor->current.hwaddr));
+			memcpy(ethernet->ether_dhost, dest->hwaddr, ETH_ALEN);
+			memcpy(ethernet->ether_shost, sensor->current.hwaddr, ETH_ALEN);
 			return true;
+
 		}
 	}
 

@@ -150,7 +150,7 @@ struct arguments args_get_default() {
 	arguments.persist_period = 10;
 	// debug
 	arguments.enable_persistance = true;
-	arguments.enable_redirect = false;
+	arguments.enable_redirect = true;
 	arguments.enable_fork = true;
 	// misc
 	arguments.verbose = false;

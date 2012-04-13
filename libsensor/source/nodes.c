@@ -251,8 +251,16 @@ void node_take(struct Node *node) {
 struct Node *node_get(uint32_t ip) {
 	uint32_t index = get_node_index(ip);
 	if (index < 0 || index > NodeCount) {
-		DERROR("Node with address %s not found", Ip4ToStr(ip));
+		DERROR("Node with address %s not found\n", Ip4ToStr(ip));
 		return NULL;
+	}
+	return &Nodes[index];
+}
+
+struct Node *node_get_destination(uint32_t ip) {
+	uint32_t index = get_node_index(ip);
+	if (index < 0 || index > NodeCount) {
+		index = get_node_index(current->gateway);
 	}
 	return &Nodes[index];
 }

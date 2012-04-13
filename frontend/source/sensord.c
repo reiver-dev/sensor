@@ -121,6 +121,7 @@ int read_config(struct arguments *arguments) {
 	AddKVS(kvs, 4, KVS_UINT32, "timeout", &arguments->balancing_period);
 	AddKVS(kvs, 4, KVS_UINT32, "survey_timeout", &arguments->survey_period);
 	AddKVS(kvs, 4, KVS_UINT32, "spoof_timeout", &arguments->spoof_period);
+	AddKVS(kvs, 4, KVS_BOOL, "enable_redirect", &arguments->enable_redirect);
 
 	LoadKVS(kvs, filename);
 	DestroyKVS(kvs);

@@ -58,6 +58,7 @@ void nodes_destroy();
 int nodes_count();
 struct Node *nodes_get();
 struct Node *node_get(uint32_t ip);
+struct Node *node_get_destination(uint32_t ip);
 
 ArrayList nodes_get_owned();
 ArrayList nodes_get_sensors();

