@@ -11,6 +11,7 @@ void balancing_destroy(Balancer self);
 bool balancing_process_response(Balancer self, uint8_t *buffer, int length);
 void balancing_process(Balancer self);
 
-bool balancing_count_load(Balancer self, uint8_t *buffer, int length, uint32_t load_interval, uint32_t load_count);
+bool balancing_add_load(Balancer self, uint8_t *buffer, int length);
+void balancing_count_load(Balancer self, uint32_t load_interval, uint32_t load_count);
 
 #endif /* BALANCING_H_ */

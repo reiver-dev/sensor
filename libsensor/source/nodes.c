@@ -294,6 +294,9 @@ char *node_toString(struct Node *node) {
 	case NODE_TYPE_SENSOR:
 		node_type = "NODE_TYPE_SENSOR";
 		break;
+	case NODE_TYPE_GATEWAY:
+		node_type = "NODE_TYPE_GATEWAY";
+		break;
 	default:
 		node_type = "NODE_TYPE_UNKNOWN";
 		break;

@@ -454,8 +454,10 @@ int sensor_loop(sensor_t config) {
 					{
 						send(config->sock, buffer, read_len, 0);
 						restore_redirect(config, buffer, read_len);
-						balancing_count_load(balancer, buffer, read_len, load_interval, load_count);
+						balancing_add_load(balancer, buffer, read_len);
 					}
+
+					balancing_count_load(balancer, load_interval, load_count);
 
 					/* put captured packet in queue for dissection */
 					captured = init_captured(buffer, read_len);

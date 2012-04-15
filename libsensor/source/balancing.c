@@ -40,6 +40,7 @@ char *state_text[] = {
 
 struct balancer {
 	int udp_sock;
+	time_t last_load;
 	uint8_t State;
 	struct CurrentAddress *current;
 };
@@ -70,62 +71,73 @@ void take_all_nodes(Balancer self) {
 }
 
 int load_compare(const void *m1, const void *m2) {
-	time_t first = ((struct NodeLoad *)m1)->timestamp;
-	time_t second = ((struct NodeLoad *)m2)->timestamp;
+	uint32_t first = ((struct NodeLoad *)m1)->load;
+	uint32_t second = ((struct NodeLoad *)m2)->load;
 	return first == second ? 0 : first > second ? 1 : -1;
 }
 
-void count_load(struct Node *client, int len, uint32_t load_interval, uint32_t load_count) {
+struct NodeLoad *load_create_item(struct Node *client) {
+	assert(client->type == NODE_TYPE_CLIENT);
+
+	struct NodeLoad *newLoad = malloc(sizeof(*newLoad));
+	memset(newLoad, 0, sizeof(*newLoad));
+	newLoad->timestamp = time(NULL);
+
+	ArrayList momentLoad = client->info.client.moment_load;
+	ArrayList_add(momentLoad, newLoad);
+
+	return newLoad;
+}
+
+struct NodeLoad *load_get_last(struct Node *client) {
+	assert(client->type == NODE_TYPE_CLIENT);
 	ArrayList momentLoad = client->info.client.moment_load;
 	int loads = ArrayList_length(momentLoad);
-	time_t now = time(NULL);
-
 	if (!loads) {
-		struct NodeLoad *newLoad = malloc(sizeof(*newLoad));
-		memset(newLoad, 0, sizeof(*newLoad));
-		ArrayList_add(momentLoad, newLoad);
-		loads = 1;
+		return NULL;
+	}
+	return ArrayList_get(momentLoad, loads - 1);
+}
+
+void load_bytes_add(struct Node *client, int len) {
+	struct NodeLoad *momentLoad = load_get_last(client);
+	if (!momentLoad) {
+		momentLoad = load_create_item(client);
+	}
+	momentLoad->load += len;
+}
+
+
+void load_close(struct Node *client, uint32_t interval) {
+
+	ArrayList momentLoad = client->info.client.moment_load;
+	int loads = ArrayList_length(momentLoad);
+
+	void **data = ArrayList_getData(momentLoad);
+	qsort(data, loads, sizeof(void *), load_compare);
+
+	int load;
+	if (loads % 2) {
+		int index = loads / 2;
+		struct NodeLoad *median = ArrayList_get(momentLoad, index);
+		load = median->load;
+	} else {
+		int index = loads / 2;
+		struct NodeLoad *median = ArrayList_get(momentLoad, index);
+		load = median->load;
+		index++;
+		median = ArrayList_get(momentLoad, index);
+		load += median->load;
+		load /= 2;
 	}
 
-	struct NodeLoad *lastMomentLoad = ArrayList_get(momentLoad, loads - 1);
-	if (lastMomentLoad->timestamp) { /* counting in progress */
-		lastMomentLoad->load += len;
-		uint32_t interval = now - lastMomentLoad->timestamp;
-		if (interval >= load_interval) {
-			lastMomentLoad->load /= interval;
-			lastMomentLoad->timestamp = now;
-			if (loads >= load_count) {
-				struct NodeLoad *newLoad = malloc(sizeof(*newLoad));
-				memset(newLoad, 0, sizeof(*newLoad));
-				ArrayList_add(momentLoad, newLoad);
-			} else {
-				/* count actual load */
-				void **data = ArrayList_getData(momentLoad);
-				qsort(data, loads, sizeof(void *), load_compare);
-				int load;
-				if (loads % 2) {
-					int index = loads / 2;
-					struct NodeLoad *median = ArrayList_get(momentLoad, index);
-					load = median->load;
-				} else {
-					int index = loads / 2;
-					struct NodeLoad *median = ArrayList_get(momentLoad, index);
-					load = median->load;
-					index++;
-					median = ArrayList_get(momentLoad, index);
-					load += median->load;
-					load /= 2;
-				}
-				DINFO("New load of node (%s) is %i\n", Ip4ToStr(client->ip4addr), load);
-				client->info.client.load.load = load;
-				client->info.client.load.timestamp = now;
-				ArrayList_clear(momentLoad);
-			}
-		}
-	} else { /* counting just begun */
-		lastMomentLoad->load = len;
-		lastMomentLoad->timestamp = now;
-	}
+	load /= interval;
+
+	DINFO("New load of node (%s) is %i\n", Ip4ToStr(client->ip4addr), load);
+
+	client->info.client.load.load = load;
+	client->info.client.load.timestamp = time(NULL);
+
 }
 
 struct Node *get_client(Balancer self, uint8_t *buffer, int length) {
@@ -189,17 +201,44 @@ bool balancing_process_response(Balancer self, uint8_t *buffer, int length) {
 }
 #undef IS_FILTER
 
-bool balancing_count_load(Balancer self, uint8_t *buffer, int length, uint32_t load_interval, uint32_t load_count) {
+bool balancing_add_load(Balancer self, uint8_t *buffer, int length) {
 	struct Node *client = get_client(self, buffer, length);
 	if (client != NULL) {
 		if (client->type != NODE_TYPE_CLIENT) {
 			DERROR("Can't count load, node is not client:\n%s\n", node_toString(client));
 			client = get_client(self, buffer, length);
 		} else{
-			count_load(client, length, load_interval, load_count);
+			load_bytes_add(client, length);
 		}
 	}
 	return false;
+}
+
+void balancing_count_load(Balancer self, uint32_t load_interval, uint32_t load_count) {
+	ArrayList owned = nodes_get_owned();
+	int len = ArrayList_length(owned);
+	time_t now = time(NULL);
+
+	for (int i = 0; i < len; i++) {
+		struct Node *client = ArrayList_get(owned, i);
+		struct NodeLoad *lastLoad = load_get_last(client);
+
+		if (!lastLoad) {
+			continue;
+		}
+
+		ArrayList momentLoads = client->info.client.moment_load;
+		int loads = ArrayList_length(momentLoads);
+
+		uint32_t interval = now - lastLoad->timestamp;
+		if (interval >= load_interval && loads >= load_count) {
+			load_close(client, load_interval);
+			ArrayList_clear(momentLoads);
+		} else if (interval >= load_interval) {
+			load_create_item(client);
+		}
+
+	}
 }
 
 void balancing_process(Balancer self) {
