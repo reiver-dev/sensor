@@ -98,9 +98,10 @@ bool survey_is_response(const uint8_t *buffer, int length, struct CurrentAddress
 }
 
 
-void survey_process_response(const uint8_t *buffer, int length, struct CurrentAddress *current) {
+bool survey_process_response(const uint8_t *buffer, int length, struct CurrentAddress *current) {
+
 	if (!survey_is_response(buffer, length, current)) {
-		return;
+		return false;
 	}
 
 	struct arp_ip4 *arpheader;
@@ -113,5 +114,7 @@ void survey_process_response(const uint8_t *buffer, int length, struct CurrentAd
 	DINFO("Got survey response from: IP4:%s HW:%s\n", Ip4ToStr(ip4), EtherToStr(hw));
 
 	node_answered(ip4, hw);
+
+	return true;
 
 }

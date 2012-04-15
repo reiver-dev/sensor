@@ -66,7 +66,20 @@ void ArrayList_destroy(ArrayList self) {
 	free(self);
 }
 
+void ArrayList_clear(ArrayList self) {
+	if (self->destroyer) {
+		ArrayList_foreach(self, self->destroyer);
+	}
+	self->length = 0;
+}
+
+void **ArrayList_getData(ArrayList self) {
+	return self->data;
+}
+
 void *ArrayList_get(ArrayList self, int index) {
+	assert(index >= 0);
+	assert(index < self->length);
 	RETURN_IF_FAILV(checkLength(self, index), NULL);
 	return self->data[index];
 }

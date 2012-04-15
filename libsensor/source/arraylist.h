@@ -9,7 +9,9 @@ typedef struct ArrayList *ArrayList;
 
 ArrayList ArrayList_init();
 void ArrayList_destroy(ArrayList list);
+void ArrayList_clear(ArrayList self);
 
+void **ArrayList_getData(ArrayList self);
 void *ArrayList_get(ArrayList self, int index);
 
 int ArrayList_length(ArrayList self);
@@ -26,5 +28,6 @@ bool ArrayList_contains(ArrayList self, void *item, bool (*equals)(void *element
 
 void ArrayList_foreach(ArrayList self, void (*func)(void *));
 void ArrayList_foreach_arg(ArrayList self, void (*func)(void *, void *), void *arg);
+
 
 #endif /* ARRAYLIST_H_ */
