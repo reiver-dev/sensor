@@ -16,11 +16,10 @@
 #include <arpa/inet.h>
 
 #include "balancing.h"
-#include "survey.h"
 #include "debug.h"
 #include "util.h"
 #include "nodes.h"
-#include "spoof.h"
+
 
 #include "services/info.h"
 
@@ -184,42 +183,8 @@ void balancing_destroy(Balancer self) {
 	free(self);
 }
 
-void balancing_survey(Balancer self, int packet_sock) {
-	DINFO("%s\n", "Starting survey");
-
-	int length;
-	uint8_t *survey_buf = survey_packet(&length, 0, self->current->ip4addr, self->current->hwaddr);
-
-	assert(survey_buf != 0);
-	assert(length > 0);
-
-	int result;
-	int nodeCount = nodes_count();
-	struct Node *nodes = nodes_get();
-	for (int i = 0; i < nodeCount;  i++) {
-		if (nodes[i].ip4addr != self->current->ip4addr) {
-			survey_set_target_ip(survey_buf, nodes[i].ip4addr);
-			result = send(packet_sock, survey_buf, length, 0);
-			if (result == -1) {
-				DERROR("Failed to send survey to %s\n", Ip4ToStr(nodes[i].ip4addr));
-			}
-		}
-	}
-
-
-	DINFO("%s\n", "Survey finished");
-}
-
-
-void balancing_modify(Balancer self, int packet_sock) {
-	DINFO("%s\n", "Starting spoofing");
-	Spoof_nodes(packet_sock, self->current);
-	DINFO("%s\n", "Spoofing finished");
-}
-
 #define IS_FILTER(x) if (x) return true
-bool balancing_check_response(Balancer self, uint8_t *buffer, int length) {
-	IS_FILTER(survey_process_response(buffer, length, self->current));
+bool balancing_process_response(Balancer self, uint8_t *buffer, int length) {
 	return false;
 }
 #undef IS_FILTER

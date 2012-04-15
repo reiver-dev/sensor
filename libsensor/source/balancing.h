@@ -7,10 +7,8 @@
 typedef struct balancer *Balancer;
 
 Balancer balancing_init(sensor_t config);
-void balancing_survey(Balancer self, int packet_sock);
-void balancing_modify(Balancer self, int packet_sock);
 void balancing_destroy(Balancer self);
-bool balancing_check_response(Balancer self, uint8_t *buffer, int length);
+bool balancing_process_response(Balancer self, uint8_t *buffer, int length);
 void balancing_process(Balancer self);
 
 bool balancing_count_load(Balancer self, uint8_t *buffer, int length, uint32_t load_interval, uint32_t load_count);

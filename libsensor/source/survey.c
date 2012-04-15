@@ -71,7 +71,7 @@ void survey_set_target_ip(uint8_t *buffer, uint32_t ip) {
 }
 
 
-bool survey_is_response(const uint8_t *buffer, int length, struct CurrentAddress *current) {
+bool survey_is_response(const struct CurrentAddress *current, const uint8_t *buffer, int length) {
 	if (length < ARP_SURVEY_BUF_LENGTH) {
 		return false;
 	}
@@ -98,9 +98,9 @@ bool survey_is_response(const uint8_t *buffer, int length, struct CurrentAddress
 }
 
 
-bool survey_process_response(const uint8_t *buffer, int length, struct CurrentAddress *current) {
+bool survey_process_response(const struct CurrentAddress *current, const uint8_t *buffer, int length) {
 
-	if (!survey_is_response(buffer, length, current)) {
+	if (!survey_is_response(current, buffer, length)) {
 		return false;
 	}
 
@@ -117,4 +117,29 @@ bool survey_process_response(const uint8_t *buffer, int length, struct CurrentAd
 
 	return true;
 
+}
+
+void survey_perform_survey(const struct CurrentAddress *current, int packet_sock) {
+	DINFO("%s\n", "Starting survey");
+
+	int length;
+	uint8_t *survey_buf = survey_packet(&length, 0, current->ip4addr, current->hwaddr);
+
+	assert(survey_buf != 0);
+	assert(length > 0);
+
+	int result;
+	int nodeCount = nodes_count();
+	struct Node *nodes = nodes_get();
+	for (int i = 0; i < nodeCount;  i++) {
+		if (nodes[i].ip4addr != current->ip4addr) {
+			survey_set_target_ip(survey_buf, nodes[i].ip4addr);
+			result = send(packet_sock, survey_buf, length, 0);
+			if (result == -1) {
+				DERROR("Failed to send survey to %s\n", Ip4ToStr(nodes[i].ip4addr));
+			}
+		}
+	}
+
+	DINFO("%s\n", "Survey finished");
 }

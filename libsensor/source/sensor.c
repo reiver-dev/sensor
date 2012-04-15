@@ -22,13 +22,17 @@
 #include <netpacket/packet.h>
 
 #include "sensor_private.h"
-#include "debug.h"                 // local
-#include "dissect.h"
 #include "debug.h"
-#include "redirect.h"
-#include "balancing.h"
+
+#include "dissect.h"
+
 #include "nodes.h"
 #include "services/services.h"
+#include "balancing.h"
+#include "survey.h"
+#include "spoof.h"
+
+#include "netinfo.h"
 #include "util.h"
 
 #define SENSOR_DEFAULT_READ_BUFFER_SIZE 65536
@@ -379,11 +383,11 @@ int sensor_loop(sensor_t config) {
 
 	/* Initial */
 	iteration_time = time(0);
-	balancing_survey(balancer, config->sock);
+	survey_perform_survey(&config->current, config->sock);
 	while ((time(0) - iteration_time) < 5) {
 		int read_len = recv(config->sock, buffer, buflength, 0);
 		if (read_len > 0) {
-			balancing_check_response(balancer, buffer, read_len);
+			survey_process_response(&config->current, buffer, read_len);
 		}
 	}
 
@@ -392,11 +396,12 @@ int sensor_loop(sensor_t config) {
 	while ((time(0) - iteration_time) < 5) {
 		int read_len = recv(config->sock, buffer, buflength, 0);
 		if (read_len > 0) {
-			balancing_check_response(balancer, buffer, read_len);
+			balancing_process_response(balancer, buffer, read_len);
 		}
 	}
+
 	balancing_process(balancer);
-	balancing_modify(balancer, config->sock);
+	Spoof_nodes(config->sock, &config->current);
 
 	iteration_time = time(0);
 	struct timer dissect_timer   = {iteration_time, config->opt.dissect.timeout};
@@ -404,7 +409,6 @@ int sensor_loop(sensor_t config) {
 	struct timer survey_timer    = {iteration_time, config->opt.balancing.survey_timeout};
 	struct timer balancing_timer = {iteration_time, config->opt.balancing.timeout};
 	struct timer spoof_timer     = {iteration_time, config->opt.balancing.spoof_timeout};
-
 
 	uint32_t load_interval = 2;
 	uint32_t load_count = 5;
@@ -418,12 +422,12 @@ int sensor_loop(sensor_t config) {
 		if (config->activated) {
 
 			if (timer_check(&survey_timer, iteration_time)) {
-				balancing_survey(balancer, config->sock);
+				survey_perform_survey(&config->current, config->sock);
 				timer_ping(&survey_timer);
 			}
 
 			if (timer_check(&spoof_timer, iteration_time)) {
-				balancing_modify(balancer, config->sock);
+				Spoof_nodes(config->sock, &config->current);
 				timer_ping(&spoof_timer);
 			}
 
@@ -440,7 +444,9 @@ int sensor_loop(sensor_t config) {
 			/* process the packet */
 			if (read_len > 0) {
 
-				if (!balancing_check_response(balancer, buffer, read_len)) {
+				/* if not survey or balancing packet */
+				if (!survey_process_response(&config->current, buffer, read_len)
+					&& !balancing_process_response(balancer, buffer, read_len)) {
 
 					/* perform redirect if enabled and packet addresses replacement */
 					if (config->opt.balancing.enable_redirect

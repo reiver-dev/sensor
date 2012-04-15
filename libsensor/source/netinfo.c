@@ -18,7 +18,7 @@
 
 #include <proc/readproc.h>
 
-#include "redirect.h"
+#include "netinfo.h"
 #include "debug.h"
 
 
