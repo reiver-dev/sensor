@@ -7,7 +7,7 @@
 #define RETURN_IF_FAIL(x) if (!x) return
 #define RETURN_IF_FAILV(x,v) if (!x) return v
 
-#define LAST_INDEX(self, i) self->length - 1 == i
+#define LAST_INDEX(self, i) (self->length - 1 == i)
 #define POINTER void *
 
 struct ArrayList {
@@ -101,8 +101,12 @@ void ArrayList_add(ArrayList self, void *item) {
 void ArrayList_remove(ArrayList self, int index) {
 	RETURN_IF_FAIL(checkLength(self, index));
 
+	if (self->destroyer != NULL)
+		self->destroyer(self->data[index]);
+
+
 	if (!LAST_INDEX(self, index))
-		moveData(self->data, index + 1, index, self->length - index);
+		moveData(self->data, index, index + 1, self->length - index);
 
 	self->length--;
 }
@@ -110,9 +114,11 @@ void ArrayList_remove(ArrayList self, int index) {
 void ArrayList_remove_fast(ArrayList self, int index) {
 	RETURN_IF_FAIL(checkLength(self, index));
 
-	if (!LAST_INDEX(self, index)) {
+	if (self->destroyer != NULL)
+		self->destroyer(self->data[index]);
+
+	if (!LAST_INDEX(self, index))
 		self->data[index] = self->data[self->length - 1];
-	}
 
 	self->length--;
 }
