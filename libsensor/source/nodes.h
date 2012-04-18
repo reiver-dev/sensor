@@ -26,7 +26,7 @@ struct Node_sensor {
 
 struct NodeLoad {
 	time_t timestamp;
-	int load;
+	uint32_t load;
 };
 
 struct Node_client {

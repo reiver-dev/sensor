@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <stdint.h>
 #include <stdbool.h>
@@ -71,8 +72,8 @@ void take_all_nodes(Balancer self) {
 }
 
 int load_compare(const void *m1, const void *m2) {
-	uint32_t first = ((struct NodeLoad *)m1)->load;
-	uint32_t second = ((struct NodeLoad *)m2)->load;
+	uint32_t first = (*(struct NodeLoad **)m1)->load;
+	uint32_t second = (*(struct NodeLoad **)m2)->load;
 	return first == second ? 0 : first > second ? 1 : -1;
 }
 
@@ -233,7 +234,8 @@ void balancing_count_load(Balancer self, uint32_t load_interval, uint32_t load_c
 		uint32_t interval = now - lastLoad->timestamp;
 		if (interval >= load_interval && loads >= load_count) {
 			load_close(client, load_interval);
-			ArrayList_clear(momentLoads);
+			ArrayList_remove(momentLoads, 0);
+			ArrayList_remove(momentLoads, ArrayList_length(momentLoads) - 1);
 		} else if (interval >= load_interval) {
 			load_create_item(client);
 		}
