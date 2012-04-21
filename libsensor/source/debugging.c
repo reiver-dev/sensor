@@ -36,6 +36,7 @@ void debug(int level, const char *function, char *format, ...){
 	case DEBUG_LEVEL_WARNING : _level = "WARNING"; break;
 	case DEBUG_LEVEL_NOTIFY  : _level = "NOTIFY";  break;
 	case DEBUG_LEVEL_INFO    : _level = "INFO";    break;
+	default : _level = "INFO"; break;
 	}
 
 

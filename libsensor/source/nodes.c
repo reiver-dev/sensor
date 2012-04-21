@@ -15,7 +15,7 @@
 
 /* Locals */
 static struct Node *Nodes;
-static unsigned long NodeCount;
+static long NodeCount;
 
 static struct Node *Me;
 static ArrayList SensorNodes;

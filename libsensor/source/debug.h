@@ -9,13 +9,12 @@
 
 #ifdef DEBUG
 
-#define DEBUG_PRINTF(...) printf(__VA_ARGS__)
 //-----------------------------
 
 void debug(int level, const char *function, char *format, ...);
 void debug_set_level(int lvl);
 
-#define DEBUG_LVL() debug_set_level(int lvl);
+#define DEBUG_LVL(lvl) debug_set_level(int lvl);
 
 #define DINFO(fmt, ...)    debug(DEBUG_LEVEL_INFO,    __FUNCTION__, fmt, ##__VA_ARGS__)
 #define DNOTIFY(fmt, ...)  debug(DEBUG_LEVEL_NOTIFY,  __FUNCTION__, fmt, ##__VA_ARGS__)
@@ -25,7 +24,6 @@ void debug_set_level(int lvl);
 
 #else
 
-#define DEBUG_PRINTF(...)
 #define DINFO(fmt, ...)
 #define DNOTIFY(fmt, ...)
 #define DWARNING(fmt, ...)

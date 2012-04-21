@@ -192,7 +192,7 @@ int LoadKVS(kvset self, const char *filename) {
 
 	char buf[512];
 	int len;
-	int section;
+	int section = 0;
 	while(fgets(buf, 512, file)) {
 
 		len = strlen(buf);

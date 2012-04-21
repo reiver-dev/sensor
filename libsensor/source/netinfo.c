@@ -177,6 +177,7 @@ static uint8_t hex_to_uint8(const char hex) {
 	case 'D': result = 13; break;
 	case 'E': result = 14; break;
 	case 'F': result = 15; break;
+	default : result =  0; break;
 	}
 
 	return result;
@@ -189,7 +190,8 @@ static uint32_t hex_to_uint32(const char *hex) {
 		(hex_to_uint8(hex[4]) << 4) | hex_to_uint8(hex[5]),
 		(hex_to_uint8(hex[6]) << 4) | hex_to_uint8(hex[7])
 	};
-	return *(uint32_t *)a;
+	uint32_t *result = (uint32_t *) a;
+	return *result;
 }
 
 uint32_t read_default_gateway(const char* interfaceName) {
