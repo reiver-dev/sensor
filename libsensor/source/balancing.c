@@ -114,23 +114,28 @@ void load_close(struct Node *client, uint32_t interval) {
 	ArrayList momentLoad = client->info.client.moment_load;
 	int loads = ArrayList_length(momentLoad);
 
-	void **data = ArrayList_getData(momentLoad);
+	/* make copy of loads array */
+	struct NodeLoad **data = malloc(loads * sizeof(struct NodeLoad *));
+	memcpy(data, ArrayList_getData(momentLoad), loads * sizeof(struct NodeLoad *));
+
 	qsort(data, loads, sizeof(void *), load_compare);
 
 	int load;
 	if (loads % 2) {
 		int index = loads / 2;
-		struct NodeLoad *median = ArrayList_get(momentLoad, index);
+		struct NodeLoad *median = data[index];
 		load = median->load;
 	} else {
 		int index = loads / 2;
-		struct NodeLoad *median = ArrayList_get(momentLoad, index);
+		struct NodeLoad *median = data[index];
 		load = median->load;
 		index++;
-		median = ArrayList_get(momentLoad, index);
+		median = data[index];
 		load += median->load;
 		load /= 2;
 	}
+
+	free(data);
 
 	load /= interval;
 
@@ -234,8 +239,7 @@ void balancing_count_load(Balancer self, uint32_t load_interval, uint32_t load_c
 		uint32_t interval = now - lastLoad->timestamp;
 		if (interval >= load_interval && loads >= load_count) {
 			load_close(client, load_interval);
-			ArrayList_remove(momentLoads, 0);
-			ArrayList_remove(momentLoads, ArrayList_length(momentLoads) - 1);
+			ArrayList_remove_fast(momentLoads, 0);
 		} else if (interval >= load_interval) {
 			load_create_item(client);
 		}
