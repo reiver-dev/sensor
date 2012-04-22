@@ -102,14 +102,22 @@ void AddToBuffer(uint8_t **bufpointer, void *data, size_t ofData) {
 
 
 void AddToBuffer32(uint8_t **bufpointer, uint32_t data) {
-	uint32_t toWrite = htonl(data);
-	memcpy(*bufpointer, &toWrite, 4);
+	**((uint32_t **)bufpointer) = htonl(data);
 	*bufpointer += 4;
 }
 
 void AddToBuffer16(uint8_t **bufpointer, uint16_t data) {
-	uint16_t toWrite = htons(data);
-	memcpy(*bufpointer, &toWrite, 2);
+	**((uint16_t **)bufpointer) = htons(data);
+	*bufpointer += 2;
+}
+
+void AddToBuffer32NoOrder(uint8_t **bufpointer, uint32_t data) {
+	**((uint32_t **)bufpointer) = data;
+	*bufpointer += 4;
+}
+
+void AddToBuffer16NoOrder(uint8_t **bufpointer, uint16_t data) {
+	**((uint32_t **)bufpointer) = data;
 	*bufpointer += 2;
 }
 
@@ -129,6 +137,11 @@ void AddToBuffer1(uint8_t *bufpointer, uint8_t data, int place) {
 	*bufpointer = toWrite;
 }
 
+void GetFromBuffer(uint8_t **bufpointer, void *data, size_t ofData) {
+	memcpy(data, *bufpointer, ofData);
+	*bufpointer += ofData;
+}
+
 uint32_t GetFromBuffer32(uint8_t **bufpointer) {
 	uint8_t get[4];
 	memcpy(get, *bufpointer, 4);
@@ -143,6 +156,18 @@ uint16_t GetFromBuffer16(uint8_t **bufpointer) {
 	uint16_t *data = (uint16_t *)get;
 	bufpointer += 2;
 	return ntohs(*data);
+}
+
+uint32_t GetFromBuffer32NoOrder(uint8_t **bufpointer) {
+	uint32_t data = **((uint32_t **) bufpointer);
+	bufpointer += 4;
+	return data;
+}
+
+uint16_t GetFromBuffer16NoOrder(uint8_t **bufpointer) {
+	uint16_t data = **((uint16_t **) bufpointer);
+	bufpointer += 2;
+	return data;
 }
 
 uint8_t GetFromBuffer8(uint8_t **bufpointer) {
