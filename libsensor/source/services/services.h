@@ -13,5 +13,7 @@ typedef struct Service *Service;
 void Services_Init();
 void Services_Destroy();
 void Services_Invoke(uint32_t serviceID, struct Node *to, void *request);
+void Services_Request(Service service, struct Node *to, void *request);
+void Services_Receive();
 
 #endif /* SERVICES_H_ */

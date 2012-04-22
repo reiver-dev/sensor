@@ -19,6 +19,4 @@ struct Service {
 	bool broadcast_allowed;
 };
 
-void Service_Request(Service service, struct Node *to, void *request);
-
 #endif /* SERVICES_PRIVATE_H */

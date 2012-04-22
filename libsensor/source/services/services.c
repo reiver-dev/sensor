@@ -140,7 +140,7 @@ void dispatch(uint8_t *data, int len) {
 
 /* ---------------------- */
 
-void Service_Request(Service service, struct Node *to, void *request) {
+void Services_Request(Service service, struct Node *to, void *request) {
 	struct RequestData data;
 
 	data = service->Request(request);
@@ -181,13 +181,13 @@ void Services_Invoke(uint32_t serviceID, struct Node *to, void *request) {
 
 	Service service = service_get(serviceID);
 	if (service != NULL) {
-		Service_Request(service, to, request);
+		Services_Request(service, to, request);
 	} else {
 		DWARNING("Service with id not found: service=%i\n", serviceID);
 	}
 }
 
-void Services_ReceiveData(uint8_t *data, int len, struct Node *from) {
+static void Services_ReceiveData(uint8_t *data, int len, struct Node *from) {
 	struct Header *header = (struct Header *)data;
 
 	if (!(checkHeaderConstans(header) && checkHeaderLength(header, len))) {

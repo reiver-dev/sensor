@@ -50,7 +50,7 @@ static struct RequestData put_info() {
 	AddToBuffer8(&ptr, INFO_TYPE_PUSH);
 	AddToBuffer32(&ptr, ownedCount);
 	for (int i = 0; i < ownedCount; i++) {
-		AddToBuffer32(&ptr, ARRAYLIST_GET(ownedNodes, struct Node*, i)->ip4addr);
+		AddToBuffer32NoOrder(&ptr, ARRAYLIST_GET(ownedNodes, struct Node*, i)->ip4addr);
 		AddToBuffer32(&ptr, ARRAYLIST_GET(ownedNodes, struct Node*, i)->info.client.load.timestamp);
 		AddToBuffer32(&ptr, ARRAYLIST_GET(ownedNodes, struct Node*, i)->info.client.load.load);
 	}
@@ -94,7 +94,7 @@ static void info_response(struct Node *from, struct RequestData *data) {
 
 		InfoRequest request;
 		request.type = INFO_TYPE_PUSH;
-		Service_Request(InfoService_Get(), 0, &request);
+		Services_Request(InfoService_Get(), 0, &request);
 
 	} else if (type == INFO_TYPE_PUSH) {
 
@@ -108,7 +108,7 @@ static void info_response(struct Node *from, struct RequestData *data) {
 		int ip4addr;
 		struct NodeLoad load;
 		for (int i = 0; i < count; i++) {
-			ip4addr = GetFromBuffer32(&ptr);
+			ip4addr = GetFromBuffer32NoOrder(&ptr);
 			load.timestamp = GetFromBuffer32(&ptr);
 			load.load = GetFromBuffer32(&ptr);
 
