@@ -13,7 +13,7 @@
 
 /* prototypes */
 static struct RequestData info_request(void *request);
-static void info_response(int sock, struct Node *from, struct RequestData data);
+static void info_response(struct Node *from, struct RequestData *data);
 
 
 static struct Service infoService = {
@@ -85,8 +85,8 @@ static struct RequestData info_request(void *request) {
 }
 
 
-static void info_response(int sock, struct Node *from, struct RequestData data) {
-	uint8_t *ptr = data.buffer;
+static void info_response(struct Node *from, struct RequestData *data) {
+	uint8_t *ptr = data->buffer;
 
 	int type  = GetFromBuffer8(&ptr);
 
@@ -94,14 +94,14 @@ static void info_response(int sock, struct Node *from, struct RequestData data) 
 
 		InfoRequest request;
 		request.type = INFO_TYPE_PUSH;
-		Service_Request(sock, InfoService_Get(), 0, &request);
+		Service_Request(InfoService_Get(), 0, &request);
 
 	} else if (type == INFO_TYPE_PUSH) {
 
 		int count = GetFromBuffer32(&ptr);
 
-		if (data.len - 1 < count * ITEM_SIZE) {
-			DWARNING("INFO SERVICE: info length is insufficient = %i", data.len - 1);
+		if (data->len - 1 < count * ITEM_SIZE) {
+			DWARNING("INFO SERVICE: info length is insufficient = %i", data->len - 1);
 			return;
 		}
 

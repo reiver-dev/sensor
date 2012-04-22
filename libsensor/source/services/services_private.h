@@ -9,7 +9,7 @@ struct RequestData {
 };
 
 typedef struct RequestData (*service_request_f) (void *request);
-typedef void (*service_response_f)(int sock, struct Node *from, struct RequestData request);
+typedef void (*service_response_f)(struct Node *from, struct RequestData *request);
 
 struct Service {
 	char *Name;
@@ -19,6 +19,6 @@ struct Service {
 	bool broadcast_allowed;
 };
 
-void Service_Request(int sock, Service service, struct Node *to, void *request);
+void Service_Request(Service service, struct Node *to, void *request);
 
 #endif /* SERVICES_PRIVATE_H */

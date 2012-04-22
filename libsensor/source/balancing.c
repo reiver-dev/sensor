@@ -40,7 +40,6 @@ char *state_text[] = {
 
 
 struct balancer {
-	int udp_sock;
 	time_t last_load;
 	uint8_t State;
 	struct CurrentAddress *current;
@@ -56,7 +55,7 @@ bool is_same_network_ip4(Balancer self, uint32_t ip) {
 void seek_sensors(Balancer self) {
 	InfoRequest request;
 	request.type = INFO_TYPE_POP;
-	Services_Invoke(self->udp_sock, SERVICE_INFO, 0, &request);
+	Services_Invoke(SERVICE_INFO, 0, &request);
 }
 
 void take_all_nodes(Balancer self) {
@@ -178,26 +177,14 @@ struct Node *get_client(Balancer self, uint8_t *buffer, int length) {
 
 /* ---------------------------------------------- */
 Balancer balancing_init(sensor_t config) {
-	/* memorize current addreses */
 	Balancer self = malloc(sizeof(*self));
-
+	/* memorize current addreses */
 	self->current = &config->current;
-
-	self->udp_sock = socket(AF_INET, SOCK_DGRAM, 0);
-	struct sockaddr_in sockaddr;
-	sockaddr.sin_family = AF_INET;
-	sockaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	sockaddr.sin_port = htons(31337);
-	bind(self->udp_sock, &sockaddr, sizeof(sockaddr));
-
 	self->State = STATE_BEGIN;
-
 	return self;
-
 }
 
 void balancing_destroy(Balancer self) {
-	shutdown(self->udp_sock, 2);
 	free(self);
 }
 
