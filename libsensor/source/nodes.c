@@ -38,7 +38,7 @@ static void _client_destroy(struct Node *client) {
 static void _sensor_init(struct Node *sensor) {
 	DINFO("Node (%s) is now sensor\n", Ip4ToStr(sensor->ip4addr));
 	memset(&sensor->info, 0, sizeof(sensor->info));
-	sensor->info.sensor.clients = ArrayList_init(0, _client_destroy);
+	sensor->info.sensor.clients = ArrayList_init(0, (ArrayList_destroyer)_client_destroy);
 	sensor->type = NODE_TYPE_SENSOR;
 }
 
@@ -161,7 +161,7 @@ void nodes_init(struct CurrentAddress *curr) {
 
 	Me = node_get(curr->ip4addr);
 	_sensor_init(Me);
-	SensorNodes = ArrayList_init(0, 0, _sensor_destroy);
+	SensorNodes = ArrayList_init(0, (ArrayList_destroyer) _sensor_destroy);
 
 	struct Node *gw = node_get(curr->gateway);
 	_gateway_init(gw);

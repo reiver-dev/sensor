@@ -36,7 +36,7 @@ static void ensureSize(ArrayList self, int more) {
 	}
 }
 
-ArrayList ArrayList_init(size_t size, void (*destroy_element)(void *)) {
+ArrayList ArrayList_init(size_t size, ArrayList_destroyer func) {
 	if (size < 1) {
 		size = 10;
 	}
@@ -45,7 +45,7 @@ ArrayList ArrayList_init(size_t size, void (*destroy_element)(void *)) {
 	list->data = malloc(size * sizeof(void *));
 	list->length = 0;
 	list->size = size;
-	list->destroyer = destroy_element;
+	list->destroyer = func;
 
 	return list;
 

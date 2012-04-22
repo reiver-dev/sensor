@@ -6,8 +6,9 @@
 #define ARRAYLIST_GET(self, type, index) ((type) ArrayList_get(self, index))
 
 typedef struct ArrayList *ArrayList;
+typedef void (*ArrayList_destroyer)(void *);
 
-ArrayList ArrayList_init();
+ArrayList ArrayList_init(size_t size, ArrayList_destroyer func);
 void ArrayList_destroy(ArrayList list);
 void ArrayList_clear(ArrayList self);
 
