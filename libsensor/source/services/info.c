@@ -42,7 +42,7 @@ static struct RequestData put_info() {
 	ArrayList ownedNodes = nodes_get_owned();
 	int ownedCount = ArrayList_length(ownedNodes);
 
-	int len = ownedCount * (ITEM_SIZE) + 4;
+	int len = ownedCount * (ITEM_SIZE) + 5;
 
 	buffer = malloc(len);
 	ptr = buffer;
