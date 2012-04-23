@@ -8,6 +8,7 @@
 #include "services_private.h"
 #include "info.h"
 #include "../debug.h"
+#include "../util.h"
 
 #define MAX_SERVICES 2
 
@@ -155,14 +156,19 @@ void Services_Request(Service service, struct Node *to, void *request) {
 }
 
 
-void Services_Init() {
+void Services_Init(char *deviceName) {
 
 	udp_sock = socket(AF_INET, SOCK_DGRAM, 0);
 	struct sockaddr_in sockaddr;
 	sockaddr.sin_family = AF_INET;
 	sockaddr.sin_addr.s_addr = htonl(INADDR_ANY);
-	sockaddr.sin_port = htons(31337);
+	sockaddr.sin_port = htons(ServicePort);
 	bind(udp_sock, &sockaddr, sizeof(sockaddr));
+
+	if (deviceName && *deviceName)
+		setsockopt(udp_sock, SOL_SOCKET, SO_BINDTODEVICE, deviceName, strlen(deviceName));
+
+	setNonblocking(udp_sock);
 
 	services = malloc(sizeof(Service) * MAX_SERVICES);
 	services[0] = InfoService_Get();

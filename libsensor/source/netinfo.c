@@ -20,6 +20,7 @@
 
 #include "netinfo.h"
 #include "debug.h"
+#include "util.h"
 
 
 uint8_t* get_current_mac(int sock, const char* interfaceName) {
@@ -53,25 +54,6 @@ uint32_t get_current_address(int sock, const char* interfaceName) {
 	uint32_t address = ((struct sockaddr_in *)&interface.ifr_addr)->sin_addr.s_addr;
 	return address;
 }
-
-/*
-void get_current_address6(int sock, const char* interfaceName) {
-
-	struct ifreq interface;
-	strcpy(interface.ifr_name, interfaceName);
-	interface.ifr_addr.sa_family = AF_INET6;
-
-	if (ioctl(sock, SIOCGIFADDR, &interface) == -1) {
-		return;
-	}
-
-	char temp_buf[32];
-	struct in6_addr address = ((struct sockaddr_in6 *)&interface.ifr_addr)->sin6_addr;
-
-
-}
-*/
-
 
 uint32_t get_current_netmask(int sock, const char* interfaceName) {
 	struct ifreq interface;
@@ -124,75 +106,6 @@ uint32_t read_arp_mac_to_ip(int sock, const char* interfaceName, uint8_t hwaddre
 	return address;
 }
 
-/*
-uint32_t read_default_gateway(const char* interfaceName) {
-
-	int sock;
-	if ((sock = socket(PF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE)) < 0) {
-		return(-1);
-	}
-
-	struct {
-		struct nlmsghdr header;
-		struct ifinfomsg msg;
-		char data[512];
-	} request;
-
-	memset(&request, '\0', sizeof(request));
-
-	request.header.nlmsg_flags = NLM_F_DUMP | NLM_F_REQUEST;
-	request.header.nlmsg_len   = NLMSG_LENGTH(sizeof(request));
-	request.header.nlmsg_pid   = getpid();
-	request.header.nlmsg_seq   = 1;
-	request.header.nlmsg_type  = RTM_GETROUTE;
-
-	request.msg.ifi_family     = AF_INET;
-
-	if (send(sock, &request, request.header.nlmsg_len, 0) < 0) {
-		return -1;
-	}
-z
-	return 0;
-}
-*/
-
-
-static uint8_t hex_to_uint8(const char hex) {
-	uint8_t result;
-
-	switch (hex) {
-	case '0': result =  0; break;
-	case '1': result =  1; break;
-	case '2': result =  2; break;
-	case '3': result =  3; break;
-	case '4': result =  4; break;
-	case '5': result =  5; break;
-	case '6': result =  6; break;
-	case '7': result =  7; break;
-	case '8': result =  8; break;
-	case '9': result =  9; break;
-	case 'A': result = 10; break;
-	case 'B': result = 11; break;
-	case 'C': result = 12; break;
-	case 'D': result = 13; break;
-	case 'E': result = 14; break;
-	case 'F': result = 15; break;
-	default : result =  0; break;
-	}
-
-	return result;
-}
-
-static uint32_t hex_to_uint32(const char *hex) {
-	uint8_t a[] = {
-		(hex_to_uint8(hex[0]) << 4) | hex_to_uint8(hex[1]),
-		(hex_to_uint8(hex[2]) << 4) | hex_to_uint8(hex[3]),
-		(hex_to_uint8(hex[4]) << 4) | hex_to_uint8(hex[5]),
-		(hex_to_uint8(hex[6]) << 4) | hex_to_uint8(hex[7])
-	};
-	uint32_t *result = (uint32_t *) a;
-	return *result;
-}
 
 uint32_t read_default_gateway(const char* interfaceName) {
 

@@ -10,6 +10,7 @@
 #include <netinet/in.h>            // Basic address related functions and types
 #include <netinet/ether.h>
 #include <net/if.h>
+#include <fcntl.h>
 
 #include <netpacket/packet.h>
 
@@ -93,6 +94,16 @@ int bind_socket_to_interface(int sock, char *interfaceName) {
 	}
 
 	return 0;
+}
+
+int setNonblocking(int fd) {
+	int flags;
+
+	flags = fcntl(fd, F_GETFL, 0);
+	if (flags == -1)
+		flags = 0;
+
+	return fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 }
 
 void AddToBuffer(uint8_t **bufpointer, void *data, size_t ofData) {
@@ -189,3 +200,42 @@ void GetFromBuffer4(uint8_t **bufpointer, uint8_t *data8, uint8_t *data4) {
 uint8_t GetFromBuffer1(const uint8_t *bufpointer, int place) {
 	return (*bufpointer >> place) & 0xFE;
 }
+
+
+uint8_t hex_to_uint8(const char hex) {
+	uint8_t result;
+
+	switch (hex) {
+	case '0': result =  0; break;
+	case '1': result =  1; break;
+	case '2': result =  2; break;
+	case '3': result =  3; break;
+	case '4': result =  4; break;
+	case '5': result =  5; break;
+	case '6': result =  6; break;
+	case '7': result =  7; break;
+	case '8': result =  8; break;
+	case '9': result =  9; break;
+	case 'A': result = 10; break;
+	case 'B': result = 11; break;
+	case 'C': result = 12; break;
+	case 'D': result = 13; break;
+	case 'E': result = 14; break;
+	case 'F': result = 15; break;
+	default : result =  0; break;
+	}
+
+	return result;
+}
+
+uint32_t hex_to_uint32(const char *hex) {
+	uint8_t a[] = {
+		(hex_to_uint8(hex[0]) << 4) | hex_to_uint8(hex[1]),
+		(hex_to_uint8(hex[2]) << 4) | hex_to_uint8(hex[3]),
+		(hex_to_uint8(hex[4]) << 4) | hex_to_uint8(hex[5]),
+		(hex_to_uint8(hex[6]) << 4) | hex_to_uint8(hex[7])
+	};
+	uint32_t *result = (uint32_t *) a;
+	return *result;
+}
+
