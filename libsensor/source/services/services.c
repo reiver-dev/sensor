@@ -3,6 +3,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+#include <errno.h>
 
 #include "services.h"
 #include "services_private.h"
@@ -244,7 +245,7 @@ void Services_Receive() {
 
 	} while (bytesRead > 0 && time(NULL) - now < 2);
 
-	if (bytesRead == -1) {
+	if (bytesRead == -1 && errno != EWOULDBLOCK) {
 		DERROR("%s\n", "reading socket failed");
 	}
 
