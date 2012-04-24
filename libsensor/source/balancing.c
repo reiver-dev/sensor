@@ -190,6 +190,7 @@ void balancing_destroy(Balancer self) {
 
 #define IS_FILTER(x) if (x) return true
 bool balancing_process_response(Balancer self, uint8_t *buffer, int length) {
+	IS_FILTER(Services_isResponse(buffer, length));
 	return false;
 }
 #undef IS_FILTER

@@ -394,10 +394,8 @@ int sensor_loop(sensor_t config) {
 	iteration_time = time(0);
 	balancing_process(balancer);
 	while ((time(0) - iteration_time) < 5) {
-		int read_len = recv(config->sock, buffer, buflength, 0);
-		if (read_len > 0) {
-			balancing_process_response(balancer, buffer, read_len);
-		}
+		Services_Receive();
+		usleep(500);
 	}
 
 	balancing_process(balancer);

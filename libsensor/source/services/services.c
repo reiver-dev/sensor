@@ -9,6 +9,7 @@
 #include "info.h"
 #include "../debug.h"
 #include "../util.h"
+#include "../packet_extract.h"
 
 #define MAX_SERVICES 2
 
@@ -226,21 +227,56 @@ void Services_Receive() {
 	struct sockaddr_in address;
 	socklen_t addressSize = sizeof(struct sockaddr_in);
 
-	int bytesRead = recvfrom(udp_sock, buffer, bufferSize, 0, &address, &addressSize);
 
-	if (bytesRead > 0) {
+	int bytesRead;
 
-		struct Node *from;
-		if (addressToNode(&address, &from)) {
-			Services_ReceiveData(buffer, bytesRead, from);
-		} else {
-			DERROR("%s\n", "incorrect receive address");
+	time_t now = time(NULL);
+	do {
+		bytesRead = recvfrom(udp_sock, buffer, bufferSize, 0, &address, &addressSize);
+		if (bytesRead > 0) {
+			struct Node *from;
+			if (addressToNode(&address, &from)) {
+				Services_ReceiveData(buffer, bytesRead, from);
+			} else {
+				DERROR("%s\n", "incorrect receive address");
+			}
 		}
 
-	} else if (bytesRead == -1) {
+	} while (bytesRead > 0 && time(NULL) - now < 2);
+
+	if (bytesRead == -1) {
 		DERROR("%s\n", "reading socket failed");
 	}
 
 	free(buffer);
 }
 
+bool Services_isResponse(uint8_t *buffer, int len) {
+	struct iphdr *ip_header = packet_map_ip(buffer, len);
+	struct udphdr *udp_header = packet_map_udp(buffer, len);
+	if (!(ip_header && udp_header)) {
+		return false;
+	}
+
+	struct Node *from = node_get(ip_header->saddr);
+	struct Node *to = node_get(ip_header->daddr);
+
+	if ((from && to)
+		&& (from != to)
+		&& from->type == NODE_TYPE_SENSOR
+		&& node_is_me(to))
+	{
+
+		uint8_t *data = packet_map_udp_payload(buffer, len);
+		if (data
+			&& checkHeaderConstans((struct Header *)data)
+			&& checkHeaderLength((struct Header *)data, len - ((uintptr_t)data - (uintptr_t)buffer)))
+		{
+			return true;
+		}
+
+	}
+
+	return false;
+
+}

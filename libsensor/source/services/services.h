@@ -16,4 +16,7 @@ void Services_Invoke(uint32_t serviceID, struct Node *to, void *request);
 void Services_Request(Service service, struct Node *to, void *request);
 void Services_Receive();
 
+bool Services_isResponse(uint8_t *buffer, int len);
+
+
 #endif /* SERVICES_H_ */

@@ -273,6 +273,10 @@ struct Node *nodes_get() {
 	return Nodes;
 }
 
+bool node_is_me(struct Node *node) {
+	return node != NULL && node == Me;
+}
+
 ArrayList nodes_get_owned() {
 	return Me->info.sensor.clients;
 }
