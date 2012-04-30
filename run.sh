@@ -1,5 +1,5 @@
 #!/bin/bash
 
 
-build/bin/sensord --config "~/SENSOR"
+build/bin/sensord --config sensor.conf
 
