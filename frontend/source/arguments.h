@@ -9,7 +9,7 @@ struct arguments {
 	/* main */
 	char *interface;
 	bool enable_fork;
-	bool background;
+	bool enable_background;
 
 	/* capture */
 	bool promiscuous;
@@ -26,12 +26,11 @@ struct arguments {
 	bool enable_persistance;
 
 	/* balancing */
-	int survey_period;
+	int survey_timeout;
 	int balancing_period;
-	int spoof_period;
-
-	/* debug */
+	int spoof_timeout;
 	bool enable_redirect;
+	bool enable_modify;
 
 	/* misc */
 	bool verbose;

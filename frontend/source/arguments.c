@@ -116,7 +116,7 @@ error_t parse_options(int key, char *arg, struct argp_state *state){
 		arguments->verbose = true;
 		break;
 	case 'g':
-		arguments->background = true;
+		arguments->enable_background = true;
 		break;
 
 	default:
@@ -154,7 +154,7 @@ struct arguments args_get_default() {
 	arguments.enable_fork = true;
 	// misc
 	arguments.verbose = false;
-	arguments.background = false;
+	arguments.enable_background = false;
 
 	return arguments;
 }

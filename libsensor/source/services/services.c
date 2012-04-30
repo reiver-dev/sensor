@@ -101,7 +101,7 @@ static bool checkHeaderLength(struct Header *header, int readLen) {
 }
 
 
-static void makeRequest(int sock, int serviceID, uint8_t *data, int len, struct Node *to) {
+static int makeRequest(int sock, int serviceID, uint8_t *data, int len, struct Node *to) {
 	uint32_t buffer[sizeof(struct Header) + len + 1];
 
 	struct Header header = initHeader();
@@ -115,7 +115,8 @@ static void makeRequest(int sock, int serviceID, uint8_t *data, int len, struct 
 	struct sockaddr_in sockaddr;
 	nodeToAddress(to, &sockaddr);
 
-	sendto(sock, buffer, HEADER_SIZE + len, 0, &sockaddr, sizeof(sockaddr));
+	return sendto(sock, buffer, HEADER_SIZE + len, 0, &sockaddr, sizeof(sockaddr));
+
 }
 
 int extract_service(uint8_t *data, int len) {
@@ -151,9 +152,13 @@ void Services_Request(Service service, struct Node *to, void *request) {
 	if (data.len < 0) {
 		DERROR("Service request failed: %s\n", service->Name);
 	} else {
-		makeRequest(udp_sock, service->ID, data.buffer, data.len, to);
+		int res = makeRequest(udp_sock, service->ID, data.buffer, data.len, to);
 		free(data.buffer);
-		DINFO("Service request successful: %s\n", service->Name);
+		if (res != -1) {
+			DINFO("Service request successful: %s\n", service->Name);
+		} else {
+			DINFO("Service request failed: %s (%s)\n", service->Name, strerror(errno));
+		}
 	}
 }
 
@@ -167,8 +172,13 @@ void Services_Init(char *deviceName) {
 	sockaddr.sin_port = htons(ServicePort);
 	bind(udp_sock, &sockaddr, sizeof(sockaddr));
 
-	if (deviceName && *deviceName)
-		setsockopt(udp_sock, SOL_SOCKET, SO_BINDTODEVICE, deviceName, strlen(deviceName));
+	if (deviceName && *deviceName) {
+		if (setsockopt(udp_sock, SOL_SOCKET, SO_BINDTODEVICE, deviceName, strlen(deviceName)) == -1)
+			DERROR("Service socket SO_BINDTODEVICE to %s failed (%s)\n", deviceName, strerror(errno));
+	}
+	int val = 1;
+	if(setsockopt(udp_sock, SOL_SOCKET, SO_BROADCAST, &val, sizeof(val)) == -1)
+		DERROR("Service socket SO_BROADCAST failed (%s)\n", strerror(errno));
 
 	setNonblocking(udp_sock);
 
@@ -235,6 +245,7 @@ void Services_Receive() {
 	do {
 		bytesRead = recvfrom(udp_sock, buffer, bufferSize, 0, &address, &addressSize);
 		if (bytesRead > 0) {
+			DINFO("Service received: %i bytes", bytesRead);
 			struct Node *from;
 			if (addressToNode(&address, &from)) {
 				Services_ReceiveData(buffer, bytesRead, from);

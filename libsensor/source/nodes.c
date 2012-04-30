@@ -163,8 +163,10 @@ void nodes_init(struct CurrentAddress *curr) {
 	_sensor_init(Me);
 	SensorNodes = ArrayList_init(0, (ArrayList_destroyer) _sensor_destroy);
 
-	struct Node *gw = node_get(curr->gateway);
-	_gateway_init(gw);
+	if (curr->gateway) {
+		struct Node *gw = node_get(curr->gateway);
+		_gateway_init(gw);
+	}
 
 }
 
@@ -263,6 +265,13 @@ struct Node *node_get_destination(uint32_t ip) {
 		index = get_node_index(current->gateway);
 	}
 	return &Nodes[index];
+}
+
+struct Node *node_get_gateway() {
+	if (current->gateway) {
+		return node_get(current->gateway);
+	}
+	return NULL;
 }
 
 int nodes_count() {

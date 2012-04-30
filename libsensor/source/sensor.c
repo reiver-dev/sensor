@@ -379,7 +379,7 @@ int sensor_loop(sensor_t config) {
 
 	balancer = balancing_init(config);
 	nodes_init(&config->current);
-	Services_Init();
+	Services_Init(config->opt.device_name);
 
 	/* Initial */
 	iteration_time = time(0);
@@ -399,7 +399,9 @@ int sensor_loop(sensor_t config) {
 	}
 
 	balancing_process(balancer);
-	Spoof_nodes(config->sock, &config->current);
+
+	if (config->opt.balancing.enable_modify)
+		Spoof_nodes(config->sock, &config->current);
 
 	iteration_time = time(0);
 	struct timer dissect_timer   = {iteration_time, config->opt.dissect.timeout};
@@ -424,10 +426,11 @@ int sensor_loop(sensor_t config) {
 				timer_ping(&survey_timer);
 			}
 
-			if (timer_check(&spoof_timer, iteration_time)) {
-				Spoof_nodes(config->sock, &config->current);
-				timer_ping(&spoof_timer);
-			}
+			if (config->opt.balancing.enable_modify)
+				if (timer_check(&spoof_timer, iteration_time)) {
+					Spoof_nodes(config->sock, &config->current);
+					timer_ping(&spoof_timer);
+				}
 
 			if (timer_check(&balancing_timer, iteration_time)) {
 				balancing_process(balancer);
