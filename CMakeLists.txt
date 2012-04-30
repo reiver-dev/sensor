@@ -1,5 +1,6 @@
-project(epic-ids)
 cmake_minimum_required (VERSION 2.8)
+
+project(epic-ids C)
 
 set(EXECUTABLE_OUTPUT_PATH ../bin)
 set(LIBRARY_OUTPUT_PATH ../bin)

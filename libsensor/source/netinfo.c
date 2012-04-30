@@ -10,14 +10,6 @@
 #include <netinet/ether.h>
 #include <netinet/in.h>
 
-/* to get default route */
-#include <linux/netlink.h>
-#include <linux/rtnetlink.h>
-#include <libnetlink.h>
-#include <net/route.h>
-
-#include <proc/readproc.h>
-
 #include "netinfo.h"
 #include "debug.h"
 #include "util.h"
