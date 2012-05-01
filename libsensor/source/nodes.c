@@ -51,21 +51,41 @@ static void _gateway_init(struct Node *gw) {
 	gw->type = NODE_TYPE_GATEWAY;
 }
 
-static bool check_sensor_client(struct Node *sensor, struct Node *client) {
-	assert(sensor);
-	assert(client);
 
-	bool result = true;
-	if (sensor->type != NODE_TYPE_SENSOR) {
-		DWARNING("Node (%s) is not sensor\n", Ip4ToStr(sensor->ip4addr));
-		result = false;
-	} else if (client->type != NODE_TYPE_CLIENT) {
-		DWARNING("Node (%s) is not client\n", Ip4ToStr(client->ip4addr));
-		result = false;
+static char *get_node_type(int type) {
+	switch (type) {
+	case NODE_TYPE_CLIENT:
+		return "client";
+		break;
+	case NODE_TYPE_SENSOR:
+		return "sensor";
+		break;
+	case NODE_TYPE_GATEWAY:
+		return "gateway";
+		break;
+	case NODE_TYPE_UNKNOWN:
+		return "unknown";
+	default:
+		return "UNDEFINED_TYPE";
 	}
+}
 
-	return result;
 
+static bool check_node_type(struct Node *node, int expectedType) {
+	assert(node);
+	if (node->type == expectedType) {
+		return true;
+	} else {
+		DWARNING("Node (%s) is %s - expected %s\n",
+				Ip4ToStr(node->ip4addr),
+				get_node_type(node->type),
+				get_node_type(expectedType));
+		return false;
+	}
+}
+
+static bool check_sensor_client(struct Node *sensor, struct Node *client) {
+	return check_node_type(sensor, NODE_TYPE_SENSOR) && check_node_type(client, NODE_TYPE_CLIENT);
 }
 
 static uint32_t get_node_index(uint32_t ip) {
@@ -81,7 +101,7 @@ bool is_owned_by(struct Node *sensor, struct Node *client) {
 	if (!check_sensor_client(sensor, client)) {
 		result = false;
 	} else if (ArrayList_isEmpty(sensor->info.sensor.clients)) {
-		DNOTIFY("Sensor (%s) has 0 nodes", Ip4ToStr(sensor->ip4addr));
+		DNOTIFY("Sensor (%s) has 0 nodes\n", Ip4ToStr(sensor->ip4addr));
 		result = false;
 	} else {
 
@@ -214,10 +234,13 @@ void node_set_gateway(struct Node *node) {
 void node_set_owned_by(struct Node *sensor, uint32_t ip4addr, struct NodeLoad load) {
 	struct Node *client = node_get(ip4addr);
 	if (client == NULL) {
-		DWARNING("Node received from %s not found", Ip4ToStr(sensor->ip4addr));
+		DWARNING("Node conflict: node=(%s)\n", Ip4ToStr(ip4addr));
+		DWARNING("Node conflict: node received from sensor=(%s) not found\n", Ip4ToStr(sensor->ip4addr));
+	} else if (node_is_me(client)) {
+		DWARNING("Node (%s) is trying to take over ME\n", Ip4ToStr(sensor->ip4addr));
 	} else if (is_owned_by(Me, client)) {
-		DWARNING("Node conflict: sensor %s claims node as his", Ip4ToStr(sensor->ip4addr));
-		DWARNING("Node conflict: conflicted node is %s", Ip4ToStr(client->ip4addr));
+		DWARNING("Node conflict: node=(%s)\n", Ip4ToStr(ip4addr));
+		DWARNING("Node conflict: sensor=(%s) claims node as his\n", Ip4ToStr(sensor->ip4addr));
 	} else if (is_owned_by(sensor, client)) {
 		client->info.client.load = load;
 	} else {
@@ -262,7 +285,10 @@ struct Node *node_get(uint32_t ip) {
 struct Node *node_get_destination(uint32_t ip) {
 	uint32_t index = get_node_index(ip);
 	if (index < 0 || index > NodeCount) {
-		index = get_node_index(current->gateway);
+		if (current->gateway)
+			index = get_node_index(current->gateway);
+		else
+			return NULL;
 	}
 	return &Nodes[index];
 }

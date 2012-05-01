@@ -20,6 +20,7 @@
 #include "debug.h"
 #include "util.h"
 #include "nodes.h"
+#include "packet_extract.h"
 
 
 #include "services/info.h"
@@ -146,33 +147,25 @@ void load_close(struct Node *client, uint32_t interval) {
 }
 
 struct Node *get_client(Balancer self, uint8_t *buffer, int length) {
-	if (length < (sizeof(struct ether_header) + sizeof(struct iphdr))) {
+	struct iphdr *ipheader = packet_map_ip(buffer, length);
+	if (!ipheader) {
 		return NULL;
 	}
 
-	int position = sizeof(struct ether_header);
-	struct ether_header *ethernet = (struct ether_header*) (buffer);
+	struct Node *gw = node_get_gateway();
 
-	uint16_t ethernetType = htons(ethernet->ether_type);
-	if (ethernetType == ETH_P_IP) {
-		struct iphdr *ipheader = (struct iphdr*) (buffer + position);
-		struct Node *gw = node_get(self->current->gateway);
-		struct Node *source	= node_get_destination(ipheader->saddr);
-		if (source != NULL) {
-			if (source == gw) {
-				struct Node *dest = node_get_destination(ipheader->daddr);
-				if (dest == NULL) {
-					return NULL;
-				} else {
-					return dest;
-				}
-			} else {
-				return source;
-			}
-		}
+	struct Node *source	= node_get_destination(ipheader->saddr);
+	if (source && source != gw) {
+		return source;
+	}
+
+	struct Node *dest = node_get_destination(ipheader->daddr);
+	if (dest && dest != gw) {
+		return source;
 	}
 
 	return NULL;
+
 }
 
 /* ---------------------------------------------- */
@@ -189,7 +182,7 @@ void balancing_destroy(Balancer self) {
 }
 
 #define IS_FILTER(x) if (x) return true
-bool balancing_process_response(Balancer self, uint8_t *buffer, int length) {
+bool balancing_filter_response(Balancer self, uint8_t *buffer, int length) {
 	IS_FILTER(Services_isResponse(buffer, length));
 	return false;
 }
@@ -235,6 +228,13 @@ void balancing_count_load(Balancer self, uint32_t load_interval, uint32_t load_c
 	}
 }
 
+
+
+void to_STATE_ALONE(Balancer self) {
+	self->State = STATE_ALONE;
+	take_all_nodes(self);
+}
+
 void balancing_process(Balancer self) {
 	DINFO("%s\n", "Starting balancing");
 
@@ -256,7 +256,7 @@ void balancing_process(Balancer self) {
 
 		case STATE_WAIT_SENSORS:
 			if (!ArrayList_length(nodes_get_sensors())) {
-				self->State = STATE_ALONE;
+				to_STATE_ALONE(self);
 			} else {
 				self->State = STATE_COUPLE;
 			}
@@ -264,7 +264,11 @@ void balancing_process(Balancer self) {
 			break;
 
 		case STATE_ALONE:
-			take_all_nodes(self);
+			if (!ArrayList_length(nodes_get_sensors())) {
+				seek_sensors(self);
+			} else {
+				self->State = STATE_COUPLE;
+			}
 			break;
 
 		case STATE_COUPLE:

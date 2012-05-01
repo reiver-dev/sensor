@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <errno.h>
 
 #include <arpa/inet.h>
 #include <netinet/ether.h>
@@ -89,7 +90,7 @@ int bind_socket_to_interface(int sock, char *interfaceName) {
 	address.sll_protocol = htons(ETH_P_ALL);
 
 	if (bind(sock, (struct sockaddr *)&address, sizeof(address)) == -1) {
-		DERROR("%s\n", "bind socket to interface failed");
+		DERROR("Bind socket to interface failed: %s\n", strerror(errno));
 		return 1;
 	}
 
@@ -154,36 +155,32 @@ void GetFromBuffer(uint8_t **bufpointer, void *data, size_t ofData) {
 }
 
 uint32_t GetFromBuffer32(uint8_t **bufpointer) {
-	uint8_t get[4];
-	memcpy(get, *bufpointer, 4);
-	uint32_t *data = (uint32_t *)get;
-	bufpointer += 4;
-	return ntohl(*data);
+	uint32_t data = **(uint32_t **)bufpointer;
+	*bufpointer += 4;
+	return ntohl(data);
 }
 
 uint16_t GetFromBuffer16(uint8_t **bufpointer) {
-	uint8_t get[2];
-	memcpy(get, *bufpointer, 2);
-	uint16_t *data = (uint16_t *)get;
-	bufpointer += 2;
-	return ntohs(*data);
+	uint16_t data = **(uint16_t **)bufpointer;
+	*bufpointer += 2;
+	return ntohs(data);
 }
 
 uint32_t GetFromBuffer32NoOrder(uint8_t **bufpointer) {
 	uint32_t data = **((uint32_t **) bufpointer);
-	bufpointer += 4;
+	*bufpointer += 4;
 	return data;
 }
 
 uint16_t GetFromBuffer16NoOrder(uint8_t **bufpointer) {
 	uint16_t data = **((uint16_t **) bufpointer);
-	bufpointer += 2;
+	*bufpointer += 2;
 	return data;
 }
 
 uint8_t GetFromBuffer8(uint8_t **bufpointer) {
 	uint8_t data = **bufpointer;
-	bufpointer++;
+	*bufpointer += 1;
 	return data;
 }
 
@@ -194,7 +191,7 @@ void GetFromBuffer4(uint8_t **bufpointer, uint8_t *data8, uint8_t *data4) {
 	if (data4 != NULL) {
 		*data4 = **bufpointer & 0xF0;
 	}
-	bufpointer++;
+	*bufpointer += 1;
 }
 
 uint8_t GetFromBuffer1(const uint8_t *bufpointer, int place) {

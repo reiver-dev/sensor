@@ -445,9 +445,10 @@ int sensor_loop(sensor_t config) {
 			/* process the packet */
 			if (read_len > 0) {
 
+				Services_Receive();
 				/* if not survey or balancing packet */
 				if (!survey_process_response(&config->current, buffer, read_len)
-					&& !balancing_process_response(balancer, buffer, read_len)) {
+					&& !balancing_filter_response(balancer, buffer, read_len)) {
 
 					/* perform redirect if enabled and packet addresses replacement */
 					if (config->opt.balancing.enable_redirect

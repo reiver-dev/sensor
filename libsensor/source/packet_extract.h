@@ -12,9 +12,6 @@ struct ether_header *packet_map_ether(uint8_t *buffer, int len);
 struct iphdr *packet_map_ip(uint8_t *buffer, int len);
 struct udphdr *packet_map_udp(uint8_t *buffer, int len);
 struct tcphdr *packet_map_tcp(uint8_t *buffer, int len);
-
-uint8_t *packet_map_tcp_payload(uint8_t *buffer, int len);
-uint8_t *packet_map_udp_payload(uint8_t *buffer, int len);
 uint8_t *packet_map_payload(uint8_t *buffer, int len);
 
 

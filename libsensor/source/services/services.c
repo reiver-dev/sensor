@@ -36,25 +36,25 @@ static void nodeToAddress(struct Node *node, struct sockaddr_in *sockaddr) {
 	} else {
 		sockaddr->sin_addr.s_addr = node->ip4addr;
 	}
-	sockaddr->sin_port = ServicePort;
+	sockaddr->sin_port = htons(ServicePort);
 }
 
 
 static bool addressToNode(struct sockaddr_in *sockaddr, struct Node **node) {
 	*node = NULL;
 	if (sockaddr->sin_family != AF_INET) {
-		DERROR("Sockaddr family is incorrect: %i", sockaddr->sin_family);
-		return false;
-	}
-
-	if (sockaddr->sin_port == ServicePort) {
-		DWARNING("Port is incorrect: %i", sockaddr->sin_port);
+		DERROR("Sockaddr family is incorrect (%i)\n", sockaddr->sin_family);
 		return false;
 	}
 
 	uint32_t ip4addr = sockaddr->sin_addr.s_addr;
 	if (ip4addr != INADDR_BROADCAST) {
 		*node = node_get(ip4addr);
+	}
+
+	if (node_is_me(*node)) {
+		DWARNING("Got mirror request from (%s:%i)\n", Ip4ToStr(sockaddr->sin_addr.s_addr), ntohs(sockaddr->sin_port));
+		return false;
 	}
 
 	return true;
@@ -75,16 +75,16 @@ static bool checkHeaderConstans(struct Header *header) {
 	bool result = true;
 
 	if (header->m_version != 0) {
-		DERROR("Header version incorrect: %i\n", header->m_version);
+		DERROR("Header major version incorrect: %i\n", header->m_version);
 		result = false;
 	}
 
-	if (header->l_version == 1) {
-		DERROR("Header version incorrect: %i\n", header->m_version);
+	if (header->l_version != 1) {
+		DERROR("Header lower version incorrect: %i\n", header->l_version);
 		result = false;
 	}
 
-	if (strncmp((char *)header->header, "EPICIDS", 8)) {
+	if (strncmp((char *)header->header, "EPICIDS!", 8)) {
 		DERROR("%s\n", "Header string incorrect");
 		result = false;
 	}
@@ -93,7 +93,7 @@ static bool checkHeaderConstans(struct Header *header) {
 }
 
 static bool checkHeaderLength(struct Header *header, int readLen) {
-	if (header->length > readLen) {
+	if (ntohl(header->length) > readLen) {
 		DERROR("Length read is insufficient: expected=%i, has=%i", header->length, readLen);
 		return false;
 	}
@@ -102,7 +102,8 @@ static bool checkHeaderLength(struct Header *header, int readLen) {
 
 
 static int makeRequest(int sock, int serviceID, uint8_t *data, int len, struct Node *to) {
-	uint32_t buffer[sizeof(struct Header) + len + 1];
+	uint8_t buffer[HEADER_SIZE + len];
+	memset(buffer, 0, HEADER_SIZE + len);
 
 	struct Header header = initHeader();
 
@@ -149,8 +150,8 @@ void Services_Request(Service service, struct Node *to, void *request) {
 
 	data = service->Request(request);
 
-	if (data.len < 0) {
-		DERROR("Service request failed: %s\n", service->Name);
+	if (data.len <= 0 || data.buffer == NULL) {
+		DERROR("Service request failed: %s (Protocol error)\n", service->Name);
 	} else {
 		int res = makeRequest(udp_sock, service->ID, data.buffer, data.len, to);
 		free(data.buffer);
@@ -212,7 +213,7 @@ static void Services_ReceiveData(uint8_t *data, int len, struct Node *from) {
 		return;
 	}
 
-	int messageLength = header->length - HEADER_SIZE;
+	int messageLength = ntohl(header->length) - HEADER_SIZE;
 	int serviceID = header->service;
 
 	Service service = service_get(serviceID);
@@ -245,7 +246,7 @@ void Services_Receive() {
 	do {
 		bytesRead = recvfrom(udp_sock, buffer, bufferSize, 0, &address, &addressSize);
 		if (bytesRead > 0) {
-			DINFO("Service received: %i bytes", bytesRead);
+			DINFO("Service received: %i bytes\n", bytesRead);
 			struct Node *from;
 			if (addressToNode(&address, &from)) {
 				Services_ReceiveData(buffer, bytesRead, from);
@@ -270,23 +271,21 @@ bool Services_isResponse(uint8_t *buffer, int len) {
 		return false;
 	}
 
-	struct Node *from = node_get(ip_header->saddr);
-	struct Node *to = node_get(ip_header->daddr);
+	struct Node *from = node_get_destination(ip_header->saddr);
+	struct Node *to = node_get_destination(ip_header->daddr);
 
-	if ((from && to)
-		&& (from != to)
-		&& from->type == NODE_TYPE_SENSOR
-		&& node_is_me(to))
-	{
+	if (from == NULL || from == to) /* if sender is unknown record it*/
+		return false;
 
-		uint8_t *data = packet_map_udp_payload(buffer, len);
+	/* if from any sensor to me OR broadcast */
+	if (from->type == NODE_TYPE_SENSOR && (to == NULL || node_is_me(to))) {
+		uint8_t *data = packet_map_payload(buffer, len);
 		if (data
 			&& checkHeaderConstans((struct Header *)data)
 			&& checkHeaderLength((struct Header *)data, len - ((uintptr_t)data - (uintptr_t)buffer)))
 		{
 			return true;
 		}
-
 	}
 
 	return false;

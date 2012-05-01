@@ -9,7 +9,7 @@
 #include "../nodes.h"
 
 
-#define ITEM_SIZE sizeof(uint32_t) * 2
+#define ITEM_SIZE sizeof(uint32_t) * 3
 
 /* prototypes */
 static struct RequestData info_request(void *request);
@@ -23,26 +23,26 @@ static struct Service infoService = {
 	.Name     = "Info Service"
 };
 
-static struct RequestData put_type(int type) {
+static struct RequestData pop_info() {
 	uint8_t *buffer, *ptr;
-	int len = 4;
+	size_t len = 1;
 
 	buffer = malloc(len);
 	ptr = buffer;
 
-	AddToBuffer8(&ptr, type);
+	AddToBuffer8(&ptr, INFO_TYPE_POP);
 
 	struct RequestData result = {len, buffer};
 	return result;
 }
 
-static struct RequestData put_info() {
+static struct RequestData push_info() {
 	uint8_t *buffer, *ptr;
 
 	ArrayList ownedNodes = nodes_get_owned();
 	int ownedCount = ArrayList_length(ownedNodes);
 
-	int len = ownedCount * (ITEM_SIZE) + 5;
+	size_t len = ownedCount * (ITEM_SIZE) + 5;
 
 	buffer = malloc(len);
 	ptr = buffer;
@@ -67,11 +67,11 @@ static struct RequestData info_request(void *request) {
 	switch(req->type) {
 
 	case INFO_TYPE_POP:
-		data = put_type(req->type);
+		data = pop_info();
 		break;
 
 	case INFO_TYPE_PUSH:
-		data = put_info();
+		data = push_info();
 		break;
 
 	default:
@@ -101,7 +101,7 @@ static void info_response(struct Node *from, struct RequestData *data) {
 		int count = GetFromBuffer32(&ptr);
 
 		if (data->len - 1 < count * ITEM_SIZE) {
-			DWARNING("INFO SERVICE: info length is insufficient = %i", data->len - 1);
+			DWARNING("INFO SERVICE: info length is insufficient = %i\n", data->len - 1);
 			return;
 		}
 
