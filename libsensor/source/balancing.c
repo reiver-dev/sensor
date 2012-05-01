@@ -161,7 +161,7 @@ struct Node *get_client(Balancer self, uint8_t *buffer, int length) {
 
 	struct Node *dest = node_get_destination(ipheader->daddr);
 	if (dest && dest != gw) {
-		return source;
+		return dest;
 	}
 
 	return NULL;
@@ -188,17 +188,15 @@ bool balancing_filter_response(Balancer self, uint8_t *buffer, int length) {
 }
 #undef IS_FILTER
 
-bool balancing_add_load(Balancer self, uint8_t *buffer, int length) {
+void balancing_add_load(Balancer self, uint8_t *buffer, int length) {
 	struct Node *client = get_client(self, buffer, length);
 	if (client != NULL) {
 		if (client->type != NODE_TYPE_CLIENT) {
 			DERROR("Can't count load, node is not client:\n%s\n", node_toString(client));
-			client = get_client(self, buffer, length);
 		} else{
 			load_bytes_add(client, length);
 		}
 	}
-	return false;
 }
 
 void balancing_count_load(Balancer self, uint32_t load_interval, uint32_t load_count) {
