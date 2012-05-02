@@ -62,6 +62,10 @@ struct Node *node_get_destination(uint32_t ip);
 struct Node *node_get_gateway();
 bool node_is_me(struct Node *node);
 
+void node_set_sensor(struct Node *node);
+void node_set_client(struct Node *node);
+void node_set_gateway(struct Node *node);
+
 ArrayList nodes_get_owned();
 ArrayList nodes_get_sensors();
 

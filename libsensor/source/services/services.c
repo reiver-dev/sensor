@@ -8,14 +8,19 @@
 #include "services.h"
 #include "services_private.h"
 #include "info.h"
+#include "node.h"
+
 #include "../debug.h"
 #include "../util.h"
 #include "../packet_extract.h"
 
 #define MAX_SERVICES 2
 
-static Service *services;
-int udp_sock;
+
+struct Services {
+	int udp_sock;
+	ArrayList services;
+};
 
 static const uint16_t ServicePort = 31337;
 
@@ -125,17 +130,16 @@ int extract_service(uint8_t *data, int len) {
 }
 
 
-static Service service_get(uint32_t serviceID) {
-	int i = 0;
-	while (services[i] != NULL) {
-		if (services[i]->ID == serviceID) {
-			return services[i];
-		}
-		i++;
-	}
 
-	DWARNING("Service with id not found: service=%i\n", serviceID);
-	return NULL;
+static bool find_by_serviceID(void *service, void *serviceID) {
+	return ((Service)service)->ID == *(uint32_t *)serviceID;
+}
+
+static Service service_get(ArrayList services, uint32_t serviceID) {
+	Service service = ArrayList_find(services, &serviceID, find_by_serviceID);
+	if (!service)
+		DWARNING("Service with id not found: service=%i\n", serviceID);
+	return service;
 }
 
 
@@ -145,15 +149,15 @@ void dispatch(uint8_t *data, int len) {
 
 /* ---------------------- */
 
-void Services_Request(Service service, struct Node *to, void *request) {
+void Services_Request(ServicesData self, Service service, struct Node *to, void *request) {
 	struct RequestData data;
 
-	data = service->Request(request);
+	data = service->Request(self, request);
 
 	if (data.len <= 0 || data.buffer == NULL) {
 		DERROR("Service request failed: %s (Protocol error)\n", service->Name);
 	} else {
-		int res = makeRequest(udp_sock, service->ID, data.buffer, data.len, to);
+		int res = makeRequest(self->udp_sock, service->ID, data.buffer, data.len, to);
 		free(data.buffer);
 		if (res != -1) {
 			DINFO("Service request successful: %s\n", service->Name);
@@ -164,9 +168,9 @@ void Services_Request(Service service, struct Node *to, void *request) {
 }
 
 
-void Services_Init(char *deviceName) {
+ServicesData Services_Init(char *deviceName) {
 
-	udp_sock = socket(AF_INET, SOCK_DGRAM, 0);
+	int udp_sock = socket(AF_INET, SOCK_DGRAM, 0);
 	struct sockaddr_in sockaddr;
 	sockaddr.sin_family = AF_INET;
 	sockaddr.sin_addr.s_addr = htonl(INADDR_ANY);
@@ -183,30 +187,38 @@ void Services_Init(char *deviceName) {
 
 	setNonblocking(udp_sock);
 
-	services = malloc(sizeof(Service) * MAX_SERVICES);
-	services[0] = InfoService_Get();
-	services[1] = 0;
+	ArrayList services = ArrayList_init(3, 0);
+	ArrayList_add(services, InfoService_Get());
+	ArrayList_add(services, NodeService_Get());
+
+	struct Services *self = malloc(sizeof(*self));
+	self->udp_sock = udp_sock;
+	self->services = services;
+
+	return self;
+
 }
 
 
-void Services_Destroy() {
-	shutdown(udp_sock, 2);
-	close(udp_sock);
-	free(services);
+void Services_Destroy(ServicesData self) {
+	shutdown(self->udp_sock, 2);
+	close(self->udp_sock);
+	ArrayList_destroy(self->services);
+	free(self);
 }
 
 
-void Services_Invoke(uint32_t serviceID, struct Node *to, void *request) {
+void Services_Invoke(ServicesData self, uint32_t serviceID, struct Node *to, void *request) {
 
-	Service service = service_get(serviceID);
+	Service service = service_get(self->services, serviceID);
 	if (service != NULL) {
-		Services_Request(service, to, request);
+		Services_Request(self, service, to, request);
 	} else {
 		DWARNING("Service with id not found: service=%i\n", serviceID);
 	}
 }
 
-static void Services_ReceiveData(uint8_t *data, int len, struct Node *from) {
+static void Services_ReceiveData(ServicesData self, uint8_t *data, int len, struct Node *from) {
 	struct Header *header = (struct Header *)data;
 
 	if (!(checkHeaderConstans(header) && checkHeaderLength(header, len))) {
@@ -216,7 +228,7 @@ static void Services_ReceiveData(uint8_t *data, int len, struct Node *from) {
 	int messageLength = ntohl(header->length) - HEADER_SIZE;
 	int serviceID = header->service;
 
-	Service service = service_get(serviceID);
+	Service service = service_get(self->services, serviceID);
 
 	struct RequestData requestData = {messageLength, data + HEADER_SIZE};
 
@@ -226,13 +238,13 @@ static void Services_ReceiveData(uint8_t *data, int len, struct Node *from) {
 			return;
 		}
 
-		service->Response(from, &requestData);
+		service->Response(self, from, &requestData);
 	}
 
 
 }
 
-void Services_Receive() {
+void Services_Receive(ServicesData self) {
 	size_t bufferSize = 512 * sizeof(uint8_t);
 	uint8_t *buffer = malloc(bufferSize);
 
@@ -244,12 +256,12 @@ void Services_Receive() {
 
 	time_t now = time(NULL);
 	do {
-		bytesRead = recvfrom(udp_sock, buffer, bufferSize, 0, &address, &addressSize);
+		bytesRead = recvfrom(self->udp_sock, buffer, bufferSize, 0, &address, &addressSize);
 		if (bytesRead > 0) {
 			DINFO("Service received: %i bytes\n", bytesRead);
 			struct Node *from;
 			if (addressToNode(&address, &from)) {
-				Services_ReceiveData(buffer, bytesRead, from);
+				Services_ReceiveData(self, buffer, bytesRead, from);
 			} else {
 				DERROR("%s\n", "incorrect receive address");
 			}

@@ -394,7 +394,7 @@ int sensor_loop(sensor_t config) {
 	iteration_time = time(0);
 	balancing_process(balancer);
 	while ((time(0) - iteration_time) < 5) {
-		Services_Receive();
+		balancing_receive_service(balancer);
 		usleep(500);
 	}
 
@@ -445,7 +445,7 @@ int sensor_loop(sensor_t config) {
 			/* process the packet */
 			if (read_len > 0) {
 
-				Services_Receive();
+				balancing_receive_service(balancer);
 				/* if not survey or balancing packet */
 				if (!survey_process_response(&config->current, buffer, read_len)
 					&& !balancing_filter_response(balancer, buffer, read_len)) {
@@ -493,7 +493,6 @@ int sensor_loop(sensor_t config) {
 	DNOTIFY("%s\n","Capture ended");
 	balancing_destroy(balancer);
 	nodes_destroy();
-	Services_Destroy();
 	sensor_clean(config);
 	return SENSOR_SUCCESS;
 }

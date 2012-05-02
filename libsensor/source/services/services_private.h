@@ -1,15 +1,16 @@
 #ifndef SERVICES_PRIVATE_H
 #define SERVICES_PRIVATE_H
 
-#include <stdbool.h>
+#include "../balancing.h"
+#include "services.h"
 
 struct RequestData {
 	int len;
 	uint8_t *buffer;
 };
 
-typedef struct RequestData (*service_request_f) (void *request);
-typedef void (*service_response_f)(struct Node *from, struct RequestData *request);
+typedef struct RequestData (*service_request_f) (ServicesData servicesData, void *request);
+typedef void (*service_response_f)(ServicesData servicesData, struct Node *from, struct RequestData *request);
 
 struct Service {
 	char *Name;

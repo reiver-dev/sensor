@@ -8,18 +8,19 @@
 #include "../debug.h"
 #include "../nodes.h"
 
+#define INFOID 0
 
 #define ITEM_SIZE sizeof(uint32_t) * 3
 
 /* prototypes */
-static struct RequestData info_request(void *request);
-static void info_response(struct Node *from, struct RequestData *data);
+static struct RequestData info_request(ServicesData servicesData, void *request);
+static void info_response(ServicesData servicesData, struct Node *from, struct RequestData *data);
 
 
 static struct Service infoService = {
 	.Request  = info_request,
 	.Response = info_response,
-	.ID       = SERVICE_INFO,
+	.ID       = INFOID,
 	.Name     = "Info Service"
 };
 
@@ -59,7 +60,7 @@ static struct RequestData push_info() {
 	return result;
 }
 
-static struct RequestData info_request(void *request) {
+static struct RequestData info_request(ServicesData servicesData, void *request) {
 	InfoRequest *req = request;
 
 	struct RequestData data;
@@ -85,16 +86,15 @@ static struct RequestData info_request(void *request) {
 }
 
 
-static void info_response(struct Node *from, struct RequestData *data) {
+static void info_response(ServicesData servicesData, struct Node *from, struct RequestData *data) {
 	uint8_t *ptr = data->buffer;
 
 	int type  = GetFromBuffer8(&ptr);
 
 	if (type == INFO_TYPE_POP) {
 
-		InfoRequest request;
-		request.type = INFO_TYPE_PUSH;
-		Services_Request(InfoService_Get(), 0, &request);
+		InfoRequest request = {INFO_TYPE_PUSH};
+		Services_Request(servicesData, InfoService_Get(), 0, &request);
 
 	} else if (type == INFO_TYPE_PUSH) {
 

@@ -137,7 +137,7 @@ void *ArrayList_find(ArrayList self, void *item, bool (*equals)(void *element, v
 	void *result = NULL;
 	for (int i = 0; i < self->length; i++) {
 		if (equals(self->data[i], item)) {
-			result = item;
+			result = self->data[i];
 			break;
 		}
 	}

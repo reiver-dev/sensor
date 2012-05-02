@@ -25,13 +25,6 @@
 
 #include "services/info.h"
 
-enum {
-	STATE_BEGIN,
-	STATE_WAIT_SENSORS,
-	STATE_ALONE,
-	STATE_COUPLE,
-};
-
 char *state_text[] = {
 	"STATE_BEGIN",
 	"STATE_WAIT_SENSORS",
@@ -44,6 +37,7 @@ struct balancer {
 	time_t last_load;
 	uint8_t State;
 	struct CurrentAddress *current;
+	ServicesData servicesData;
 };
 
 
@@ -54,9 +48,8 @@ bool is_same_network_ip4(Balancer self, uint32_t ip) {
 
 
 void seek_sensors(Balancer self) {
-	InfoRequest request;
-	request.type = INFO_TYPE_POP;
-	Services_Invoke(SERVICE_INFO, 0, &request);
+	InfoRequest request = {INFO_TYPE_POP};
+	Services_Request(self->servicesData, InfoService_Get(), 0, &request);
 }
 
 void take_all_nodes(Balancer self) {
@@ -174,6 +167,7 @@ Balancer balancing_init(sensor_t config) {
 	/* memorize current addreses */
 	self->current = &config->current;
 	self->State = STATE_BEGIN;
+	self->servicesData = Services_Init(config->opt.device_name);
 	return self;
 }
 
@@ -226,6 +220,9 @@ void balancing_count_load(Balancer self, uint32_t load_interval, uint32_t load_c
 	}
 }
 
+void balancing_receive_service(Balancer self) {
+	Services_Receive(self->servicesData);
+}
 
 
 void to_STATE_ALONE(Balancer self) {

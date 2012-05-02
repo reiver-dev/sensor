@@ -10,17 +10,17 @@
 #include "../debug.h"
 #include "../nodes.h"
 
-
+#define NODEID 1
 #define ITEM_SIZE sizeof(uint32_t)
 
-struct RequestData node_request(void *request);
-void node_response(struct Node *from, struct RequestData *request);
+struct RequestData node_request(ServicesData servicesData, void *request);
+void node_response(ServicesData servicesData, struct Node *from, struct RequestData *request);
 
 
 static struct Service nodeService = {
 	.Request  = node_request,
 	.Response = node_response,
-	.ID       = SERVICE_NODE,
+	.ID       = NODEID,
 	.Name     = "Node Service"
 };
 
@@ -45,7 +45,7 @@ static struct RequestData send_nodes(uint8_t type, Array ip4array) {
 	return result;
 }
 
-struct RequestData node_request(void *request) {
+struct RequestData node_request(ServicesData servicesData, void *request) {
 	NodeRequest *req = request;
 
 	struct RequestData data;
@@ -71,7 +71,7 @@ struct RequestData node_request(void *request) {
 }
 
 
-void node_response(struct Node *from, struct RequestData *request) {
+void node_response(ServicesData servicesData, struct Node *from, struct RequestData *request) {
 
 }
 
