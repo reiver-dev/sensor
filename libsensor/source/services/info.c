@@ -4,6 +4,7 @@
 #include "services_private.h"
 #include "info.h"
 
+#include "../balancing.h"
 #include "../util.h"
 #include "../debug.h"
 #include "../nodes.h"
@@ -103,6 +104,10 @@ static void info_response(ServicesData servicesData, struct Node *from, struct R
 		if (data->len - 1 < count * ITEM_SIZE) {
 			DWARNING("INFO SERVICE: info length is insufficient = %i\n", data->len - 1);
 			return;
+		}
+
+		if (balancing_get_state(servicesData->balancer) == STATE_WAIT_SENSORS) {
+			node_set_sensor(from);
 		}
 
 		int ip4addr;

@@ -379,7 +379,6 @@ int sensor_loop(sensor_t config) {
 
 	balancer = balancing_init(config);
 	nodes_init(&config->current);
-	Services_Init(config->opt.device_name);
 
 	/* Initial */
 	iteration_time = time(0);

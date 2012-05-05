@@ -50,3 +50,16 @@ void debug(int level, const char *function, char *format, ...){
 
 	printf(line);
 }
+
+void debug_append(int level, char *format, ...) {
+	if (rvr_debug < level)
+		return;
+
+	char line[512] = {0};
+	va_list arg;
+	va_start(arg, format);
+	vsprintf(line+strlen(line), format, arg);
+	va_end(arg);
+
+	printf(line);
+}

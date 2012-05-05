@@ -13,6 +13,7 @@
 
 void debug(int level, const char *function, char *format, ...);
 void debug_set_level(int lvl);
+void debug_append(int level, char *format, ...);
 
 #define DEBUG_LVL(lvl) debug_set_level(int lvl);
 
@@ -21,6 +22,10 @@ void debug_set_level(int lvl);
 #define DWARNING(fmt, ...) debug(DEBUG_LEVEL_WARNING, __FUNCTION__, fmt, ##__VA_ARGS__)
 #define DERROR(fmt, ...)   debug(DEBUG_LEVEL_ERROR,   __FUNCTION__, fmt, ##__VA_ARGS__)
 
+#define DINFOA(fmt, ...)    debug_append(DEBUG_LEVEL_INFO,    fmt, ##__VA_ARGS__)
+#define DNOTIFYA(fmt, ...)  debug_append(DEBUG_LEVEL_NOTIFY,  fmt, ##__VA_ARGS__)
+#define DWARNINGA(fmt, ...) debug_append(DEBUG_LEVEL_WARNING, fmt, ##__VA_ARGS__)
+#define DERRORA(fmt, ...)   debug_append(DEBUG_LEVEL_ERROR,   fmt, ##__VA_ARGS__)
 
 #else
 
@@ -29,6 +34,10 @@ void debug_set_level(int lvl);
 #define DWARNING(fmt, ...)
 #define DERROR(fmt, ...)
 
+#define DINFOA(fmt, ...)
+#define DNOTIFYA(fmt, ...)
+#define DWARNINGA(fmt, ...)
+#define DERRORA(fmt, ...)
 
 #endif /* DEBUG */
 

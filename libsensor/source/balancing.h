@@ -3,7 +3,7 @@
 
 #include "sensor_private.h"
 
-enum {
+enum BALANCING_STATE {
 	STATE_BEGIN,
 	STATE_WAIT_SENSORS,
 	STATE_ALONE,
@@ -19,7 +19,7 @@ bool balancing_filter_response(Balancer self, uint8_t *buffer, int length);
 void balancing_process(Balancer self);
 void balancing_receive_service(Balancer self);
 
-int balancing_get_state(Balancer self);
+uint8_t balancing_get_state(Balancer self);
 
 void balancing_add_load(Balancer self, uint8_t *buffer, int length);
 void balancing_count_load(Balancer self, uint32_t load_interval, uint32_t load_count);

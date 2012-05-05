@@ -4,11 +4,12 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include "../nodes.h"
+#include "../balancing.h"
 
 typedef struct Service *Service;
 typedef struct Services *ServicesData;
 
-ServicesData Services_Init(char *deviceName);
+ServicesData Services_Init(Balancer balancer, char *deviceName);
 void Services_Destroy(ServicesData);
 void Services_Invoke(ServicesData self, uint32_t serviceID, struct Node *to, void *request);
 void Services_Request(ServicesData self, Service service, struct Node *to, void *request);

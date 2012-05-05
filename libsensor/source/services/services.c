@@ -17,11 +17,6 @@
 #define MAX_SERVICES 2
 
 
-struct Services {
-	int udp_sock;
-	ArrayList services;
-};
-
 static const uint16_t ServicePort = 31337;
 
 struct Header {
@@ -168,7 +163,7 @@ void Services_Request(ServicesData self, Service service, struct Node *to, void 
 }
 
 
-ServicesData Services_Init(char *deviceName) {
+ServicesData Services_Init(Balancer balancer, char *deviceName) {
 
 	int udp_sock = socket(AF_INET, SOCK_DGRAM, 0);
 	struct sockaddr_in sockaddr;
@@ -194,6 +189,7 @@ ServicesData Services_Init(char *deviceName) {
 	struct Services *self = malloc(sizeof(*self));
 	self->udp_sock = udp_sock;
 	self->services = services;
+	self->balancer = balancer;
 
 	return self;
 

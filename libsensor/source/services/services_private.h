@@ -9,6 +9,12 @@ struct RequestData {
 	uint8_t *buffer;
 };
 
+struct Services {
+	int udp_sock;
+	ArrayList services;
+	Balancer balancer;
+};
+
 typedef struct RequestData (*service_request_f) (ServicesData servicesData, void *request);
 typedef void (*service_response_f)(ServicesData servicesData, struct Node *from, struct RequestData *request);
 

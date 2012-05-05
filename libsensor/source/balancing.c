@@ -167,7 +167,7 @@ Balancer balancing_init(sensor_t config) {
 	/* memorize current addreses */
 	self->current = &config->current;
 	self->State = STATE_BEGIN;
-	self->servicesData = Services_Init(config->opt.device_name);
+	self->servicesData = Services_Init(self, config->opt.device_name);
 	return self;
 }
 
@@ -224,6 +224,9 @@ void balancing_receive_service(Balancer self) {
 	Services_Receive(self->servicesData);
 }
 
+uint8_t balancing_get_state(Balancer self) {
+	return self->State;
+}
 
 void to_STATE_ALONE(Balancer self) {
 	self->State = STATE_ALONE;
