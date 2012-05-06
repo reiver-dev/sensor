@@ -22,6 +22,8 @@ void ArrayList_add(ArrayList self, void *item);
 
 void ArrayList_remove(ArrayList self, int index);
 void ArrayList_remove_fast(ArrayList self, int index);
+void *ArrayList_steal(ArrayList self, int index);
+void *ArrayList_steal_fast(ArrayList self, int index);
 
 void *ArrayList_find(ArrayList self, void *item, bool (*equals)(void *element, void *item));
 int ArrayList_indexOf(ArrayList self, void *item, bool (*equals)(void *element, void *item));

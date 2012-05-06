@@ -123,6 +123,32 @@ void ArrayList_remove_fast(ArrayList self, int index) {
 	self->length--;
 }
 
+void *ArrayList_steal(ArrayList self, int index) {
+	RETURN_IF_FAILV(checkLength(self, index), NULL);
+
+	void *temp = self->data[index];
+
+	if (!LAST_INDEX(self, index))
+		moveData(self->data, index, index + 1, self->length - index);
+
+	self->length--;
+
+	return temp;
+}
+
+void *ArrayList_steal_fast(ArrayList self, int index) {
+	RETURN_IF_FAILV(checkLength(self, index), NULL);
+
+	void *temp = self->data[index];
+
+	if (!LAST_INDEX(self, index))
+		self->data[index] = self->data[self->length - 1];
+
+	self->length--;
+
+	return temp;
+}
+
 static bool equals_by_link(void *a, void *b) {
 	return a == b ? true : false;
 }

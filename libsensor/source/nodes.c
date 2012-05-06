@@ -99,8 +99,7 @@ bool unset_owned(struct Node *client) {
 	ArrayList ownedNodes = sensor->info.sensor.clients;
 	int owned = ArrayList_indexOf(ownedNodes, client, 0);
 	assert(owned >= 0);
-	ArrayList_remove(ownedNodes, owned);
-
+	ArrayList_steal(ownedNodes, owned);
 
 	return true;
 }
@@ -143,7 +142,6 @@ static void _client_init(struct Node *client) {
 }
 
 static void _client_destroy(struct Node *client) {
-	unset_owned(client);
 	ArrayList_destroy(client->info.client.moment_load);
 }
 
@@ -156,8 +154,6 @@ static void _sensor_init(struct Node *sensor) {
 
 static void _sensor_destroy(struct Node *sensor) {
 	ArrayList_destroy(sensor->info.sensor.clients);
-	int i = ArrayList_indexOf(SensorNodes, sensor, 0);
-	ArrayList_remove(SensorNodes, i);
 }
 
 static void _gateway_init(struct Node *gw) {
@@ -208,31 +204,38 @@ void nodes_destroy() {
 
 /* services */
 void node_unset(struct Node *node) {
+	int temp;
+
 	switch (node->type) {
 	case NODE_TYPE_CLIENT:
+		unset_owned(node);
 		_client_destroy(node);
 		break;
 	case NODE_TYPE_SENSOR:
-		_sensor_destroy(node);
+		temp = ArrayList_indexOf(SensorNodes, node, 0);
+		ArrayList_remove(SensorNodes, temp);
 		break;
 	}
 }
 
 void node_set_sensor(struct Node *node) {
 	DINFO("Node (%s) is becoming sensor\n", Ip4ToStr(node->ip4addr));
-	node_unset(node);
+	if (node->type != NODE_TYPE_SENSOR)
+		node_unset(node);
 	_sensor_init(node);
 }
 
 void node_set_client(struct Node *node) {
 	DINFO("Node (%s) is becoming client\n", Ip4ToStr(node->ip4addr));
-	node_unset(node);
+	if (node->type != NODE_TYPE_CLIENT)
+		node_unset(node);
 	_client_init(node);
 }
 
 void node_set_gateway(struct Node *node) {
 	DINFO("Node (%s) is becoming gateway\n", Ip4ToStr(node->ip4addr));
-	node_unset(node);
+	if (node->type != NODE_TYPE_GATEWAY)
+		node_unset(node);
 	_gateway_init(node);
 }
 
