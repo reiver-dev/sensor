@@ -1,8 +1,10 @@
 #include <stdlib.h>
+#include "services.h"
 #include "services_private.h"
 #include "bootstrap.h"
 #include "info.h"
 
+#include "../debug.h"
 #include "../util.h"
 
 
@@ -17,8 +19,13 @@ static struct Service bootstrapService = {
 	.Request  = bootstrap_request,
 	.Response = bootstrap_response,
 	.ID       = BOOTSTRAPID,
-	.Name     = "Bootstrap Service"
+	.Name     = "Bootstrap Service",
+	.broadcast_allowed = true
 };
+
+Service BootstrapService_Get() {
+	return &bootstrapService;
+}
 
 
 static struct RequestData bootstrap_request(ServicesData servicesData, void *request) {
@@ -31,6 +38,9 @@ static struct RequestData bootstrap_request(ServicesData servicesData, void *req
 		*buf = BOOTSTRAP_TYPE_CONNECT;
 		break;
 	case BOOTSTRAP_TYPE_DISCONNECT:
+		*buf = BOOTSTRAP_TYPE_DISCONNECT;
+		break;
+	case BOOTSTRAP_TYPE_CONNECT_ACK:
 		*buf = BOOTSTRAP_TYPE_DISCONNECT;
 		break;
 	default:
@@ -49,15 +59,32 @@ static void bootstrap_response(ServicesData servicesData, struct Node *from, str
 
 	if (type == BOOTSTRAP_TYPE_CONNECT) {
 		node_set_sensor(from);
-		InfoRequest request = {INFO_TYPE_PUSH};
-		Services_Request(servicesData, InfoService_Get(), 0, &request);
+
+		BootstrapRequest bootreq = {BOOTSTRAP_TYPE_CONNECT_ACK};
+		Services_Request(servicesData, BootstrapService_Get(), 0, &bootreq);
+
 	} else if (BOOTSTRAP_TYPE_DISCONNECT) {
 		node_set_client(from);
+
+	} else if (BOOTSTRAP_TYPE_CONNECT_ACK) {
+
+		if (from == NULL) {
+			DERROR("%s", "Got connect ack broadcasted");
+			return;
+		}
+
+		int State = balancing_get_state(servicesData->balancer);
+		if (State != STATE_WAIT_SENSORS) {
+			DERROR("Got connect ack while not in STATE_WAIT_SENSORS from (%s)", Ip4ToStr(from->ip4addr));
+			return;
+		}
+
+		node_set_sensor(from);
+
+		InfoRequest inforeq = {INFO_TYPE_PUSH};
+		Services_Request(servicesData, InfoService_Get(), 0, &inforeq);
+
 	}
 
-}
-
-Service BootStrapService_Get() {
-	return &bootstrapService;
 }
 

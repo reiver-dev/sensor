@@ -9,10 +9,12 @@
 #include "services_private.h"
 #include "info.h"
 #include "node.h"
+#include "bootstrap.h"
 
 #include "../debug.h"
 #include "../util.h"
 #include "../packet_extract.h"
+
 
 #define MAX_SERVICES 2
 
@@ -185,6 +187,7 @@ ServicesData Services_Init(Balancer balancer, char *deviceName) {
 	ArrayList services = ArrayList_init(3, 0);
 	ArrayList_add(services, InfoService_Get());
 	ArrayList_add(services, NodeService_Get());
+	ArrayList_add(services, BootstrapService_Get());
 
 	struct Services *self = malloc(sizeof(*self));
 	self->udp_sock = udp_sock;

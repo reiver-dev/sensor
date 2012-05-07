@@ -22,7 +22,8 @@ static struct Service infoService = {
 	.Request  = info_request,
 	.Response = info_response,
 	.ID       = INFOID,
-	.Name     = "Info Service"
+	.Name     = "Info Service",
+	.broadcast_allowed = true
 };
 
 static struct RequestData pop_info() {

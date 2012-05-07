@@ -21,7 +21,8 @@ static struct Service nodeService = {
 	.Request  = node_request,
 	.Response = node_response,
 	.ID       = NODEID,
-	.Name     = "Node Service"
+	.Name     = "Node Service",
+	.broadcast_allowed = false
 };
 
 

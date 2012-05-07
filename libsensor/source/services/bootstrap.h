@@ -4,6 +4,7 @@
 #include "services.h"
 
 #define BOOTSTRAP_TYPE_CONNECT 1
+#define BOOTSTRAP_TYPE_CONNECT_ACK 2
 #define BOOTSTRAP_TYPE_DISCONNECT  0
 
 typedef struct {

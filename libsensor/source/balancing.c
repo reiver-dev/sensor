@@ -24,6 +24,7 @@
 
 
 #include "services/info.h"
+#include "services/bootstrap.h"
 
 char *state_text[] = {
 	"STATE_BEGIN",
@@ -48,8 +49,8 @@ bool is_same_network_ip4(Balancer self, uint32_t ip) {
 
 
 void seek_sensors(Balancer self) {
-	InfoRequest request = {INFO_TYPE_POP};
-	Services_Request(self->servicesData, InfoService_Get(), 0, &request);
+	BootstrapRequest request = {BOOTSTRAP_TYPE_CONNECT};
+	Services_Request(self->servicesData, BootstrapService_Get(), 0, &request);
 }
 
 void take_all_nodes(Balancer self) {
