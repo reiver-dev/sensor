@@ -53,6 +53,8 @@ void queue_destroy(Queue_t self) {
 		queue_item_destroy(item);
 		item = next;
 	}
+
+	free(self);
 }
 
 void queue_destroy_r(Queue_t self, queue_content_destroy_f content_destroy) {

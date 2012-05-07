@@ -179,7 +179,10 @@ void nodes_init(struct CurrentAddress *curr) {
 	for (uint32_t i = 0; i < NodeCount; i++) {
 		struct Node *node = & Nodes[i];
 		node->ip4addr = htonl(network + i + 1);
+		memset(node->hwaddr, 0, ETH_ALEN);
 		node->type    = NODE_TYPE_UNKNOWN;
+		node->last_check = 0;
+		node->is_online = false;
 	}
 
 	Me = node_get(curr->ip4addr);

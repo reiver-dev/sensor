@@ -173,8 +173,8 @@ int sensor_clean(sensor_t config){
 	queue_destroy(config->captured);
 	queue_destroy(config->dissected);
 	if (config->opt.capture.promiscuous) {
-		int res;
-		if (!(res = set_iface_promiscuous(config->sock, config->opt.device_name, false)))
+		int res = set_iface_promiscuous(config->sock, config->opt.device_name, false);
+		if (res)
 			return res;
 	}
 	close_socket(config->sock);
@@ -492,6 +492,7 @@ int sensor_loop(sensor_t config) {
 	DNOTIFY("%s\n","Capture ended");
 	balancing_destroy(balancer);
 	nodes_destroy();
+	free(buffer);
 	sensor_clean(config);
 	return SENSOR_SUCCESS;
 }

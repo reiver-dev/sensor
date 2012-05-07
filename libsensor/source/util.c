@@ -74,7 +74,7 @@ int bitcount(unsigned int n) {
 int bind_socket_to_interface(int sock, char *interfaceName) {
 
 	struct ifreq interface;
-	struct sockaddr_ll address;
+	struct sockaddr_ll address = {0};
 
 	strcpy(interface.ifr_name, interfaceName);
 
@@ -85,6 +85,7 @@ int bind_socket_to_interface(int sock, char *interfaceName) {
 	}
 
 	// Bind raw socket to interface
+
 	address.sll_family   = AF_PACKET;
 	address.sll_ifindex  = interface.ifr_ifindex;
 	address.sll_protocol = htons(ETH_P_ALL);

@@ -47,23 +47,7 @@ bool is_same_network_ip4(Balancer self, uint32_t ip) {
 	return (network & ip) == network;
 }
 
-
-void seek_sensors(Balancer self) {
-	BootstrapRequest request = {BOOTSTRAP_TYPE_CONNECT};
-	Services_Request(self->servicesData, BootstrapService_Get(), 0, &request);
-}
-
-void take_all_nodes(Balancer self) {
-	int node_count = nodes_count();
-	struct Node *nodes = nodes_get();
-
-	for (int i = 0; i < node_count; i++) {
-		if (nodes[i].is_online && nodes[i].ip4addr != self->current->gateway) {
-			node_take(&nodes[i]);
-		}
-	}
-
-}
+/* -------------------------- loading */
 
 int load_compare(const void *m1, const void *m2) {
 	uint32_t first = (*(struct NodeLoad **)m1)->load;
@@ -173,6 +157,7 @@ Balancer balancing_init(sensor_t config) {
 }
 
 void balancing_destroy(Balancer self) {
+	Services_Destroy(self->servicesData);
 	free(self);
 }
 
@@ -221,6 +206,9 @@ void balancing_count_load(Balancer self, uint32_t load_interval, uint32_t load_c
 	}
 }
 
+/* -------------------------------- State Machine */
+
+
 void balancing_receive_service(Balancer self) {
 	Services_Receive(self->servicesData);
 }
@@ -229,9 +217,38 @@ uint8_t balancing_get_state(Balancer self) {
 	return self->State;
 }
 
+
+void seek_sensors(Balancer self) {
+	BootstrapRequest request = {BOOTSTRAP_TYPE_CONNECT};
+	Services_Request(self->servicesData, BootstrapService_Get(), 0, &request);
+}
+
+void take_all_nodes(Balancer self) {
+	int node_count = nodes_count();
+	struct Node *nodes = nodes_get();
+
+	for (int i = 0; i < node_count; i++) {
+		if (nodes[i].is_online && nodes[i].ip4addr != self->current->gateway) {
+			node_take(&nodes[i]);
+		}
+	}
+
+}
+
+void rebalance_nodes(Balancer self) {
+
+
+
+}
+
 void to_STATE_ALONE(Balancer self) {
 	self->State = STATE_ALONE;
 	take_all_nodes(self);
+}
+
+void to_STATE_COUPLE(Balancer self) {
+	self->State = STATE_COUPLE;
+	rebalance_nodes(self);
 }
 
 void balancing_process(Balancer self) {

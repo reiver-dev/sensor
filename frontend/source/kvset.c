@@ -39,7 +39,7 @@ kvset InitKVS(int count, const char **sections) {
 
 		for (int i = 0; i < count; i++) {
 			int tmp = strlen(sections[i]);
-			kvs->sections[i] = malloc(tmp);
+			kvs->sections[i] = malloc(tmp + 1);
 			strcpy(kvs->sections[i], sections[i]);
 		}
 
@@ -63,7 +63,7 @@ void AddKVS(kvset self, int section, int type, char *name, void *value) {
 	val->type    = type;
 
 	int len = strlen(name);
-	val->name = malloc(len);
+	val->name = malloc(len + 1);
 	strcpy(val->name, name);
 
 	val->next = self->values[section];
