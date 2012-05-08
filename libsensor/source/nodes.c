@@ -312,6 +312,11 @@ struct Node *node_get_gateway() {
 	return NULL;
 }
 
+
+struct Node *node_get_me() {
+	return Me;
+}
+
 int nodes_count() {
 	return NodeCount;
 }

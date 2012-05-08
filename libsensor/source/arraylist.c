@@ -73,8 +73,44 @@ void ArrayList_clear(ArrayList self) {
 	self->length = 0;
 }
 
+
+ArrayList ArrayList_copy(ArrayList self) {
+	ArrayList list = malloc(sizeof(*list));
+
+	list->data = ArrayList_getDataCopy(self);
+
+	/* use all allocated size if array is empty */
+	size_t len;
+	if (self->length != 0) {
+		len = self->length;
+	} else {
+		len = self->size;
+	}
+
+	list->length = len;
+	list->size = len;
+
+	list->destroyer = 0; /* data will be cleaned only with parent */
+
+	return list;
+}
+
 void **ArrayList_getData(ArrayList self) {
 	return self->data;
+}
+
+void **ArrayList_getDataCopy(ArrayList self) {
+	/* use all allocated size if array is empty */
+	size_t len;
+	if (self->length != 0) {
+		len = self->length;
+	} else {
+		len = self->size;
+	}
+
+	void **dataCopy = malloc(len * sizeof(POINTER));
+	memcpy(dataCopy, self->data, len * sizeof(POINTER));
+	return dataCopy;
 }
 
 void *ArrayList_get(ArrayList self, int index) {
@@ -206,4 +242,7 @@ void ArrayList_foreach_arg(ArrayList self, void (*func)(void *, void *), void *a
 	}
 }
 
+void ArrayList_qsort(ArrayList self, int (*cmp)(const void *, const void *)) {
+	qsort(self->data, self->length, sizeof(POINTER), cmp);
+}
 

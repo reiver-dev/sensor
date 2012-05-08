@@ -25,6 +25,7 @@
 
 #include "services/info.h"
 #include "services/bootstrap.h"
+#include "bestfit.h"
 
 char *state_text[] = {
 	"STATE_BEGIN",
@@ -235,9 +236,41 @@ void take_all_nodes(Balancer self) {
 
 }
 
+int client_load_compare_dec(const void *c1, const void *c2) {
+	int load1 = (*(struct Node **) c1)->info.client.load.load;
+	int load2 = (*(struct Node **) c2)->info.client.load.load;
+
+	return load1 == load2 ? 0 : load1 < load2 ? 1 : -1;
+}
+
+int clients_load_sum(struct Node **clients, int client_count) {
+	int result = 0;
+	for (int i = 0; i < client_count; i++) {
+		result += clients[i]->info.client.load.load;
+	}
+	return result;
+}
+
+
+ArrayList count_nodes_to_take(ArrayList sensors) {
+	ArrayList sensorsCopy = ArrayList_copy(sensors);
+
+	ArrayList_add(sensorsCopy, node_get_me());
+	ArrayList solution = bestfit_solution(sensorsCopy);
+
+	ArrayList clients = ArrayList_find(sensorsCopy, node_get_me(), NULL);
+	ArrayList clientsCopy = ArrayList_copy(clients);
+
+	free(solution);
+	free(sensorsCopy);
+
+	return clientsCopy;
+}
+
+
 void rebalance_nodes(Balancer self) {
-
-
+	ArrayList sensors = nodes_get_sensors();
+	ArrayList nodes = count_nodes_to_take(sensors);
 
 }
 
