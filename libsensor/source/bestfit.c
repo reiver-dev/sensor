@@ -101,6 +101,6 @@ ArrayList bestfit_solution(ArrayList sensors) {
 
 End:
 
-	free(allClients);
+	ArrayList_destroy(allClients);
 	return solution;
 }

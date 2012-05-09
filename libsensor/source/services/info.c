@@ -107,10 +107,6 @@ static void info_response(ServicesData servicesData, struct Node *from, struct R
 			return;
 		}
 
-		if (balancing_get_state(servicesData->balancer) == STATE_WAIT_SENSORS) {
-			node_set_sensor(from);
-		}
-
 		int ip4addr;
 		struct NodeLoad load;
 		for (int i = 0; i < count; i++) {

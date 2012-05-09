@@ -93,7 +93,7 @@ bool Array_checkType(Array self, size_t itemSize) {
 
 void Array_add(Array self, void *item) {
 	ensureSize(self, 1);
-	self->data[self->length] = item;
+	memcpy(self->data + self->length * sizeof(self->itemSize), item, sizeof(self->itemSize));
 	self->length++;
 }
 

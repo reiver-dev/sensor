@@ -80,15 +80,13 @@ ArrayList ArrayList_copy(ArrayList self) {
 	list->data = ArrayList_getDataCopy(self);
 
 	/* use all allocated size if array is empty */
-	size_t len;
-	if (self->length != 0) {
-		len = self->length;
-	} else {
-		len = self->size;
-	}
 
-	list->length = len;
-	list->size = len;
+	list->length = self->length;
+	if (self->length == 0) {
+		list->size = 10;
+	} else {
+		list->size = self->length;
+	}
 
 	list->destroyer = 0; /* data will be cleaned only with parent */
 

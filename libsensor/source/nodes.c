@@ -223,10 +223,11 @@ void node_unset(struct Node *node) {
 
 void node_set_sensor(struct Node *node) {
 	DINFO("Node (%s) is becoming sensor\n", Ip4ToStr(node->ip4addr));
-	if (node->type != NODE_TYPE_SENSOR)
+	if (node->type != NODE_TYPE_SENSOR) {
 		node_unset(node);
-	_sensor_init(node);
-	ArrayList_add(SensorNodes, node);
+		_sensor_init(node);
+		ArrayList_add(SensorNodes, node);
+	}
 }
 
 void node_set_client(struct Node *node) {

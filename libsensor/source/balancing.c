@@ -25,6 +25,7 @@
 
 #include "services/info.h"
 #include "services/bootstrap.h"
+#include "services/node.h"
 #include "bestfit.h"
 
 char *state_text[] = {
@@ -258,20 +259,35 @@ ArrayList count_nodes_to_take(ArrayList sensors) {
 	ArrayList_add(sensorsCopy, node_get_me());
 	ArrayList solution = bestfit_solution(sensorsCopy);
 
-	ArrayList clients = ArrayList_find(sensorsCopy, node_get_me(), NULL);
+	size_t me_index = ArrayList_indexOf(sensorsCopy, node_get_me(), NULL);
+	ArrayList clients = ArrayList_get(solution, me_index);
 	ArrayList clientsCopy = ArrayList_copy(clients);
 
-	free(solution);
-	free(sensorsCopy);
+	ArrayList_destroy(solution);
+	ArrayList_destroy(sensorsCopy);
 
 	return clientsCopy;
 }
 
-
 void rebalance_nodes(Balancer self) {
 	ArrayList sensors = nodes_get_sensors();
 	ArrayList nodes = count_nodes_to_take(sensors);
-
+	size_t count = ArrayList_length(nodes);
+	for (int i = 0; i < count; i++) {
+		struct Node *client = ArrayList_get(nodes, i);
+		if (node_is_me(client->info.client.owned_by)) {
+			uint32_t ip4addr = client->ip4addr;
+			Array array = Array_init(0, sizeof(ip4addr));
+			Array_add(array, &ip4addr);
+			NodeRequest request = {
+					.type = NODESERVICE_TYPE_TAKE,
+					.ip4array = array
+			};
+			Services_Request(self->servicesData, NodeService_Get(), client->info.client.owned_by, &request);
+			Array_destroy(array);
+		}
+	}
+	ArrayList_destroy(nodes);
 }
 
 void to_STATE_ALONE(Balancer self) {
@@ -307,22 +323,25 @@ void balancing_process(Balancer self) {
 			if (!ArrayList_length(nodes_get_sensors())) {
 				to_STATE_ALONE(self);
 			} else {
-				self->State = STATE_COUPLE;
+				to_STATE_COUPLE(self);
 			}
 			repeat = true;
 			break;
 
 		case STATE_ALONE:
 			if (!ArrayList_length(nodes_get_sensors())) {
-				seek_sensors(self);
+				take_all_nodes(self);
 			} else {
-				self->State = STATE_COUPLE;
+				to_STATE_COUPLE(self);
 			}
 			break;
 
 		case STATE_COUPLE:
-			DERROR("State not implemented yet: %s\n", state_text[STATE_COUPLE]);
-			exit(1);
+			if (!ArrayList_length(nodes_get_sensors())) {
+				to_STATE_ALONE(self);
+			} else {
+				rebalance_nodes(self);
+			}
 			break;
 
 		default:

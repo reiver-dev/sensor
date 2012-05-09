@@ -53,11 +53,11 @@ struct RequestData node_request(ServicesData servicesData, void *request) {
 
 	switch(req->type) {
 
-	case NODE_TYPE_GIVE:
+	case NODESERVICE_TYPE_GIVE:
 		data = send_nodes(req->type, req->ip4array);
 		break;
 
-	case NODE_TYPE_TAKE:
+	case NODESERVICE_TYPE_TAKE:
 		data = send_nodes(req->type, req->ip4array);
 		break;
 
@@ -73,6 +73,51 @@ struct RequestData node_request(ServicesData servicesData, void *request) {
 
 
 void node_response(ServicesData servicesData, struct Node *from, struct RequestData *request) {
+	uint8_t *ptr = request->buffer;
+
+	int type  = GetFromBuffer8(&ptr);
+
+	if (type == NODESERVICE_TYPE_TAKE) {
+
+		size_t len = GetFromBuffer32(&ptr);
+		if (request->len - 1 < len * ITEM_SIZE) {
+			DWARNING("NODE SERVICE: node length is insufficient = %i\n", request->len - 1);
+			return;
+		}
+
+
+		Array array = Array_init(0, sizeof(uint32_t));
+		for (size_t i = 0; i < len; i++) {
+			uint32_t ip4addr = GetFromBuffer32NoOrder(&ptr);
+			struct Node *client = node_get(ip4addr);
+			if (client != NULL && client->type == NODE_TYPE_CLIENT && node_is_me(client->info.client.owned_by)) {
+				Array_add(array, &ip4addr);
+			}
+		}
+
+		if (Array_length(array) > 0) {
+			NodeRequest request = {
+					.type = NODESERVICE_TYPE_GIVE,
+					.ip4array = array
+			};
+			Services_Request(servicesData, NodeService_Get(), from, &request);
+		}
+		Array_destroy(array);
+
+	} else if (type == NODESERVICE_TYPE_GIVE) {
+
+		size_t len = GetFromBuffer32(&ptr);
+		if (request->len - 1 < len * ITEM_SIZE) {
+			DWARNING("NODE SERVICE: node length is insufficient = %i\n", request->len - 1);
+			return;
+		}
+
+		int ip4addr;
+		for (int i = 0; i < len; i++) {
+			ip4addr = GetFromBuffer32NoOrder(&ptr);
+			node_take(node_get(ip4addr));
+		}
+	}
 
 }
 
