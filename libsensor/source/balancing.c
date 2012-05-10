@@ -135,7 +135,7 @@ struct Node *get_client(Balancer self, uint8_t *buffer, int length) {
 	struct Node *gw = node_get_gateway();
 
 	struct Node *source	= node_get_destination(ipheader->saddr);
-	if (source && source != gw) {
+	if (source && source != gw && source != node_get_me()) {
 		return source;
 	}
 
@@ -173,10 +173,13 @@ bool balancing_filter_response(Balancer self, uint8_t *buffer, int length) {
 void balancing_add_load(Balancer self, uint8_t *buffer, int length) {
 	struct Node *client = get_client(self, buffer, length);
 	if (client != NULL) {
-		if (client->type != NODE_TYPE_CLIENT) {
-			DERROR("Can't count load, node is not client:\n%s\n", node_toString(client));
-		} else{
+		if (client->type == NODE_TYPE_CLIENT) {
 			load_bytes_add(client, length);
+		} else {
+//			struct iphdr *ip_header = packet_map_ip(buffer, length);
+//			DERROR("Can't count load, (%s - ", Ip4ToStr(ip_header->saddr));
+//			DERRORA("%s) ", Ip4ToStr(ip_header->daddr));
+//			DERRORA("node is:\n%s\n", node_toString(client));
 		}
 	}
 }
@@ -253,10 +256,18 @@ int clients_load_sum(struct Node **clients, int client_count) {
 }
 
 
+static int sort_node_by_ip(const void *n1, const void *n2) {
+	uint32_t ip1 = (*(struct Node **)n1)->ip4addr;
+	uint32_t ip2 = (*(struct Node **)n2)->ip4addr;
+	return ip1 == ip2 ? 0 : ip1 < ip2 ? -1 : 1;
+}
+
 ArrayList count_nodes_to_take(ArrayList sensors) {
 	ArrayList sensorsCopy = ArrayList_copy(sensors);
 
 	ArrayList_add(sensorsCopy, node_get_me());
+	ArrayList_qsort(sensorsCopy, sort_node_by_ip);
+
 	ArrayList solution = bestfit_solution(sensorsCopy);
 
 	size_t me_index = ArrayList_indexOf(sensorsCopy, node_get_me(), NULL);
@@ -273,15 +284,17 @@ void rebalance_nodes(Balancer self) {
 	ArrayList sensors = nodes_get_sensors();
 	ArrayList nodes = count_nodes_to_take(sensors);
 	size_t count = ArrayList_length(nodes);
+	DNOTIFY("Taking (%i) nodes\n", count);
 	for (int i = 0; i < count; i++) {
 		struct Node *client = ArrayList_get(nodes, i);
-		if (node_is_me(client->info.client.owned_by)) {
+		if (!node_is_me(client->info.client.owned_by)) {
 			uint32_t ip4addr = client->ip4addr;
+			DNOTIFYA("%s\n", Ip4ToStr(ip4addr));
 			Array array = Array_init(0, sizeof(ip4addr));
 			Array_add(array, &ip4addr);
 			NodeRequest request = {
-					.type = NODESERVICE_TYPE_TAKE,
-					.ip4array = array
+				.type = NODESERVICE_TYPE_TAKE,
+				.ip4array = array
 			};
 			Services_Request(self->servicesData, NodeService_Get(), client->info.client.owned_by, &request);
 			Array_destroy(array);

@@ -6,7 +6,8 @@
 
 
 static int roundload(int load) {
-	return load / 1000;
+	int temp = load / 1000;
+	return temp != 0 ? temp : 1;
 }
 
 
@@ -69,9 +70,9 @@ static size_t find_lowest_load(ArrayList solution) {
 	}
 
 	size_t index = -1;
-	int min = -1;
+	uint32_t min = UINT32_MAX;
 	for (size_t i = 0; i < sensor_count; i++) {
-		if (min < loads[i]) {
+		if (min > loads[i]) {
 			min = loads[i];
 			index = i;
 		}

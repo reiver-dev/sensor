@@ -289,7 +289,7 @@ bool Services_isResponse(uint8_t *buffer, int len) {
 		return false;
 
 	/* if from any sensor to me OR broadcast */
-	if (from->type == NODE_TYPE_SENSOR && (to == NULL || node_is_me(to))) {
+	if (from->type == NODE_TYPE_SENSOR && (to == NULL || to->type == NODE_TYPE_SENSOR)) {
 		uint8_t *data = packet_map_payload(buffer, len);
 		if (data
 			&& checkHeaderConstans((struct Header *)data)

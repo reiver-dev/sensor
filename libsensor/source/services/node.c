@@ -13,8 +13,8 @@
 #define NODEID 1
 #define ITEM_SIZE sizeof(uint32_t)
 
-struct RequestData node_request(ServicesData servicesData, void *request);
-void node_response(ServicesData servicesData, struct Node *from, struct RequestData *request);
+static struct RequestData node_request(ServicesData servicesData, void *request);
+static void node_response(ServicesData servicesData, struct Node *from, struct RequestData *request);
 
 
 static struct Service nodeService = {
@@ -30,15 +30,22 @@ static struct RequestData send_nodes(uint8_t type, Array ip4array) {
 	assert(ip4array);
 	assert(Array_checkType(ip4array, sizeof(uint32_t)));
 
-	uint8_t *buffer, *ptr;
-	int len = Array_length(ip4array) * (ITEM_SIZE) + 5;
+	size_t count = Array_length(ip4array);
+	if (count == 0) {
+		struct RequestData result = {0, NULL};
+		return result;
+	}
+
+	int len = count * (ITEM_SIZE) + 5;
+	uint8_t *buffer = malloc(len);
+	uint8_t *ptr = buffer;
 
 	buffer = malloc(len);
 	ptr = buffer;
 
 	AddToBuffer8(&ptr, type);
-	AddToBuffer32(&ptr, len);
-	for (int i = 0; i < len; i++) {
+	AddToBuffer32(&ptr, count);
+	for (int i = 0; i < count; i++) {
 		AddToBuffer32NoOrder(&ptr, ARRAY_GET(ip4array, uint32_t, i));
 	}
 
@@ -46,7 +53,7 @@ static struct RequestData send_nodes(uint8_t type, Array ip4array) {
 	return result;
 }
 
-struct RequestData node_request(ServicesData servicesData, void *request) {
+static struct RequestData node_request(ServicesData servicesData, void *request) {
 	NodeRequest *req = request;
 
 	struct RequestData data;
@@ -72,22 +79,22 @@ struct RequestData node_request(ServicesData servicesData, void *request) {
 }
 
 
-void node_response(ServicesData servicesData, struct Node *from, struct RequestData *request) {
+static void node_response(ServicesData servicesData, struct Node *from, struct RequestData *request) {
 	uint8_t *ptr = request->buffer;
 
 	int type  = GetFromBuffer8(&ptr);
 
 	if (type == NODESERVICE_TYPE_TAKE) {
 
-		size_t len = GetFromBuffer32(&ptr);
-		if (request->len - 1 < len * ITEM_SIZE) {
+		size_t count = GetFromBuffer32(&ptr);
+		if (request->len - 1 < count * ITEM_SIZE) {
 			DWARNING("NODE SERVICE: node length is insufficient = %i\n", request->len - 1);
 			return;
 		}
 
 
 		Array array = Array_init(0, sizeof(uint32_t));
-		for (size_t i = 0; i < len; i++) {
+		for (size_t i = 0; i < count; i++) {
 			uint32_t ip4addr = GetFromBuffer32NoOrder(&ptr);
 			struct Node *client = node_get(ip4addr);
 			if (client != NULL && client->type == NODE_TYPE_CLIENT && node_is_me(client->info.client.owned_by)) {
@@ -106,14 +113,14 @@ void node_response(ServicesData servicesData, struct Node *from, struct RequestD
 
 	} else if (type == NODESERVICE_TYPE_GIVE) {
 
-		size_t len = GetFromBuffer32(&ptr);
-		if (request->len - 1 < len * ITEM_SIZE) {
-			DWARNING("NODE SERVICE: node length is insufficient = %i\n", request->len - 1);
+		size_t count = GetFromBuffer32(&ptr);
+		if (request->len - 1 < count * ITEM_SIZE) {
+			DWARNING("NODE SERVICE: node length is insufficient = %i\n", request->len);
 			return;
 		}
 
 		int ip4addr;
-		for (int i = 0; i < len; i++) {
+		for (int i = 0; i < count; i++) {
 			ip4addr = GetFromBuffer32NoOrder(&ptr);
 			node_take(node_get(ip4addr));
 		}
