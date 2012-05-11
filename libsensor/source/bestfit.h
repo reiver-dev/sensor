@@ -4,7 +4,7 @@
 #include "arraylist.h"
 
 
-ArrayList bestfit_solution(ArrayList sensors);
+ArrayList bestfit_solution(ArrayList sensors, ArrayList clients);
 
 
 #endif /* BESTFIT_H_ */

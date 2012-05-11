@@ -29,4 +29,10 @@ void balancing_node_owned(Balancer self, uint32_t ip4s, uint32_t ip4c);
 void balancing_add_load(Balancer self, uint8_t *buffer, int length);
 void balancing_count_load(Balancer self, uint32_t load_interval, uint32_t load_count);
 
+bool balancing_is_valid_addreses(Balancer self, uint32_t ip4from, uint32_t ip4to);
+bool balancing_is_in_session(Balancer self, uint32_t ip);
+
+void balancing_init_sensor_session(Balancer self, uint32_t ip4);
+void balancing_break_sensor_session(Balancer self, uint32_t ip4);
+
 #endif /* BALANCING_H_ */

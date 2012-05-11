@@ -58,13 +58,13 @@ static void bootstrap_response(ServicesData servicesData, struct Node *from, str
 	int type  = GetFromBuffer8(&ptr);
 
 	if (type == BOOTSTRAP_TYPE_CONNECT) {
-		node_set_sensor(from);
+		balancing_init_sensor_session(servicesData->balancer, from->ip4addr);
 
 		BootstrapRequest bootreq = {BOOTSTRAP_TYPE_CONNECT_ACK};
 		Services_Request(servicesData, BootstrapService_Get(), 0, &bootreq);
 
 	} else if (BOOTSTRAP_TYPE_DISCONNECT) {
-		node_set_client(from);
+		balancing_break_sensor_session(servicesData->balancer, from->ip4addr);
 
 	} else if (BOOTSTRAP_TYPE_CONNECT_ACK) {
 
@@ -79,7 +79,7 @@ static void bootstrap_response(ServicesData servicesData, struct Node *from, str
 			return;
 		}
 
-		node_set_sensor(from);
+		balancing_init_sensor_session(servicesData->balancer, from->ip4addr);
 
 		InfoRequest inforeq = {INFO_TYPE_PUSH};
 		Services_Request(servicesData, InfoService_Get(), 0, &inforeq);

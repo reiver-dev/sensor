@@ -8,6 +8,8 @@
 #include "nodes.h"
 #include "util.h"
 
+
+
 static inline ArrayList get_client_moment_load(HashMap clientMomentLoads, struct Node *client) {
 	return HashMap_get(clientMomentLoads, &client->ip4addr);
 }

@@ -208,7 +208,7 @@ bool prepare_redirect(sensor_t sensor, uint8_t* buffer, int captured) {
 			&& !memcmp(ethernet->ether_dhost, sensor->current.hwaddr, ETH_ALEN)
 			&& memcmp(ethernet->ether_shost, sensor->current.hwaddr, ETH_ALEN)) {
 
-			struct Node *dest = node_get_destination(ipheader->daddr);
+			struct Node *dest = nodes_get_destination(ipheader->daddr);
 			memcpy(ethernet->ether_dhost, dest->hwaddr, ETH_ALEN);
 			memcpy(ethernet->ether_shost, sensor->current.hwaddr, ETH_ALEN);
 			return true;
@@ -236,7 +236,7 @@ bool restore_redirect(sensor_t sensor, uint8_t* buffer, int captured) {
 			&& memcmp(ethernet->ether_dhost, sensor->current.hwaddr, ETH_ALEN)
 			&& !memcmp(ethernet->ether_shost, sensor->current.hwaddr, ETH_ALEN)) {
 
-			struct Node *source = node_get_destination(ipheader->saddr);
+			struct Node *source = nodes_get_destination(ipheader->saddr);
 			memcpy(ethernet->ether_shost, source->hwaddr, ETH_ALEN);
 			return true;
 		}

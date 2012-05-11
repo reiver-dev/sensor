@@ -96,8 +96,8 @@ static void node_response(ServicesData servicesData, struct Node *from, struct R
 		Array array = Array_init(0, sizeof(uint32_t));
 		for (size_t i = 0; i < count; i++) {
 			uint32_t ip4addr = GetFromBuffer32NoOrder(&ptr);
-			struct Node *client = node_get(ip4addr);
-			if (client != NULL && client->type == NODE_TYPE_CLIENT && node_is_me(client->owned_by)) {
+			struct Node *client = nodes_get_node(ip4addr);
+			if (client != NULL && !balancing_is_in_session(servicesData->balancer, ip4addr) && nodes_is_me(client->owned_by)) {
 				Array_add(array, &ip4addr);
 			}
 		}

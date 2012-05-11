@@ -213,7 +213,6 @@ HashMap HashMap_initInt32(HashMapDestroyer key, HashMapDestroyer value) {
 	return HashMap_init(hash_int32, equals_int32, key, value);
 }
 
-
 void HashMap_destroy(HashMap self) {
 	assert(self);
 
@@ -392,9 +391,21 @@ void HashMap_remove(HashMap self, void *key) {
 	struct Bucket *bucket = steal_bucket(self, hash, key);
 	if (bucket != NULL) {
 		bucket_destroy(self, bucket);
+		self->capacity--;
 	}
-
-	self->capacity--;
-
 }
 
+void *HashMap_steal(HashMap self, void *key) {
+	assert(self);
+	assert(key);
+
+	uint32_t hash = self->hashf(key);
+
+	struct Bucket *bucket = steal_bucket(self, hash, key);
+	if (bucket != NULL) {
+		self->capacity--;
+	}
+
+	return bucket;
+
+}

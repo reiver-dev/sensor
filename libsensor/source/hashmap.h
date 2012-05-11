@@ -34,5 +34,6 @@ bool HashMap_contains(HashMap self, void *key);
 bool HashMap_add(HashMap self, void *key, void *val);
 void HashMap_addInt32(HashMap self, uint32_t key, void *val);
 void HashMap_remove(HashMap self, void *key);
+void *HashMap_steal(HashMap self, void *key);
 
 #endif /* HASHMAP_H */

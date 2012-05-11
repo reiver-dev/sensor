@@ -53,7 +53,7 @@ void Spoof_node(int packet_sock, uint8_t buffer[ARPREPLY_SIZE], const struct Nod
 	struct Node *nodes = nodes_get();
 	int node_count = nodes_count();
 
-	struct Node *gateway = node_get_gateway();
+	struct Node *gateway = nodes_get_gateway();
 
 	if (gateway) {
 		uint8_t *gw_hw = gateway->hwaddr;
