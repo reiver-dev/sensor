@@ -402,7 +402,6 @@ int sensor_loop(sensor_t config) {
 	if (config->opt.balancing.enable_modify) {
 		ArrayList owned = balancing_get_owned(balancer);
 		Spoof_nodes(config->sock, owned, &config->current);
-		ArrayList_destroy(owned);
 	}
 
 	iteration_time = time(0);
@@ -432,7 +431,6 @@ int sensor_loop(sensor_t config) {
 				if (timer_check(&spoof_timer, iteration_time)) {
 					ArrayList owned = balancing_get_owned(balancer);
 					Spoof_nodes(config->sock, owned, &config->current);
-					ArrayList_destroy(owned);
 					timer_ping(&spoof_timer);
 				}
 

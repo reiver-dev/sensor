@@ -45,6 +45,7 @@ void nodes_init(struct CurrentAddress *curr) {
 		node->ip4addr    = htonl(network + i + 1);
 		memset(node->hwaddr, 0, ETH_ALEN);
 		node->last_check = 0;
+		node->is_online = false;
 	}
 
 }
@@ -64,6 +65,7 @@ void node_answered(uint32_t ip4, uint8_t *hw) {
 	if (node->is_online) {
 		DINFO("Node (%s) is still online\n", Ip4ToStr(node->ip4addr));
 	} else {
+		node->is_online = true;
 		memcpy(node->hwaddr, hw, ETH_ALEN);
 	}
 	node->last_check = time(0);

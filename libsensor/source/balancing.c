@@ -23,6 +23,7 @@
 #include "nodes.h"
 #include "packet_extract.h"
 #include "hashmap.h"
+#include "arraylist.h"
 
 
 #include "services/info.h"
@@ -154,6 +155,9 @@ Balancer balancing_init(sensor_t config) {
 
 void balancing_destroy(Balancer self) {
 	Services_Destroy(self->servicesData);
+	HashMap_destroy(self->clientMomentLoads);
+	HashMap_destroy(self->sensorSessions);
+	ArrayList_destroy(self->ownedNodes);
 	free(self);
 }
 
@@ -182,21 +186,7 @@ void balancing_count_load(Balancer self, uint32_t l_interval, uint32_t l_count) 
 /* -------------------------------- State Machine */
 
 ArrayList balancing_get_owned(Balancer self) {
-	uint32_t **addreses = (uint32_t **)HashMap_getKeys(self->clientMomentLoads);
-
-	if (!addreses) {
-		return NULL;
-	}
-	size_t count = HashMap_size(self->clientMomentLoads);
-
-	ArrayList owned = ArrayList_init(count, 0);
-	/*
-	while(*addreses) {
-		ArrayList_add(owned, node_get(**addreses));
-		addreses++;
-	}*/
-
-	return owned;
+	return self->ownedNodes;
 }
 
 void balancing_receive_service(Balancer self) {
@@ -217,12 +207,12 @@ void release_node(Balancer self, struct Node *client) {
 }
 
 void balancing_take_node(Balancer self, uint32_t ip4addr) {
-	if (balancing_is_in_session(self, ip4addr)) {
+	if (balancing_is_in_session(self, ip4addr) || ip4addr == self->current->gateway) {
 		return;
 	}
-	struct Node *client = nodes_get(ip4addr);
-	if (client) {
-		uint32_t ip4addr = client->ip4addr;
+	struct Node *client = nodes_get_node(ip4addr);
+	if (client && client->is_online) {
+		DNOTIFY("Taking node (%s)\n", Ip4ToStr(ip4addr));
 		if (!HashMap_contains(self->clientMomentLoads, &ip4addr)) {
 			client->owned_by = nodes_get_me();
 			ArrayList loads = ArrayList_init(0, free);

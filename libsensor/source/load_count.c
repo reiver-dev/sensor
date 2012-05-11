@@ -76,7 +76,7 @@ static void load_close(ArrayList momentLoads, struct Node *client, uint32_t inte
 
 void load_bytes_add(ArrayList momentLoads, int len) {
 	struct NodeLoad *mload = load_get_last(momentLoads);
-	if (!momentLoads) {
+	if (!mload) {
 		mload = load_create_item(momentLoads);
 	}
 	mload->load += len;

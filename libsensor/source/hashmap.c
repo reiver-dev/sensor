@@ -377,6 +377,7 @@ bool HashMap_add(HashMap self, void *key, void *val) {
 
 void HashMap_addInt32(HashMap self, uint32_t key, void *val) {
 	uint32_t *temp = malloc(sizeof(*temp));
+	*temp = key;
 	if (!HashMap_add(self, temp, val)) {
 		free(temp);
 	}
