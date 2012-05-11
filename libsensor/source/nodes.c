@@ -12,18 +12,18 @@
 #include "util.h"
 #include "debug.h"
 #include "arraylist.h"
+#include "hashmap.h"
 
 
 /* Locals */
-static struct Node *Nodes;
-static long NodeCount;
+static struct Node *Me;
+static HashMap Nodes;
 
 static struct CurrentAddress *current;
 
-
-static uint32_t get_node_index(uint32_t ip) {
-	uint32_t ind = ntohl(ip) - ntohl(current->ip4addr & current->netmask) - 1;
-	return ind;
+static bool is_same_network_ip4(uint32_t ip) {
+	uint32_t network = current->ip4addr & current->netmask;
+	return (network & ip) == network;
 }
 
 /* Main functions */
@@ -31,65 +31,59 @@ void nodes_init(struct CurrentAddress *curr) {
 	/* memorize current addreses */
 
 	current = curr;
+	Me = malloc(sizeof(struct Node));
+	Me->ip4addr = current->ip4addr;
+	memcpy(Me->hwaddr, current->hwaddr, ETH_ALEN);
+	Me->owned_by = NULL;
+	Me->load = 0;
+	Me->last_check = 0;
+	Me->is_online = true;
 
-	NodeCount = (1 << (32 - bitcount(current->netmask))) - 2;
-	DNOTIFY("Node count is: %i\n", NodeCount);
-	assert(NodeCount > 0);
-	Nodes = malloc(NodeCount * sizeof(*Nodes));
-	memset(Nodes, '\0', NodeCount);
-
-	uint32_t network = ntohl(current->ip4addr & current->netmask);
-
-	for (uint32_t i = 0; i < NodeCount; i++) {
-		struct Node *node = & Nodes[i];
-		node->ip4addr    = htonl(network + i + 1);
-		memset(node->hwaddr, 0, ETH_ALEN);
-		node->last_check = 0;
-		node->is_online = false;
-	}
+	Nodes = HashMap_initInt32(free, free);
 
 }
 
 void nodes_destroy() {
-	free(Nodes);
-	NodeCount = 0;
+	HashMap_destroy(Nodes);
+	free(Me);
 }
 
+size_t nodes_count() {
+	return HashMap_size(Nodes);
+}
 
 void node_answered(uint32_t ip4, uint8_t *hw) {
 
 	struct Node *node = nodes_get_node(ip4);
 
-	DINFO("Node last check was: %i\n", node->last_check);
-
-	if (node->is_online) {
+	if (node) {
 		DINFO("Node (%s) is still online\n", Ip4ToStr(node->ip4addr));
 	} else {
-		node->is_online = true;
+		node = malloc(sizeof(struct Node));
+		node->ip4addr = ip4;
 		memcpy(node->hwaddr, hw, ETH_ALEN);
+		node->is_online = true;
+		node->load = 0;
+		node->owned_by = NULL;
+		HashMap_addInt32(Nodes, ip4, node);
 	}
 	node->last_check = time(0);
 }
 
 
 struct Node *nodes_get_node(uint32_t ip) {
-	uint32_t index = get_node_index(ip);
-	if (index < 0 || index > NodeCount) {
-		DERROR("Node with address %s not found\n", Ip4ToStr(ip));
-		return NULL;
-	}
-	return &Nodes[index];
+	return HashMap_get(Nodes, &ip);
 }
 
+
 struct Node *nodes_get_destination(uint32_t ip) {
-	uint32_t index = get_node_index(ip);
-	if (index < 0 || index > NodeCount) {
+	if (!is_same_network_ip4(ip)) {
 		if (current->gateway)
-			index = get_node_index(current->gateway);
+			return HashMap_get(Nodes, &current->gateway);
 		else
 			return NULL;
 	}
-	return &Nodes[index];
+	return HashMap_get(Nodes, &ip);
 }
 
 bool nodes_is_me(struct Node *node) {
@@ -99,18 +93,18 @@ bool nodes_is_me(struct Node *node) {
 	return false;
 }
 
-struct Node *nodes_get_me() {
-	return nodes_get_node(current->ip4addr);
-}
-
 struct Node *nodes_get_gateway() {
 	return nodes_get_node(current->gateway);
 }
 
-int nodes_count() {
-	return NodeCount;
+struct Node **nodes_get() {
+	return (struct Node **)HashMap_getValues(Nodes);
 }
 
-struct Node *nodes_get() {
-	return Nodes;
+struct Node *nodes_get_me() {
+	return Me;
+}
+
+bool nodes_is_my_addr(uint32_t ip4) {
+	return ip4 == current->ip4addr;
 }

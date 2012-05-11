@@ -203,12 +203,13 @@ bool prepare_redirect(sensor_t sensor, uint8_t* buffer, int captured) {
 	if (ethernetType == ETH_P_IP) {
 		struct iphdr *ipheader = (struct iphdr*) (buffer + position);
 
+		struct Node *dest;
 		if (ipheader->daddr != sensor->current.ip4addr
 			&& ipheader->saddr != sensor->current.ip4addr
 			&& !memcmp(ethernet->ether_dhost, sensor->current.hwaddr, ETH_ALEN)
-			&& memcmp(ethernet->ether_shost, sensor->current.hwaddr, ETH_ALEN)) {
+			&& memcmp(ethernet->ether_shost, sensor->current.hwaddr, ETH_ALEN)
+			&& (dest = nodes_get_destination(ipheader->daddr))) {
 
-			struct Node *dest = nodes_get_destination(ipheader->daddr);
 			memcpy(ethernet->ether_dhost, dest->hwaddr, ETH_ALEN);
 			memcpy(ethernet->ether_shost, sensor->current.hwaddr, ETH_ALEN);
 			return true;

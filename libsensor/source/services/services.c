@@ -54,11 +54,6 @@ static bool addressToNode(struct sockaddr_in *sockaddr, struct Node **node) {
 		*node = nodes_get_node(ip4addr);
 	}
 
-	if (nodes_is_me(*node)) {
-		DWARNING("Got mirror request from (%s:%i)\n", Ip4ToStr(sockaddr->sin_addr.s_addr), ntohs(sockaddr->sin_port));
-		return false;
-	}
-
 	return true;
 }
 
@@ -260,7 +255,7 @@ void Services_Receive(ServicesData self) {
 	time_t now = time(NULL);
 	do {
 		bytesRead = recvfrom(self->udp_sock, buffer, bufferSize, 0, &address, &addressSize);
-		if (bytesRead > 0) {
+		if (bytesRead > 0 && !nodes_is_my_addr(address.sin_addr.s_addr)) {
 			DINFO("Service received: %i bytes\n", bytesRead);
 			struct Node *from;
 			if (addressToNode(&address, &from)) {

@@ -37,12 +37,13 @@ typedef void (*node_func)(struct Node *);
 void nodes_init(struct CurrentAddress *curr);
 void nodes_destroy();
 
-int nodes_count();
-struct Node *nodes_get();
+size_t nodes_count();
+struct Node **nodes_get();
 void node_answered(uint32_t ip4, uint8_t *hw);
 
 struct Node *nodes_get_node(uint32_t ip);
 struct Node *nodes_get_destination(uint32_t ip);
+bool nodes_is_my_addr(uint32_t ip4);
 bool nodes_is_me(struct Node *node);
 struct Node *nodes_get_me();
 struct Node *nodes_get_gateway();

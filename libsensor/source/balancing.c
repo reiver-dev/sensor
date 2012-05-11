@@ -129,7 +129,7 @@ static void session_destroy(struct SensorSession *session) {
 void balancing_init_sensor_session(Balancer self, uint32_t ip4) {
 	if (!balancing_is_in_session(self, ip4)) {
 		struct SensorSession *session = malloc(sizeof(struct SensorSession));
-		session->node = nodes_get(ip4);
+		session->node = nodes_get_node(ip4);
 		session->owned = ArrayList_init(0, 0);
 		HashMap_addInt32(self->sensorSessions, ip4, session);
 	}
@@ -233,16 +233,17 @@ void take_sensor_client(struct SensorSession *session, struct Node *client) {
 
 void take_all_nodes(Balancer self) {
 	int node_count = nodes_count();
-	struct Node *nodes = nodes_get();
+	struct Node **nodes = nodes_get();
 
 	for (int i = 0; i < node_count; i++) {
-		balancing_take_node(self, nodes[i].ip4addr);
+		balancing_take_node(self, nodes[i]->ip4addr);
 	}
+	free(nodes);
 }
 
 void balancing_node_owned(Balancer self, uint32_t ip4s, uint32_t ip4c) {
-	struct Node *sensor = nodes_get(ip4s);
-	struct Node *client = nodes_get(ip4c);
+	struct Node *sensor = nodes_get_node(ip4s);
+	struct Node *client = nodes_get_node(ip4c);
 
 	if (client == NULL) {
 		DWARNING("Node conflict: node=(%s) ", Ip4ToStr(ip4c));
