@@ -74,10 +74,9 @@ void Spoof_node(int packet_sock, uint8_t buffer[ARPREPLY_SIZE], const struct Nod
 
 }
 
-void Spoof_nodes(int packet_sock, const struct CurrentAddress *current) {
+void Spoof_nodes(int packet_sock, ArrayList owned, const struct CurrentAddress *current) {
 	DINFO("%s\n", "Starting spoofing");
 
-	ArrayList owned = nodes_get_owned();
 	int owned_count = ArrayList_length(owned);
 
 	if (owned_count == 0) {

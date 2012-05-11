@@ -39,10 +39,10 @@ static struct RequestData pop_info() {
 	return result;
 }
 
-static struct RequestData push_info() {
+static struct RequestData push_info(ServicesData servicesData) {
 	uint8_t *buffer, *ptr;
 
-	ArrayList ownedNodes = nodes_get_owned();
+	ArrayList ownedNodes = balancing_get_owned(servicesData->balancer);
 	int ownedCount = ArrayList_length(ownedNodes);
 
 	size_t len = ownedCount * (ITEM_SIZE) + 5;
@@ -54,8 +54,8 @@ static struct RequestData push_info() {
 	AddToBuffer32(&ptr, ownedCount);
 	for (int i = 0; i < ownedCount; i++) {
 		AddToBuffer32NoOrder(&ptr, ARRAYLIST_GET(ownedNodes, struct Node*, i)->ip4addr);
-		AddToBuffer32(&ptr, ARRAYLIST_GET(ownedNodes, struct Node*, i)->info.client.load.timestamp);
-		AddToBuffer32(&ptr, ARRAYLIST_GET(ownedNodes, struct Node*, i)->info.client.load.load);
+		AddToBuffer32(&ptr, ARRAYLIST_GET(ownedNodes, struct Node*, i)->last_check);
+		AddToBuffer32(&ptr, ARRAYLIST_GET(ownedNodes, struct Node*, i)->load);
 	}
 
 	struct RequestData result = {len, buffer};
@@ -70,11 +70,11 @@ static struct RequestData info_request(ServicesData servicesData, void *request)
 	switch(req->type) {
 
 	case INFO_TYPE_POP:
-		data = pop_info();
+		data = pop_info(servicesData);
 		break;
 
 	case INFO_TYPE_PUSH:
-		data = push_info();
+		data = push_info(servicesData);
 		break;
 
 	default:
@@ -114,7 +114,7 @@ static void info_response(ServicesData servicesData, struct Node *from, struct R
 			load.timestamp = GetFromBuffer32(&ptr);
 			load.load = GetFromBuffer32(&ptr);
 
-			node_set_owned_by(from, ip4addr, load);
+			balancing_node_owned(servicesData->balancer, from->ip4addr, ip4addr);
 		}
 	}
 }

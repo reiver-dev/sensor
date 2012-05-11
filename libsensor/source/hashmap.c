@@ -234,6 +234,91 @@ void HashMap_destroy(HashMap self) {
 
 }
 
+size_t HashMap_size(HashMap self) {
+	return self->capacity;
+}
+
+void **HashMap_getKeys(HashMap self) {
+
+	size_t length = self->length;
+	size_t capacity = self->capacity;
+	struct Bucket **data = self->data;
+
+	if (capacity == 0) {
+		return NULL;
+	}
+
+	void **keys = malloc((capacity + 1) * sizeof(uintptr_t));
+	memset(keys, 0, (capacity + 1) * sizeof(uintptr_t));
+
+	size_t index = 0;
+	for (size_t i = 0; i < length && capacity; i++) {
+		struct Bucket *next;
+		for (struct Bucket *b = data[i]; b; b = next) {
+			next = b->next;
+			keys[index] = b->key;
+			index++;
+			capacity--;
+		}
+	}
+
+	return keys;
+}
+void **HashMap_getValues(HashMap self) {
+
+	size_t length = self->length;
+	size_t capacity = self->capacity;
+	struct Bucket **data = self->data;
+
+	if (capacity == 0) {
+		return NULL;
+	}
+
+	void **vals = malloc((capacity + 1) * sizeof(uintptr_t));
+	memset(vals, 0, (capacity + 1) * sizeof(uintptr_t));
+
+	size_t index = 0;
+	for (size_t i = 0; i < length && capacity; i++) {
+		struct Bucket *next;
+		for (struct Bucket *b = data[i]; b; b = next) {
+			next = b->next;
+			vals[index] = b->val;
+			index++;
+			capacity--;
+		}
+	}
+
+	return vals;
+}
+struct HashMapPair *HashMap_getPairs(HashMap self) {
+	size_t length = self->length;
+	size_t capacity = self->capacity;
+	struct Bucket **data = self->data;
+
+	if (capacity == 0) {
+		return NULL;
+	}
+
+	struct HashMapPair *pairs = malloc((capacity + 1) * sizeof(*pairs));
+	memset(pairs, 0, (capacity + 1) * sizeof(uintptr_t));
+
+	size_t index = 0;
+	for (size_t i = 0; i < length && capacity; i++) {
+		struct Bucket *next;
+		for (struct Bucket *b = data[i]; b; b = next) {
+			next = b->next;
+
+			pairs[index].key = b->key;
+			pairs[index].value = b->val;
+			index++;
+
+			capacity--;
+		}
+	}
+
+	return pairs;
+}
+
 void *HashMap_get(HashMap self, void *key) {
 	assert(self);
 	assert(key);
@@ -249,7 +334,18 @@ void *HashMap_get(HashMap self, void *key) {
 	}
 }
 
-void HashMap_add(HashMap self, void *key, void *val) {
+bool HashMap_contains(HashMap self, void *key) {
+	assert(self);
+	assert(key);
+
+	uint32_t hash = self->hashf(key);
+	struct Bucket *bucket = get_bucket(self, hash, key);
+
+	return bucket != NULL;
+
+}
+
+bool HashMap_add(HashMap self, void *key, void *val) {
 	assert(self);
 	assert(key);
 	assert(val);
@@ -266,7 +362,7 @@ void HashMap_add(HashMap self, void *key, void *val) {
 			if (self->destroy_val)
 				self->destroy_val(b->val);
 			b->val = val;
-			return;
+			return false;
 		}
 	}
 
@@ -276,6 +372,15 @@ void HashMap_add(HashMap self, void *key, void *val) {
 	self->data[index] = bucket;
 
 	self->capacity++;
+
+	return true;
+}
+
+void HashMap_addInt32(HashMap self, uint32_t key, void *val) {
+	uint32_t *temp = malloc(sizeof(*temp));
+	if (!HashMap_add(self, temp, val)) {
+		free(temp);
+	}
 }
 
 void HashMap_remove(HashMap self, void *key) {

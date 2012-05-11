@@ -97,7 +97,7 @@ static void node_response(ServicesData servicesData, struct Node *from, struct R
 		for (size_t i = 0; i < count; i++) {
 			uint32_t ip4addr = GetFromBuffer32NoOrder(&ptr);
 			struct Node *client = node_get(ip4addr);
-			if (client != NULL && client->type == NODE_TYPE_CLIENT && node_is_me(client->info.client.owned_by)) {
+			if (client != NULL && client->type == NODE_TYPE_CLIENT && node_is_me(client->owned_by)) {
 				Array_add(array, &ip4addr);
 			}
 		}
@@ -122,7 +122,7 @@ static void node_response(ServicesData servicesData, struct Node *from, struct R
 		int ip4addr;
 		for (int i = 0; i < count; i++) {
 			ip4addr = GetFromBuffer32NoOrder(&ptr);
-			node_take(node_get(ip4addr));
+			balancing_take_node(servicesData->balancer, ip4addr);
 		}
 	}
 

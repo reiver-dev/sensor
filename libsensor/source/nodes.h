@@ -43,11 +43,14 @@ union node_info {
 struct Node {
 	uint32_t ip4addr;
 	uint8_t  hwaddr[ETH_ALEN];
-	int      type;
+
 	time_t   last_check;
 	bool     is_online;
 
-	union node_info info;
+	uint32_t type;
+	uint32_t load;
+	struct Node *owned_by;
+
 };
 
 typedef void (*node_func)(struct Node *);
@@ -68,13 +71,9 @@ void node_set_sensor(struct Node *node);
 void node_set_client(struct Node *node);
 void node_set_gateway(struct Node *node);
 
-ArrayList nodes_get_owned();
 ArrayList nodes_get_sensors();
 
 void node_answered(uint32_t ip4, uint8_t *hw);
-void node_set_owned_by(struct Node *sensor, uint32_t ip4addr, struct NodeLoad load);
-
-void node_take(struct Node *node);
 
 char *node_toString(struct Node *node);
 

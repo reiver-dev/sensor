@@ -17,10 +17,12 @@
 #include <arpa/inet.h>
 
 #include "balancing.h"
+#include "load_count.h"
 #include "debug.h"
 #include "util.h"
 #include "nodes.h"
 #include "packet_extract.h"
+#include "hashmap.h"
 
 
 #include "services/info.h"
@@ -36,12 +38,20 @@ char *state_text[] = {
 };
 
 
+struct SensorSession {
+	struct Node *node;
+	ArrayList owned;
+};
+
 struct balancer {
 	time_t last_load;
 	uint8_t State;
 	struct CurrentAddress *current;
 	ServicesData servicesData;
+	HashMap sensorSessions;
+	HashMap clientMomentLoads;
 };
+
 
 
 bool is_same_network_ip4(Balancer self, uint32_t ip) {
@@ -51,82 +61,9 @@ bool is_same_network_ip4(Balancer self, uint32_t ip) {
 
 /* -------------------------- loading */
 
-int load_compare(const void *m1, const void *m2) {
-	uint32_t first = (*(struct NodeLoad **)m1)->load;
-	uint32_t second = (*(struct NodeLoad **)m2)->load;
-	return first == second ? 0 : first > second ? 1 : -1;
-}
-
-struct NodeLoad *load_create_item(struct Node *client) {
-	assert(client->type == NODE_TYPE_CLIENT);
-
-	struct NodeLoad *newLoad = malloc(sizeof(*newLoad));
-	memset(newLoad, 0, sizeof(*newLoad));
-	newLoad->timestamp = time(NULL);
-
-	ArrayList momentLoad = client->info.client.moment_load;
-	ArrayList_add(momentLoad, newLoad);
-
-	return newLoad;
-}
-
-struct NodeLoad *load_get_last(struct Node *client) {
-	assert(client->type == NODE_TYPE_CLIENT);
-	ArrayList momentLoad = client->info.client.moment_load;
-	int loads = ArrayList_length(momentLoad);
-	if (!loads) {
-		return NULL;
-	}
-	return ArrayList_get(momentLoad, loads - 1);
-}
-
-void load_bytes_add(struct Node *client, int len) {
-	struct NodeLoad *momentLoad = load_get_last(client);
-	if (!momentLoad) {
-		momentLoad = load_create_item(client);
-	}
-	momentLoad->load += len;
-}
 
 
-void load_close(struct Node *client, uint32_t interval) {
-
-	ArrayList momentLoad = client->info.client.moment_load;
-	int loads = ArrayList_length(momentLoad);
-
-	/* make copy of loads array */
-	struct NodeLoad **data = malloc(loads * sizeof(struct NodeLoad *));
-	memcpy(data, ArrayList_getData(momentLoad), loads * sizeof(struct NodeLoad *));
-
-	qsort(data, loads, sizeof(void *), load_compare);
-
-	int load;
-	if (loads % 2) {
-		int index = loads / 2;
-		struct NodeLoad *median = data[index];
-		load = median->load;
-	} else {
-		int index = loads / 2;
-		struct NodeLoad *median = data[index];
-		load = median->load;
-		index++;
-		median = data[index];
-		load += median->load;
-		load /= 2;
-	}
-
-	free(data);
-
-	load /= interval;
-
-	DINFO("New load of node (%s) is %i\n", Ip4ToStr(client->ip4addr), load);
-
-	client->info.client.load.load = load;
-	client->info.client.load.timestamp = time(NULL);
-
-}
-
-struct Node *get_client(Balancer self, uint8_t *buffer, int length) {
+static struct Node *get_client(Balancer self, uint8_t *buffer, int length) {
 	struct iphdr *ipheader = packet_map_ip(buffer, length);
 	if (!ipheader) {
 		return NULL;
@@ -149,12 +86,17 @@ struct Node *get_client(Balancer self, uint8_t *buffer, int length) {
 }
 
 /* ---------------------------------------------- */
+
 Balancer balancing_init(sensor_t config) {
 	Balancer self = malloc(sizeof(*self));
 	/* memorize current addreses */
 	self->current = &config->current;
 	self->State = STATE_BEGIN;
 	self->servicesData = Services_Init(self, config->opt.device_name);
+
+	self->sensorSessions = HashMap_initInt32(free, 0);
+	self->clientMomentLoads = HashMap_initInt32(free, (HashMapDestroyer)ArrayList_destroy);
+
 	return self;
 }
 
@@ -174,7 +116,8 @@ void balancing_add_load(Balancer self, uint8_t *buffer, int length) {
 	struct Node *client = get_client(self, buffer, length);
 	if (client != NULL) {
 		if (client->type == NODE_TYPE_CLIENT) {
-			load_bytes_add(client, length);
+			ArrayList momentLoads = HashMap_get(self->clientMomentLoads, &client->ip4addr);
+			load_bytes_add(momentLoads, length);
 		} else {
 //			struct iphdr *ip_header = packet_map_ip(buffer, length);
 //			DERROR("Can't count load, (%s - ", Ip4ToStr(ip_header->saddr));
@@ -184,35 +127,29 @@ void balancing_add_load(Balancer self, uint8_t *buffer, int length) {
 	}
 }
 
-void balancing_count_load(Balancer self, uint32_t load_interval, uint32_t load_count) {
-	ArrayList owned = nodes_get_owned();
-	int len = ArrayList_length(owned);
-	time_t now = time(NULL);
-
-	for (int i = 0; i < len; i++) {
-		struct Node *client = ArrayList_get(owned, i);
-		struct NodeLoad *lastLoad = load_get_last(client);
-
-		if (!lastLoad) {
-			continue;
-		}
-
-		ArrayList momentLoads = client->info.client.moment_load;
-		int loads = ArrayList_length(momentLoads);
-
-		uint32_t interval = now - lastLoad->timestamp;
-		if (interval >= load_interval && loads >= load_count) {
-			load_close(client, load_interval);
-			ArrayList_remove_fast(momentLoads, 0);
-		} else if (interval >= load_interval) {
-			load_create_item(client);
-		}
-
-	}
+void balancing_count_load(Balancer self, uint32_t l_interval, uint32_t l_count) {
+	load_count(self->clientMomentLoads, l_interval, l_count);
 }
 
 /* -------------------------------- State Machine */
 
+ArrayList balancing_get_owned(Balancer self) {
+	uint32_t **addreses = (uint32_t **)HashMap_getKeys(self->clientMomentLoads);
+
+	if (!addreses) {
+		return NULL;
+	}
+	size_t count = HashMap_size(self->clientMomentLoads);
+
+	ArrayList owned = ArrayList_init(count, 0);
+
+	while(*addreses) {
+		ArrayList_add(owned, node_get(**addreses));
+		addreses++;
+	}
+
+	return owned;
+}
 
 void balancing_receive_service(Balancer self) {
 	Services_Receive(self->servicesData);
@@ -222,10 +159,34 @@ uint8_t balancing_get_state(Balancer self) {
 	return self->State;
 }
 
-
 void seek_sensors(Balancer self) {
 	BootstrapRequest request = {BOOTSTRAP_TYPE_CONNECT};
 	Services_Request(self->servicesData, BootstrapService_Get(), 0, &request);
+}
+
+void release_node(Balancer self, struct Node *client) {
+
+}
+
+void balancing_take_node(Balancer self, uint32_t ip4addr) {
+	struct Node *client = node_get(ip4addr);
+	if (client->is_online && client->ip4addr != self->current->gateway) {
+		uint32_t ip4addr = client->ip4addr;
+		if (!HashMap_contains(self->clientMomentLoads, &ip4addr)) {
+			client->owned_by = node_get_me();
+			ArrayList loads = ArrayList_init(0, free);
+			HashMap_addInt32(self->clientMomentLoads, ip4addr, loads);
+		}
+	}
+}
+
+void take_sensor_client(struct SensorSession *session, struct Node *client) {
+	if (client->owned_by == session->node) {
+		return;
+	} else {
+		client->owned_by = session->node;
+		ArrayList_add(session->owned, client);
+	}
 }
 
 void take_all_nodes(Balancer self) {
@@ -233,16 +194,50 @@ void take_all_nodes(Balancer self) {
 	struct Node *nodes = nodes_get();
 
 	for (int i = 0; i < node_count; i++) {
-		if (nodes[i].is_online && nodes[i].ip4addr != self->current->gateway) {
-			node_take(&nodes[i]);
-		}
+		balancing_take_node(self, nodes[i].ip4addr);
 	}
-
 }
 
+void balancing_node_owned(Balancer self, uint32_t ip4s, uint32_t ip4c) {
+	struct Node *sensor = node_get(ip4s);
+	struct Node *client = node_get(ip4c);
+
+	if (client == NULL) {
+		DWARNING("Node conflict: node=(%s) ", Ip4ToStr(ip4c));
+		DWARNINGA("received from sensor=(%s) not found\n", Ip4ToStr(sensor->ip4addr));
+
+	} else if (client == node_get_me()) {
+		DWARNING("Node conflict: (%s) is trying to take over ME\n", Ip4ToStr(sensor->ip4addr));
+
+	} else if (client->owned_by == node_get_me()) {
+		DWARNING("Node conflict: node=(%s) ", Ip4ToStr(ip4c));
+		DWARNINGA("is claimed by sensor=(%s) as his\n", Ip4ToStr(sensor->ip4addr));
+
+	} else {
+		struct SensorSession *session = HashMap_get(self->sensorSessions, &ip4s);
+		if (session == NULL) {
+			DERROR("Sensor session not exist (%s)\n", Ip4ToStr(ip4s));
+		} else {
+			take_sensor_client(session, client);
+		}
+	}
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
 int client_load_compare_dec(const void *c1, const void *c2) {
-	int load1 = (*(struct Node **) c1)->info.client.load.load;
-	int load2 = (*(struct Node **) c2)->info.client.load.load;
+	int load1 = (*(struct Node **) c1)->load;
+	int load2 = (*(struct Node **) c2)->load;
 
 	return load1 == load2 ? 0 : load1 < load2 ? 1 : -1;
 }
@@ -250,7 +245,7 @@ int client_load_compare_dec(const void *c1, const void *c2) {
 int clients_load_sum(struct Node **clients, int client_count) {
 	int result = 0;
 	for (int i = 0; i < client_count; i++) {
-		result += clients[i]->info.client.load.load;
+		result += clients[i]->load;
 	}
 	return result;
 }
@@ -287,7 +282,7 @@ void rebalance_nodes(Balancer self) {
 	DNOTIFY("Taking (%i) nodes\n", count);
 	for (int i = 0; i < count; i++) {
 		struct Node *client = ArrayList_get(nodes, i);
-		if (!node_is_me(client->info.client.owned_by)) {
+		if (!node_is_me(client->owned_by)) {
 			uint32_t ip4addr = client->ip4addr;
 			DNOTIFYA("%s\n", Ip4ToStr(ip4addr));
 			Array array = Array_init(0, sizeof(ip4addr));
@@ -296,7 +291,7 @@ void rebalance_nodes(Balancer self) {
 				.type = NODESERVICE_TYPE_TAKE,
 				.ip4array = array
 			};
-			Services_Request(self->servicesData, NodeService_Get(), client->info.client.owned_by, &request);
+			Services_Request(self->servicesData, NodeService_Get(), client->owned_by, &request);
 			Array_destroy(array);
 		}
 	}

@@ -34,8 +34,8 @@ static ArrayList get_all_clients() {
 }
 
 static int client_load_compare_dec(const void *c1, const void *c2) {
-	int load1 = (*(struct Node **) c1)->info.client.load.load;
-	int load2 = (*(struct Node **) c2)->info.client.load.load;
+	int load1 = (*(struct Node **) c1)->load;
+	int load2 = (*(struct Node **) c2)->load;
 
 	return load1 == load2 ? 0 : load1 < load2 ? 1 : -1;
 }
@@ -52,7 +52,7 @@ static int clients_load_sum(ArrayList clientsAL) {
 
 	int result = 0;
 	for (int i = 0; i < clients_count; i++) {
-		int load = clients[i]->info.client.load.load;
+		uint32_t load = clients[i]->load;
 		result += roundload(load);
 	}
 	return result;
