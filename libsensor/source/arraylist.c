@@ -51,6 +51,15 @@ ArrayList ArrayList_init(size_t size, ArrayList_destroyer func) {
 
 }
 
+ArrayList ArrayList_fromArray(void **data, size_t size, ArrayList_destroyer func) {
+	ArrayList list = malloc(sizeof(*list));
+	list->data = data;
+	list->length = size;
+	list->size = size;
+	list->destroyer = func;
+	return list;
+}
+
 static bool checkLength(ArrayList self, int index) {
 	if (index < 0 || index > self->length) {
 		return false;

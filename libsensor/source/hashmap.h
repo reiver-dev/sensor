@@ -6,9 +6,16 @@
 #include <stdlib.h>
 
 typedef struct HashMap *HashMap;
+
 struct HashMapPair {
 	void *key;
 	void *value;
+};
+
+struct HashMapIndex {
+	size_t pos;
+	size_t index;
+	struct HashMapPair *this;
 };
 
 typedef uint32_t (* HashMapHash)(const void *);
@@ -25,8 +32,8 @@ HashMap HashMap_initInt32(HashMapDestroyer key, HashMapDestroyer value);
 void HashMap_destroy(HashMap self);
 
 size_t HashMap_size(HashMap self);
-void **HashMap_getKeys(HashMap self);
-void **HashMap_getValues(HashMap self);
+void **HashMap_getKeys(HashMap self, void **keys);
+void **HashMap_getValues(HashMap self, void **vals);
 struct HashMapPair *HashMap_getPairs(HashMap self);
 
 void *HashMap_get(HashMap self, void *key);
@@ -35,5 +42,11 @@ bool HashMap_add(HashMap self, void *key, void *val);
 void HashMap_addInt32(HashMap self, uint32_t key, void *val);
 void HashMap_remove(HashMap self, void *key);
 void *HashMap_steal(HashMap self, void *key);
+
+
+struct HashMapIndex HashMap_first(HashMap self);
+bool HashMap_hasNext(HashMap self, struct HashMapIndex *index);
+struct HashMapPair *HashMap_next(HashMap self, struct HashMapIndex *index);
+
 
 #endif /* HASHMAP_H */

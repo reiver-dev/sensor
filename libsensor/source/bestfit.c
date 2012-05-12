@@ -28,9 +28,8 @@ static int client_load_compare_dec(const void *c1, const void *c2) {
 }
 
 
-static void sort_clients_by_load(ArrayList clients) {
-	struct Node **cl = (struct Node **)ArrayList_getData(clients);
-	qsort(cl, ArrayList_length(clients), sizeof(struct Node *), client_load_compare_dec);
+static void sort_clients_by_load(struct Node **clients, size_t client_count) {
+	qsort(clients, client_count, sizeof(struct Node *), client_load_compare_dec);
 }
 
 static int clients_load_sum(ArrayList clientsAL) {
@@ -68,21 +67,18 @@ static size_t find_lowest_load(ArrayList solution) {
 	return index;
 }
 
-ArrayList bestfit_solution(ArrayList sensors, ArrayList clients) {
-	size_t sensor_count = ArrayList_length(sensors);
-	size_t clients_count = ArrayList_length(clients);
-
+ArrayList bestfit_solution(struct Node **clients, size_t clients_count, size_t sensor_count) {
 	ArrayList solution = init_solution(sensor_count);
 
 	if (clients_count == 0) {
 		goto End;
 	}
-	sort_clients_by_load(clients);
+	sort_clients_by_load(clients, clients_count);
 
 	for (size_t i = 0; i < clients_count; i++) {
 		size_t sack = find_lowest_load(solution);
 		ArrayList sensor_owned = ArrayList_get(solution, sack);
-		ArrayList_add(sensor_owned, ArrayList_get(clients, i));
+		ArrayList_add(sensor_owned, clients[i]);
 	}
 
 End:

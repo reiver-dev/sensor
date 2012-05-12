@@ -10,6 +10,8 @@ typedef struct ArrayList *ArrayList;
 typedef void (*ArrayList_destroyer)(void *);
 
 ArrayList ArrayList_init(size_t size, ArrayList_destroyer func);
+ArrayList ArrayList_fromArray(void **data, size_t size, ArrayList_destroyer func);
+
 void ArrayList_destroy(ArrayList list);
 void ArrayList_clear(ArrayList self);
 ArrayList ArrayList_copy(ArrayList self);

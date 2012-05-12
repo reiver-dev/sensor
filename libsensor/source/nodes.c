@@ -98,7 +98,7 @@ struct Node *nodes_get_gateway() {
 }
 
 struct Node **nodes_get() {
-	return (struct Node **)HashMap_getValues(Nodes);
+	return (struct Node **)HashMap_getValues(Nodes, NULL);
 }
 
 struct Node *nodes_get_me() {
