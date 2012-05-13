@@ -217,8 +217,7 @@ void balancing_release_node(Balancer self, uint32_t ip4c) {
 	struct Node *client = nodes_get_node(ip4c);
 	if (client && client->owned_by && nodes_is_me(client->owned_by)) {
 		DNOTIFY("Releasing node (%s)\n", Ip4ToStr(client->ip4addr));
-		size_t i = ArrayList_indexOf(self->Me.owned, client, NULL);
-		ArrayList_remove(self->Me.owned, i);
+		ArrayList_removeItem(self->Me.owned, client, NULL);
 		HashMap_remove(self->clientMomentLoads, &client->ip4addr);
 	}
 }
@@ -250,8 +249,7 @@ void balancing_take_node_from(Balancer self, uint32_t ip4s, uint32_t ip4c) {
 		DWARNING("Node conflict: node=(%s) ", Ip4ToStr(ip4c));
 		DWARNINGA("given by sensor=(%s) not owned by it\n", Ip4ToStr(ip4s));
 	} else {
-		size_t temp = ArrayList_indexOf(session->owned, client, NULL);
-		ArrayList_remove(session->owned, temp);
+		ArrayList_removeItem(session->owned, client, NULL);
 		take_node(self, ip4c);
 	}
 
@@ -263,8 +261,7 @@ static void take_sensor_client(Balancer self, struct SensorSession *session, str
 	} else if (client->owned_by && client->owned_by != session->node) {
 		struct SensorSession *owner_session = HashMap_get(self->sensorSessions, &client->owned_by->ip4addr);
 		assert(owner_session);
-		size_t temp = ArrayList_indexOf(owner_session->owned, client, NULL);
-		ArrayList_remove(owner_session->owned, temp);
+		ArrayList_removeItem(owner_session->owned, client, NULL);
 	}
 	client->owned_by = session->node;
 	ArrayList_add(session->owned, client);
