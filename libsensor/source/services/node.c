@@ -97,7 +97,8 @@ static void node_response(ServicesData servicesData, struct Node *from, struct R
 		for (size_t i = 0; i < count; i++) {
 			uint32_t ip4addr = GetFromBuffer32NoOrder(&ptr);
 			struct Node *client = nodes_get_node(ip4addr);
-			if (client != NULL && !balancing_is_in_session(servicesData->balancer, ip4addr) && nodes_is_me(client->owned_by)) {
+			if (!balancing_is_in_session(servicesData->balancer, ip4addr) && client && client->owned_by && nodes_is_me(client->owned_by)) {
+				balancing_release_node(servicesData->balancer, client->ip4addr);
 				Array_add(array, &ip4addr);
 			}
 		}
@@ -115,14 +116,14 @@ static void node_response(ServicesData servicesData, struct Node *from, struct R
 
 		size_t count = GetFromBuffer32(&ptr);
 		if (request->len - 1 < count * ITEM_SIZE) {
-			DWARNING("NODE SERVICE: node length is insufficient = %i\n", request->len);
+			DWARNING("NODE SERVICE: length is insufficient = %i\n", request->len);
 			return;
 		}
 
 		int ip4addr;
 		for (int i = 0; i < count; i++) {
 			ip4addr = GetFromBuffer32NoOrder(&ptr);
-			balancing_take_node(servicesData->balancer, ip4addr);
+			balancing_take_node_from(servicesData->balancer, from->ip4addr, ip4addr);
 		}
 	}
 

@@ -87,6 +87,7 @@ struct Node *nodes_get_destination(uint32_t ip) {
 }
 
 bool nodes_is_me(struct Node *node) {
+	assert(node);
 	if (node->ip4addr == current->ip4addr) {
 		return true;
 	}

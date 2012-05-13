@@ -492,6 +492,10 @@ int sensor_loop(sensor_t config) {
 			timer_ping(&persist_timer);
 		}
 
+		if (!config->activated) {
+			balancing_disconnect(balancer);
+		}
+
 	} /* while */
 	DNOTIFY("%s\n","Capture ended");
 	balancing_destroy(balancer);

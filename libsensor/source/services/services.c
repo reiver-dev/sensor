@@ -223,7 +223,7 @@ static void Services_ReceiveData(ServicesData self, uint8_t *data, int len, stru
 	int serviceID = header->service;
 
 	Service service = service_get(self->services, serviceID);
-	if (service != BootstrapService_Get() && balancing_is_in_session(self->balancer, from->ip4addr)) {
+	if (service != BootstrapService_Get() && !balancing_is_in_session(self->balancer, from->ip4addr)) {
 		DWARNING("Unsessioned request of service (%s) from (%s)\n", service->Name, Ip4ToStr(from->ip4addr));
 		return;
 	}

@@ -11,7 +11,7 @@
 
 #define INFOID 0
 
-#define ITEM_SIZE sizeof(uint32_t) * 3
+#define ITEM_SIZE sizeof(uint32_t) * 2
 
 /* prototypes */
 static struct RequestData info_request(ServicesData servicesData, void *request);
@@ -54,7 +54,6 @@ static struct RequestData push_info(ServicesData servicesData) {
 	AddToBuffer32(&ptr, ownedCount);
 	for (int i = 0; i < ownedCount; i++) {
 		AddToBuffer32NoOrder(&ptr, ARRAYLIST_GET(ownedNodes, struct Node*, i)->ip4addr);
-		AddToBuffer32(&ptr, ARRAYLIST_GET(ownedNodes, struct Node*, i)->last_check);
 		AddToBuffer32(&ptr, ARRAYLIST_GET(ownedNodes, struct Node*, i)->load);
 	}
 
@@ -107,14 +106,13 @@ static void info_response(ServicesData servicesData, struct Node *from, struct R
 			return;
 		}
 
-		int ip4addr;
-		struct NodeLoad load;
+		uint32_t ip4addr;
+		uint32_t load;
 		for (int i = 0; i < count; i++) {
 			ip4addr = GetFromBuffer32NoOrder(&ptr);
-			load.timestamp = GetFromBuffer32(&ptr);
-			load.load = GetFromBuffer32(&ptr);
+			load = GetFromBuffer32(&ptr);
 
-			balancing_node_owned(servicesData->balancer, from->ip4addr, ip4addr);
+			balancing_node_owned(servicesData->balancer, from->ip4addr, ip4addr, load);
 		}
 	}
 }

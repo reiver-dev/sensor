@@ -41,6 +41,7 @@ char *state_text[] = {
 
 struct SensorSession {
 	time_t created;
+	time_t last_info;
 	struct Node *node;
 	ArrayList owned;
 };
@@ -122,22 +123,32 @@ static struct Node *get_client(Balancer self, uint8_t *buffer, int length) {
 
 /* ---------------------------------------------- */
 
+/* callback when session removed hashmap */
 static void session_destroy(struct SensorSession *session) {
 	ArrayList_destroy(session->owned);
 	free(session);
 }
 
-void balancing_init_sensor_session(Balancer self, uint32_t ip4) {
-	if (!balancing_is_in_session(self, ip4)) {
-		struct SensorSession *session = malloc(sizeof(struct SensorSession));
-		session->node = nodes_get_node(ip4);
-		session->owned = ArrayList_init(0, 0);
-		HashMap_addInt32(self->sensorSessions, ip4, session);
-	}
+/* callback when node removed from owned */
+static void unset_owned(struct Node *node) {
+	node->owned_by = NULL;
 }
+
 
 void balancing_break_sensor_session(Balancer self, uint32_t ip4) {
 	HashMap_remove(self->sensorSessions, &ip4);
+}
+
+void balancing_init_sensor_session(Balancer self, uint32_t ip4, time_t created) {
+	if (!balancing_is_in_session(self, ip4)) {
+		DNOTIFY("Creating session for sensor (%s)\n", Ip4ToStr(ip4));
+		struct SensorSession *session = malloc(sizeof(struct SensorSession));
+		session->node = nodes_get_node(ip4);
+		session->owned = ArrayList_init(0, (ArrayList_destroyer)unset_owned);
+		session->created = created;
+		HashMap_addInt32(self->sensorSessions, ip4, session);
+		balancing_release_node(self, ip4);
+	}
 }
 
 Balancer balancing_init(sensor_t config) {
@@ -149,7 +160,10 @@ Balancer balancing_init(sensor_t config) {
 
 	self->sensorSessions = HashMap_initInt32(free, (HashMapDestroyer)session_destroy);
 	self->clientMomentLoads = HashMap_initInt32(free, (HashMapDestroyer)ArrayList_destroy);
-	self->Me.owned = ArrayList_init(0, 0);
+
+	self->Me.owned = ArrayList_init(0, (ArrayList_destroyer)unset_owned);
+	self->Me.node = NULL;
+	self->Me.created = time(NULL);
 
 	return self;
 }
@@ -169,7 +183,13 @@ bool balancing_filter_response(Balancer self, uint8_t *buffer, int length) {
 }
 #undef IS_FILTER
 
-void balancing_add_load(Balancer self, uint8_t *buffer, int length) {
+/* when shutdown */
+void balancing_disconnect(Balancer self) {
+	BootstrapRequest request = {BOOTSTRAP_TYPE_DISCONNECT};
+	Services_Request(self->servicesData, BootstrapService_Get(), 0, &request);
+}
+
+void balancing_add_load(Balancer self, uint8_t *buffer, size_t length) {
 	struct Node *client = get_client(self, buffer, length);
 	if (client != NULL) {
 		ArrayList momentLoads = HashMap_get(self->clientMomentLoads,
@@ -184,37 +204,33 @@ void balancing_count_load(Balancer self, uint32_t l_interval, uint32_t l_count) 
 	load_count(self->clientMomentLoads, self->Me.owned, l_interval, l_count);
 }
 
-/* -------------------------------- State Machine */
-
-ArrayList balancing_get_owned(Balancer self) {
-	return self->Me.owned;
-}
-
 void balancing_receive_service(Balancer self) {
 	Services_Receive(self->servicesData);
 }
 
-uint8_t balancing_get_state(Balancer self) {
-	return self->State;
-}
-
-void seek_sensors(Balancer self) {
+static void seek_sensors(Balancer self) {
 	BootstrapRequest request = {BOOTSTRAP_TYPE_CONNECT};
 	Services_Request(self->servicesData, BootstrapService_Get(), 0, &request);
 }
 
-void release_node(Balancer self, struct Node *client) {
-
+void balancing_release_node(Balancer self, uint32_t ip4c) {
+	struct Node *client = nodes_get_node(ip4c);
+	if (client && client->owned_by && nodes_is_me(client->owned_by)) {
+		DNOTIFY("Releasing node (%s)\n", Ip4ToStr(client->ip4addr));
+		size_t i = ArrayList_indexOf(self->Me.owned, client, NULL);
+		ArrayList_remove(self->Me.owned, i);
+		HashMap_remove(self->clientMomentLoads, &client->ip4addr);
+	}
 }
 
-void balancing_take_node(Balancer self, uint32_t ip4addr) {
+static void take_node(Balancer self, uint32_t ip4addr) {
 	if (balancing_is_in_session(self, ip4addr) || ip4addr == self->current->gateway) {
 		return;
 	}
 	struct Node *client = nodes_get_node(ip4addr);
 	if (client && client->is_online) {
-		DNOTIFY("Taking node (%s)\n", Ip4ToStr(ip4addr));
 		if (!HashMap_contains(self->clientMomentLoads, &ip4addr)) {
+			DNOTIFY("Taking node (%s)\n", Ip4ToStr(ip4addr));
 			client->owned_by = nodes_get_me();
 			ArrayList loads = ArrayList_init(0, free);
 			HashMap_addInt32(self->clientMomentLoads, ip4addr, loads);
@@ -223,64 +239,66 @@ void balancing_take_node(Balancer self, uint32_t ip4addr) {
 	}
 }
 
-void take_sensor_client(struct SensorSession *session, struct Node *client) {
-	if (client->owned_by == session->node) {
-		return;
+void balancing_take_node_from(Balancer self, uint32_t ip4s, uint32_t ip4c) {
+	struct SensorSession *session = HashMap_get(self->sensorSessions, &ip4s);
+	struct Node *client = nodes_get_node(ip4c);
+	assert(session);
+	if (client == NULL) {
+		DWARNING("Node conflict: node=(%s) ", Ip4ToStr(ip4c));
+		DWARNINGA("given by sensor=(%s) not found\n", Ip4ToStr(ip4s));
+	} else if (client->owned_by != session->node) {
+		DWARNING("Node conflict: node=(%s) ", Ip4ToStr(ip4c));
+		DWARNINGA("given by sensor=(%s) not owned by it\n", Ip4ToStr(ip4s));
 	} else {
-		client->owned_by = session->node;
-		ArrayList_add(session->owned, client);
+		size_t temp = ArrayList_indexOf(session->owned, client, NULL);
+		ArrayList_remove(session->owned, temp);
+		take_node(self, ip4c);
 	}
+
 }
 
-void take_all_nodes(Balancer self) {
+static void take_sensor_client(Balancer self, struct SensorSession *session, struct Node *client) {
+	if (client->owned_by && client->owned_by == session->node) {
+		return;
+	} else if (client->owned_by && client->owned_by != session->node) {
+		struct SensorSession *owner_session = HashMap_get(self->sensorSessions, &client->owned_by->ip4addr);
+		assert(owner_session);
+		size_t temp = ArrayList_indexOf(owner_session->owned, client, NULL);
+		ArrayList_remove(owner_session->owned, temp);
+	}
+	client->owned_by = session->node;
+	ArrayList_add(session->owned, client);
+}
+
+static void take_all_nodes(Balancer self) {
 	int node_count = nodes_count();
 	struct Node **nodes = nodes_get();
 
 	for (int i = 0; i < node_count; i++) {
-		balancing_take_node(self, nodes[i]->ip4addr);
+		take_node(self, nodes[i]->ip4addr);
 	}
 	free(nodes);
 }
 
-void balancing_node_owned(Balancer self, uint32_t ip4s, uint32_t ip4c) {
-	struct Node *sensor = nodes_get_node(ip4s);
+void balancing_node_owned(Balancer self, uint32_t ip4s, uint32_t ip4c, uint32_t load) {
+	struct SensorSession *session = HashMap_get(self->sensorSessions, &ip4s);
 	struct Node *client = nodes_get_node(ip4c);
-
-	if (client == NULL) {
+	if (session == NULL) { //  no session
+		DERROR("Session for sensor (%s) not found\n",  Ip4ToStr(ip4s));
+	} else if (ip4c == self->current->ip4addr) {
+		DWARNING("Node conflict: (%s) is trying to take over ME\n", Ip4ToStr(ip4s));
+	} else if (client == NULL) { // no client
 		DWARNING("Node conflict: node=(%s) ", Ip4ToStr(ip4c));
-		DWARNINGA("received from sensor=(%s) not found\n", Ip4ToStr(sensor->ip4addr));
-
-	} else if (client == nodes_get_me()) {
-		DWARNING("Node conflict: (%s) is trying to take over ME\n", Ip4ToStr(sensor->ip4addr));
-
-	} else if (client->owned_by == nodes_get_me()) {
+		DWARNINGA("received from sensor=(%s) not found\n", Ip4ToStr(ip4s));
+	} else if (client->owned_by && client->owned_by == nodes_get_me()) { // client is taken by me
 		DWARNING("Node conflict: node=(%s) ", Ip4ToStr(ip4c));
-		DWARNINGA("is claimed by sensor=(%s) as his\n", Ip4ToStr(sensor->ip4addr));
-
+		DWARNINGA("is claimed by sensor=(%s) as his\n", Ip4ToStr(ip4s));
 	} else {
-		struct SensorSession *session = HashMap_get(self->sensorSessions, &ip4s);
-		if (session == NULL) {
-			DERROR("Sensor session not exist (%s)\n", Ip4ToStr(ip4s));
-		} else {
-			take_sensor_client(session, client);
-		}
+		take_sensor_client(self, session, client);
+		client->load = load;
 	}
-}
 
 
-int client_load_compare_dec(const void *c1, const void *c2) {
-	int load1 = (*(struct Node **) c1)->load;
-	int load2 = (*(struct Node **) c2)->load;
-
-	return load1 == load2 ? 0 : load1 < load2 ? 1 : -1;
-}
-
-int clients_load_sum(struct Node **clients, int client_count) {
-	int result = 0;
-	for (int i = 0; i < client_count; i++) {
-		result += clients[i]->load;
-	}
-	return result;
 }
 
 
@@ -310,31 +328,49 @@ static size_t getMyPosition (Balancer self) {
 	return my_position;
 }
 
-ArrayList count_nodes_to_take(Balancer self) {
+static ArrayList get_all_clients(Balancer self) {
+	struct Node **nodes = nodes_get();
+	size_t nlen = nodes_count();
+	ArrayList clients = ArrayList_init(0, NULL);
+	for (size_t i = 0; i < nlen; i++) {
+		if (!balancing_is_in_session(self, nodes[i]->ip4addr)) {
+			ArrayList_add(clients, nodes[i]);
+		}
+	}
+	return clients;
+}
+
+static ArrayList count_nodes_to_take(Balancer self) {
 	size_t my_position = getMyPosition(self);
 	size_t sessions_count = HashMap_size(self->sensorSessions) + 1;
 
-	struct Node **clients = nodes_get();
-	ArrayList solution = bestfit_solution(clients, nodes_count(), sessions_count);
+	ArrayList clients = get_all_clients(self);
+
+	struct Node **clientsArr = (struct Node **) ArrayList_getData(clients);
+	size_t clients_count = ArrayList_length(clients);
+	ArrayList solution = bestfit_solution(clientsArr, clients_count, sessions_count);
 
 	ArrayList my_clients = ArrayList_get(solution, my_position);
 	ArrayList clientsCopy = ArrayList_copy(my_clients);
 
-	free(clients);
+	ArrayList_destroy(clients);
 	ArrayList_destroy(solution);
 
 	return clientsCopy;
 }
 
-void rebalance_nodes(Balancer self) {
+static void rebalance_nodes(Balancer self) {
 	ArrayList nodes = count_nodes_to_take(self);
 	size_t count = ArrayList_length(nodes);
 	DNOTIFY("Taking (%i) nodes\n", count);
 	for (int i = 0; i < count; i++) {
 		struct Node *client = ArrayList_get(nodes, i);
-		if (!nodes_is_me(client->owned_by)) {
+		if (client->owned_by == NULL) {
+			take_node(self, client->ip4addr);
+		} else if (!nodes_is_me(client->owned_by)) {
 			uint32_t ip4addr = client->ip4addr;
-			DNOTIFYA("%s\n", Ip4ToStr(ip4addr));
+			DNOTIFYA("Getting node (%s) from ", Ip4ToStr(ip4addr));
+			DNOTIFYA("(%s)\n", Ip4ToStr(client->owned_by->ip4addr));
 			Array array = Array_init(0, sizeof(ip4addr));
 			Array_add(array, &ip4addr);
 			NodeRequest request = {
@@ -348,12 +384,12 @@ void rebalance_nodes(Balancer self) {
 	ArrayList_destroy(nodes);
 }
 
-void to_STATE_ALONE(Balancer self) {
+static void to_STATE_ALONE(Balancer self) {
 	self->State = STATE_ALONE;
 	take_all_nodes(self);
 }
 
-void to_STATE_COUPLE(Balancer self) {
+static void to_STATE_COUPLE(Balancer self) {
 	self->State = STATE_COUPLE;
 	rebalance_nodes(self);
 }
@@ -419,3 +455,14 @@ void balancing_process(Balancer self) {
 
 
 
+ArrayList balancing_get_owned(Balancer self) {
+	return self->Me.owned;
+}
+
+uint8_t balancing_get_state(Balancer self) {
+	return self->State;
+}
+
+time_t balancing_get_created(Balancer self) {
+	return self->Me.created;
+}
