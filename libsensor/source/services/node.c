@@ -40,9 +40,6 @@ static struct RequestData send_nodes(uint8_t type, Array ip4array) {
 	uint8_t *buffer = malloc(len);
 	uint8_t *ptr = buffer;
 
-	buffer = malloc(len);
-	ptr = buffer;
-
 	AddToBuffer8(&ptr, type);
 	AddToBuffer32(&ptr, count);
 	for (int i = 0; i < count; i++) {

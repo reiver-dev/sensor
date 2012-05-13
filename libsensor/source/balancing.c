@@ -334,6 +334,7 @@ static ArrayList get_all_clients(Balancer self) {
 			ArrayList_add(clients, nodes[i]);
 		}
 	}
+	free(nodes);
 	return clients;
 }
 
