@@ -57,6 +57,7 @@ void node_answered(uint32_t ip4, uint8_t *hw) {
 	struct Node *node = nodes_get_node(ip4);
 
 	if (node) {
+		node->last_check = time(NULL);
 		DINFO("Node (%s) is still online\n", Ip4ToStr(node->ip4addr));
 	} else {
 		node = malloc(sizeof(struct Node));
@@ -65,9 +66,10 @@ void node_answered(uint32_t ip4, uint8_t *hw) {
 		node->is_online = true;
 		node->load = 0;
 		node->owned_by = NULL;
+		node->last_check = time(NULL);
 		HashMap_addInt32(Nodes, ip4, node);
 	}
-	node->last_check = time(0);
+
 }
 
 
@@ -75,6 +77,9 @@ struct Node *nodes_get_node(uint32_t ip) {
 	return HashMap_get(Nodes, &ip);
 }
 
+void nodes_remove(uint32_t ip) {
+	HashMap_remove(Nodes, &ip);
+}
 
 struct Node *nodes_get_destination(uint32_t ip) {
 	if (!is_same_network_ip4(ip)) {

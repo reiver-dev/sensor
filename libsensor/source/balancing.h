@@ -27,6 +27,7 @@ ArrayList balancing_get_owned(Balancer self);
 
 void balancing_release_node(Balancer self, uint32_t ip4c);
 void balancing_take_node_from(Balancer self, uint32_t ip4s, uint32_t ip4c);
+void balancing_sensor_info_refreshed(Balancer self, uint32_t ip4s);
 void balancing_node_owned(Balancer self, uint32_t ip4s, uint32_t ip4c, uint32_t load);
 
 void balancing_add_load(Balancer self, uint8_t *buffer, size_t length);

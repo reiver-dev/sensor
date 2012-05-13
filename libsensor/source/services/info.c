@@ -114,6 +114,8 @@ static void info_response(ServicesData servicesData, struct Node *from, struct R
 
 			balancing_node_owned(servicesData->balancer, from->ip4addr, ip4addr, load);
 		}
+
+		balancing_sensor_info_refreshed(servicesData->balancer, from->ip4addr);
 	}
 }
 

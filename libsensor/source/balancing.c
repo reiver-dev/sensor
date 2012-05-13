@@ -48,7 +48,9 @@ struct SensorSession {
 
 struct balancer {
 
-	time_t last_load;
+	time_t info_interval;
+	time_t survey_interval;
+
 	uint8_t State;
 
 	struct CurrentAddress *current;
@@ -146,6 +148,7 @@ void balancing_init_sensor_session(Balancer self, uint32_t ip4, time_t created) 
 		session->node = nodes_get_node(ip4);
 		session->owned = ArrayList_init(0, (ArrayList_destroyer)unset_owned);
 		session->created = created;
+		session->last_info = time(NULL);
 		HashMap_addInt32(self->sensorSessions, ip4, session);
 		balancing_release_node(self, ip4);
 	}
@@ -157,6 +160,8 @@ Balancer balancing_init(sensor_t config) {
 	self->current = &config->current;
 	self->State = STATE_BEGIN;
 	self->servicesData = Services_Init(self, config->opt.device_name);
+	self->info_interval = 60;
+	self->survey_interval = config->opt.balancing.survey_timeout * 2;
 
 	self->sensorSessions = HashMap_initInt32(free, (HashMapDestroyer)session_destroy);
 	self->clientMomentLoads = HashMap_initInt32(free, (HashMapDestroyer)ArrayList_destroy);
@@ -277,6 +282,12 @@ static void take_all_nodes(Balancer self) {
 	free(nodes);
 }
 
+void balancing_sensor_info_refreshed(Balancer self, uint32_t ip4s) {
+	struct SensorSession *session = HashMap_get(self->sensorSessions, &ip4s);
+	assert(session);
+	session->last_info = time(NULL);
+}
+
 void balancing_node_owned(Balancer self, uint32_t ip4s, uint32_t ip4c, uint32_t load) {
 	struct SensorSession *session = HashMap_get(self->sensorSessions, &ip4s);
 	struct Node *client = nodes_get_node(ip4c);
@@ -382,6 +393,42 @@ static void rebalance_nodes(Balancer self) {
 	ArrayList_destroy(nodes);
 }
 
+static void check_sensors_info(Balancer self) {
+	size_t sessions_count = HashMap_size(self->sensorSessions);
+	struct SensorSession *sessions[sessions_count];
+	HashMap_getValues(self->sensorSessions, (void **)sessions);
+	time_t now = time(NULL);
+	for (size_t i = 0; i < sessions_count; i++) {
+		time_t interval = now - sessions[i]->last_info;
+		if (interval >= self->info_interval) {
+			uint32_t ip4 = sessions[i]->node->ip4addr;
+			DNOTIFY("Breaking session with sensor (%s) for timeout (%i)\n", Ip4ToStr(ip4), interval);
+			balancing_break_sensor_session(self, ip4);
+		} else if (interval >= self->info_interval / 3) {
+			InfoRequest inforeq = {INFO_TYPE_POP};
+			Services_Request(self->servicesData, InfoService_Get(), 0, &inforeq);
+		}
+	}
+
+}
+
+static void check_nodes_online(Balancer self) {
+	struct Node **nodes = nodes_get();
+	size_t nlen = nodes_count();
+	time_t now = time(NULL);
+	for (size_t i = 0; i < nlen; i++) {
+		time_t interval = now - nodes[i]->last_check;
+		if (interval >= self->survey_interval) {
+			uint32_t ip4 = nodes[i]->ip4addr;
+			DINFO("Removing node (%s) for survey timeout (%i)\n", Ip4ToStr(ip4), interval);
+			balancing_release_node(self, ip4);
+			balancing_break_sensor_session(self, ip4);
+			nodes_remove(ip4);
+		}
+	}
+	free(nodes);
+}
+
 static void to_STATE_ALONE(Balancer self) {
 	self->State = STATE_ALONE;
 	take_all_nodes(self);
@@ -421,6 +468,7 @@ void balancing_process(Balancer self) {
 			break;
 
 		case STATE_ALONE:
+			check_nodes_online(self);
 			if (!HashMap_size(self->sensorSessions)) {
 				take_all_nodes(self);
 			} else {
@@ -429,9 +477,11 @@ void balancing_process(Balancer self) {
 			break;
 
 		case STATE_COUPLE:
+			check_nodes_online(self);
 			if (!HashMap_size(self->sensorSessions)) {
 				to_STATE_ALONE(self);
 			} else {
+				check_sensors_info(self);
 				rebalance_nodes(self);
 			}
 			break;

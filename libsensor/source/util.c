@@ -2,6 +2,7 @@
 #include <string.h>
 #include <assert.h>
 #include <errno.h>
+#include <time.h>
 
 #include <arpa/inet.h>
 #include <netinet/ether.h>
@@ -62,6 +63,11 @@ char *EtherToStr(const uint8_t eth[ETH_ALEN]) {
 	return ether_ntoa((struct ether_addr*)eth);
 }
 
+char *Time4ToStr(const time_t t) {
+	static char str[16] = {0};
+	strftime(str, 16, "%T", localtime(&t));
+	return str;
+}
 
 int bitcount(unsigned int n) {
 	unsigned int count;

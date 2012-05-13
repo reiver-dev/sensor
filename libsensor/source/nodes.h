@@ -42,6 +42,7 @@ struct Node **nodes_get();
 void node_answered(uint32_t ip4, uint8_t *hw);
 
 struct Node *nodes_get_node(uint32_t ip);
+void nodes_remove(uint32_t ip);
 struct Node *nodes_get_destination(uint32_t ip);
 bool nodes_is_my_addr(uint32_t ip4);
 bool nodes_is_me(struct Node *node);
