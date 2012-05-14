@@ -384,7 +384,7 @@ int sensor_loop(sensor_t config) {
 	/* Initial */
 	iteration_time = time(0);
 	survey_perform_survey(&config->current, config->sock);
-	while ((time(0) - iteration_time) < 5) {
+	while ((time(0) - iteration_time) < config->opt.survey.initial_timeout) {
 		int read_len = recv(config->sock, buffer, buflength, 0);
 		if (read_len > 0) {
 			survey_process_response(&config->current, buffer, read_len);
@@ -393,7 +393,7 @@ int sensor_loop(sensor_t config) {
 
 	iteration_time = time(0);
 	balancing_process(balancer);
-	while ((time(0) - iteration_time) < 5) {
+	while ((time(0) - iteration_time) < config->opt.balancing.initial_timeout) {
 		balancing_receive_service(balancer);
 		usleep(500);
 	}
@@ -408,12 +408,12 @@ int sensor_loop(sensor_t config) {
 	iteration_time = time(0);
 	struct timer dissect_timer   = {iteration_time, config->opt.dissect.timeout};
 	struct timer persist_timer   = {iteration_time, config->opt.persist.timeout};
-	struct timer survey_timer    = {iteration_time, config->opt.balancing.survey_timeout};
+	struct timer survey_timer    = {iteration_time, config->opt.survey.timeout};
 	struct timer balancing_timer = {iteration_time, config->opt.balancing.timeout};
-	struct timer spoof_timer     = {iteration_time, config->opt.balancing.spoof_timeout};
+	struct timer spoof_timer     = {iteration_time, config->opt.balancing.modify_timeout};
 
-	uint32_t load_interval = 2;
-	uint32_t load_count = 5;
+	uint32_t load_interval = config->opt.balancing.load_interval;
+	uint32_t load_count = config->opt.balancing.load_count;
 
 	/* Main loop */
 	DNOTIFY("%s\n", "Starting capture");

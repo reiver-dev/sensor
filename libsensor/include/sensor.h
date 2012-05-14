@@ -46,8 +46,18 @@ typedef struct {
 
 typedef struct {
 	uint32_t timeout;
-	uint32_t survey_timeout;
-	uint32_t spoof_timeout;
+	uint32_t initial_timeout;
+	uint32_t node_disconnect_timeout;
+} sensor_survey_opt;
+
+typedef struct {
+	uint32_t timeout;
+	uint32_t initial_timeout;
+	uint32_t info_timeout;
+	uint32_t session_timeout;
+	uint32_t modify_timeout;
+	uint32_t load_count;
+	uint32_t load_interval;
 	bool enable_redirect;
 	bool enable_modify;
 } sensor_balancing_opt;
@@ -57,6 +67,7 @@ typedef struct {
 	sensor_capture_opt capture;
 	sensor_dissect_opt dissect;
 	sensor_persist_opt persist;
+	sensor_survey_opt survey;
 	sensor_balancing_opt balancing;
 } sensor_options_t;
 

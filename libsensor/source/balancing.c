@@ -49,6 +49,7 @@ struct SensorSession {
 struct balancer {
 
 	time_t info_interval;
+	time_t session_interval;
 	time_t survey_interval;
 
 	uint8_t State;
@@ -169,8 +170,10 @@ Balancer balancing_init(sensor_t config) {
 	self->current = &config->current;
 	self->State = STATE_BEGIN;
 	self->servicesData = Services_Init(self, config->opt.device_name);
-	self->info_interval = 60;
-	self->survey_interval = config->opt.balancing.survey_timeout * 2;
+
+	self->info_interval = config->opt.balancing.info_timeout;
+	self->survey_interval = config->opt.survey.node_disconnect_timeout;
+	self->session_interval = config->opt.balancing.session_timeout;
 
 	self->sensorSessions = HashMap_initInt32(free, (HashMapDestroyer)session_destroy);
 	self->clientMomentLoads = HashMap_initInt32(free, (HashMapDestroyer)ArrayList_destroy);
@@ -409,11 +412,11 @@ static void check_sensors_info(Balancer self) {
 	time_t now = time(NULL);
 	for (size_t i = 0; i < sessions_count; i++) {
 		time_t interval = now - sessions[i]->last_info;
-		if (interval >= self->info_interval) {
+		if (interval >= self->session_interval) {
 			uint32_t ip4 = sessions[i]->node->ip4addr;
 			DNOTIFY("Breaking session with sensor (%s) for timeout (%i)\n", Ip4ToStr(ip4), interval);
 			balancing_break_sensor_session(self, ip4);
-		} else if (interval >= self->info_interval / 3) {
+		} else if (interval >= self->info_interval) {
 			InfoRequest inforeq = {INFO_TYPE_POP};
 			Services_Request(self->servicesData, InfoService_Get(), 0, &inforeq);
 		}
