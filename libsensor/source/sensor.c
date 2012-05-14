@@ -238,6 +238,9 @@ bool restore_redirect(sensor_t sensor, uint8_t* buffer, int captured) {
 			&& !memcmp(ethernet->ether_shost, sensor->current.hwaddr, ETH_ALEN)) {
 
 			struct Node *source = nodes_get_destination(ipheader->saddr);
+			if (!source)
+				return false;
+
 			memcpy(ethernet->ether_shost, source->hwaddr, ETH_ALEN);
 			return true;
 		}
