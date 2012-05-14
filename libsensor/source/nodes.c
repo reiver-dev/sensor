@@ -58,8 +58,8 @@ void node_answered(uint32_t ip4, uint8_t *hw) {
 
 	if (node) {
 		node->last_check = time(NULL);
-		DINFO("Node (%s) is still online\n", Ip4ToStr(node->ip4addr));
 	} else {
+		DINFO("Node found (%s)\n", Ip4ToStr(ip4));
 		node = malloc(sizeof(struct Node));
 		node->ip4addr = ip4;
 		memcpy(node->hwaddr, hw, ETH_ALEN);

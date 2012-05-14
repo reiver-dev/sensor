@@ -50,8 +50,10 @@ static bool addressToNode(struct sockaddr_in *sockaddr, struct Node **node) {
 	}
 
 	uint32_t ip4addr = sockaddr->sin_addr.s_addr;
-	if (ip4addr != INADDR_BROADCAST) {
-		*node = nodes_get_node(ip4addr);
+	*node = nodes_get_node(ip4addr);
+	if (!node) {
+		DWARNING("Unknown node for (%s)\n", Ip4ToStr(ip4addr));
+		return false;
 	}
 
 	return true;

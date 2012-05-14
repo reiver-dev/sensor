@@ -112,8 +112,6 @@ bool survey_process_response(const struct CurrentAddress *current, const uint8_t
 	uint8_t hw[ETH_ALEN];
 	memcpy(hw, arpheader->ar_sha, ETH_ALEN);
 
-	DINFO("Got survey response from: IP4:%s HW:%s\n", Ip4ToStr(ip4), EtherToStr(hw));
-
 	node_answered(ip4, hw);
 
 	return true;

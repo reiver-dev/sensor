@@ -73,7 +73,7 @@ static void bootstrap_response(ServicesData servicesData, struct Node *from, str
 		balancing_init_sensor_session(servicesData->balancer, from->ip4addr, t);
 
 		BootstrapRequest bootreq = {BOOTSTRAP_TYPE_CONNECT_ACK};
-		Services_Request(servicesData, BootstrapService_Get(), 0, &bootreq);
+		Services_Request(servicesData, BootstrapService_Get(), from, &bootreq);
 
 	} else if (type == BOOTSTRAP_TYPE_DISCONNECT) {
 		balancing_break_sensor_session(servicesData->balancer, from->ip4addr);

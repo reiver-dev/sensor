@@ -64,7 +64,16 @@ struct balancer {
 
 };
 
+void debug_client(void *n) {
+	struct Node *node = n;
+	DINFOA("Node: (%s) -- (%i)\n", Ip4ToStr(node->ip4addr), node->load);
+}
 
+void debug_owned_clients(Balancer self) {
+	ArrayList owned = self->Me.owned;
+	DINFO("%s", "Owned Nodes:\n");
+	ArrayList_foreach(owned, debug_client);
+}
 
 bool is_same_network_ip4(Balancer self, uint32_t ip) {
 	uint32_t network = self->current->ip4addr & self->current->netmask;
@@ -455,19 +464,22 @@ void balancing_process(Balancer self) {
 		switch(self->State) {
 		case STATE_BEGIN:
 			seek_sensors(self);
+			seek_sensors(self);
+			seek_sensors(self);
 			self->State = STATE_WAIT_SENSORS;
 			break;
 
 		case STATE_WAIT_SENSORS:
 			if (!HashMap_size(self->sensorSessions)) {
-				to_STATE_ALONE(self);
+				self->State = STATE_ALONE;
 			} else {
-				to_STATE_COUPLE(self);
+				self->State = STATE_COUPLE;
 			}
 			repeat = true;
 			break;
 
 		case STATE_ALONE:
+			debug_owned_clients(self);
 			check_nodes_online(self);
 			if (!HashMap_size(self->sensorSessions)) {
 				take_all_nodes(self);
@@ -477,6 +489,7 @@ void balancing_process(Balancer self) {
 			break;
 
 		case STATE_COUPLE:
+			debug_owned_clients(self);
 			check_nodes_online(self);
 			if (!HashMap_size(self->sensorSessions)) {
 				to_STATE_ALONE(self);

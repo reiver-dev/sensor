@@ -68,8 +68,6 @@ static void load_close(ArrayList momentLoads, struct Node *client, uint32_t inte
 
 	load /= interval;
 
-	DINFO("New load of node (%s) is %i\n", Ip4ToStr(client->ip4addr), load);
-
 	client->load = load;
 
 }

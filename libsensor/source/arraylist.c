@@ -20,7 +20,7 @@ struct ArrayList {
 };
 
 static void moveData(void **data, size_t to, size_t from, size_t length) {
-	memmove(&data[to], &data[from], (length - to) * sizeof(POINTER));
+	memmove(&data[to], &data[from], (length) * sizeof(POINTER));
 }
 
 static void ensureSize(ArrayList self, int more) {
