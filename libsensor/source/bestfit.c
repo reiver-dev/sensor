@@ -24,7 +24,13 @@ static int client_load_compare_dec(const void *c1, const void *c2) {
 	int load1 = (*(struct Node **) c1)->load;
 	int load2 = (*(struct Node **) c2)->load;
 
-	return load1 == load2 ? 0 : load1 < load2 ? 1 : -1;
+	if (load1 == load2) {
+		uint32_t ip1 = (*(struct Node **) c1)->ip4addr;
+		uint32_t ip2 = (*(struct Node **) c2)->ip4addr;
+		return ip1 == ip2 ? 0 : ip1 < ip2 ? -1 : 1;
+	}
+
+	return load1 < load2 ? 1 : -1;
 }
 
 

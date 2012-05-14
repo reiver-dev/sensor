@@ -381,8 +381,8 @@ int sensor_loop(sensor_t config) {
 	buflength = config->opt.capture.buffersize;
 	buffer = malloc(buflength);
 
-	balancer = balancing_init(config);
 	nodes_init(&config->current);
+	balancer = balancing_init(config);
 
 	/* Initial */
 	iteration_time = time(0);

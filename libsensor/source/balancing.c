@@ -179,7 +179,7 @@ Balancer balancing_init(sensor_t config) {
 	self->clientMomentLoads = HashMap_initInt32(free, (HashMapDestroyer)ArrayList_destroy);
 
 	self->Me.owned = ArrayList_init(0, (ArrayList_destroyer)unset_owned);
-	self->Me.node = NULL;
+	self->Me.node = nodes_get_me();
 	self->Me.created = time(NULL);
 
 	return self;
@@ -325,7 +325,13 @@ void balancing_node_owned(Balancer self, uint32_t ip4s, uint32_t ip4c, uint32_t 
 static int sort_sessions_by_time(const void *n1, const void *n2) {
 	time_t t1 = (*(struct SensorSession **)n1)->created;
 	time_t t2 = (*(struct SensorSession **)n2)->created;
-	return t1 == t2 ? 0 : t1 < t2 ? -1 : 1;
+	if (t1 == t1) {
+		uint32_t ip1 = (*(struct SensorSession **) n1)->node->ip4addr;
+		uint32_t ip2 = (*(struct SensorSession **) n2)->node->ip4addr;
+		return ip1 == ip2 ? 0 : ip1 < ip2 ? -1 : 1;
+	}
+
+	return t1 < t2 ? -1 : 1;
 }
 
 static size_t getMyPosition (Balancer self) {
