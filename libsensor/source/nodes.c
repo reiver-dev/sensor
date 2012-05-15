@@ -36,6 +36,7 @@ void nodes_init(struct CurrentAddress *curr) {
 	memcpy(Me->hwaddr, current->hwaddr, ETH_ALEN);
 	Me->owned_by = NULL;
 	Me->load = 0;
+	Me->current_load = 0;
 	Me->last_check = 0;
 	Me->is_online = true;
 
@@ -65,6 +66,7 @@ void node_answered(uint32_t ip4, uint8_t *hw) {
 		memcpy(node->hwaddr, hw, ETH_ALEN);
 		node->is_online = true;
 		node->load = 0;
+		node->current_load = 0;
 		node->owned_by = NULL;
 		node->last_check = time(NULL);
 		HashMap_addInt32(Nodes, ip4, node);

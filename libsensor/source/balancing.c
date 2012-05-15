@@ -262,6 +262,8 @@ void balancing_take_node_from(Balancer self, uint32_t ip4s, uint32_t ip4c) {
 	if (client == NULL) {
 		DWARNING("Node conflict: node=(%s) ", Ip4ToStr(ip4c));
 		DWARNINGA("given by sensor=(%s) not found\n", Ip4ToStr(ip4s));
+	} else if (client->owned_by && nodes_is_me(client->owned_by)) {
+		DNOTIFY("Node collision resolved: node (%s) is mine\n",  Ip4ToStr(ip4c));
 	} else if (client->owned_by != session->node) {
 		DWARNING("Node conflict: node=(%s) ", Ip4ToStr(ip4c));
 		DWARNINGA("given by sensor=(%s) not owned by it\n", Ip4ToStr(ip4s));
@@ -313,6 +315,19 @@ void balancing_node_owned(Balancer self, uint32_t ip4s, uint32_t ip4c, uint32_t 
 	} else if (client->owned_by && client->owned_by == nodes_get_me()) { // client is taken by me
 		DWARNING("Node conflict: node=(%s) ", Ip4ToStr(ip4c));
 		DWARNINGA("is claimed by sensor=(%s) as his\n", Ip4ToStr(ip4s));
+
+		balancing_release_node(self, client->ip4addr);
+		Array array = Array_init(0, sizeof(ip4c));
+		Array_add(array, &ip4c);
+		NodeRequest request = {
+			.type = NODESERVICE_TYPE_GIVE,
+			.ip4array = array
+		};
+		Services_Request(self->servicesData, NodeService_Get(), session->node, &request);
+		Array_destroy(array);
+		take_sensor_client(self, session, client);
+		client->load = load;
+
 	} else {
 		take_sensor_client(self, session, client);
 		client->load = load;
@@ -343,12 +358,12 @@ static size_t getMyPosition (Balancer self) {
 
 	size_t my_position = -1;
 	for (size_t i = 0; i < sessions_count; i++) {
+		DINFOA("S%i(%s)\t\t", i, Ip4ToStr(sessions[i]->node->ip4addr));
 		if (sessions[i] == &self->Me) {
 			my_position = i;
-			break;
 		}
 	}
-
+	DINFOA("%s", "\n");
 	free(sessions);
 
 	return my_position;
@@ -376,6 +391,32 @@ static ArrayList count_nodes_to_take(Balancer self) {
 	struct Node **clientsArr = (struct Node **) ArrayList_getData(clients);
 	size_t clients_count = ArrayList_length(clients);
 	ArrayList solution = bestfit_solution(clientsArr, clients_count, sessions_count);
+
+#ifdef DEBUG
+
+	size_t max_size = 0;
+	size_t len = ArrayList_length(solution);
+	for (size_t i = 0; i < len; i++) {
+		ArrayList clients = ArrayList_get(solution, i);
+		if (max_size < ArrayList_length(clients)) {
+			max_size = ArrayList_length(clients);
+		}
+	}
+
+	for (size_t i = 0; i < max_size; i++) {
+		for (size_t j = 0; j < len; j++) {
+			ArrayList clients = ArrayList_get(solution, j);
+			if (i < ArrayList_length(clients)) {
+				struct Node *node = ArrayList_get(clients, i);
+				DINFOA("%s(%i)\t\t", Ip4ToStr(node->ip4addr), node->load);
+			} else {
+				DINFOA("%s\t\t", "              ");
+			}
+		}
+		DINFOA("%s", "\n");
+	}
+
+#endif
 
 	ArrayList my_clients = ArrayList_get(solution, my_position);
 	ArrayList clientsCopy = ArrayList_copy(my_clients);

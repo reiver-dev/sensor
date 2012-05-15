@@ -53,8 +53,10 @@ static struct RequestData push_info(ServicesData servicesData) {
 	AddToBuffer8(&ptr, INFO_TYPE_PUSH);
 	AddToBuffer32(&ptr, ownedCount);
 	for (int i = 0; i < ownedCount; i++) {
-		AddToBuffer32NoOrder(&ptr, ARRAYLIST_GET(ownedNodes, struct Node*, i)->ip4addr);
-		AddToBuffer32(&ptr, ARRAYLIST_GET(ownedNodes, struct Node*, i)->load);
+		struct Node *node = ARRAYLIST_GET(ownedNodes, struct Node*, i);
+		node->load = node->current_load;
+		AddToBuffer32NoOrder(&ptr, node->ip4addr);
+		AddToBuffer32(&ptr, node->load);
 	}
 
 	struct RequestData result = {len, buffer};

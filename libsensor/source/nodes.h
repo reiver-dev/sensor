@@ -29,6 +29,7 @@ struct Node {
 	bool     is_online;
 
 	uint32_t load;
+	uint32_t current_load;
 	struct Node *owned_by;
 };
 

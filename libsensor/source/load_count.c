@@ -68,7 +68,7 @@ static void load_close(ArrayList momentLoads, struct Node *client, uint32_t inte
 
 	load /= interval;
 
-	client->load = load;
+	client->current_load = load;
 
 }
 
