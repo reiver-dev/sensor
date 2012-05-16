@@ -41,6 +41,15 @@ static struct Bucket *bucket_init(uint32_t hash, void *key, void *val) {
 	return bucket;
 }
 
+static void bucket_destroy_steal(HashMap self, struct Bucket *bucket) {
+
+	if (self->destroy_key) {
+		self->destroy_key(bucket->key);
+	}
+
+	free(bucket);
+}
+
 static void bucket_destroy(HashMap self, struct Bucket *bucket) {
 
 	if (self->destroy_key) {
@@ -71,11 +80,7 @@ static struct Bucket *get_bucket(HashMap self, uint32_t hash, void *key) {
 	size_t index = get_place(self->length, hash);
 
 	struct Bucket *bucket = self->data[index];
-	if (bucket == NULL || bucket->next == NULL) {
-		return bucket;
-	}
 
-	/* collision */
 	while (bucket != NULL) {
 		if (bucket_equals(self, bucket, hash, key)) {
 			break;
@@ -90,17 +95,14 @@ static struct Bucket *steal_bucket(HashMap self, uint32_t hash, void *key) {
 	size_t index = get_place(self->length, hash);
 
 	struct Bucket *bucket = self->data[index];
-	if (bucket == NULL || bucket->next == NULL) {
-		self->data[index] = NULL;
-		return bucket;
-	}
-
-	/* collision */
 	struct Bucket *prev = NULL;
+
 	while (bucket != NULL) {
 		if (bucket_equals(self, bucket, hash, key)) {
-			if (prev && bucket->next) {
-				prev = bucket->next;
+			if (prev) {
+				prev->next = bucket->next;
+			} else {
+				self->data[index] = bucket->next;
 			}
 			break;
 		}
@@ -407,10 +409,13 @@ void *HashMap_steal(HashMap self, void *key) {
 
 	struct Bucket *bucket = steal_bucket(self, hash, key);
 	if (bucket != NULL) {
+		void *val = bucket->val;
+		bucket_destroy_steal(self, bucket);
 		self->capacity--;
+		return val;
 	}
 
-	return bucket;
+	return NULL;
 
 }
 
