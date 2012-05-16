@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 
 #include "bestfit.h"
 #include "nodes.h"
@@ -6,7 +7,7 @@
 
 
 static int roundload(int load) {
-	int temp = load / 1000;
+	int temp = load / 100;
 	return temp != 0 ? temp : 1;
 }
 
@@ -21,8 +22,8 @@ static ArrayList init_solution(int sensor_count) {
 }
 
 static int client_load_compare_dec(const void *c1, const void *c2) {
-	int load1 = (*(struct Node **) c1)->load;
-	int load2 = (*(struct Node **) c2)->load;
+	int load1 = roundload((*(struct Node **) c1)->load);
+	int load2 = roundload((*(struct Node **) c2)->load);
 
 	if (load1 == load2) {
 		uint32_t ip1 = (*(struct Node **) c1)->ip4addr;
@@ -38,12 +39,12 @@ static void sort_clients_by_load(struct Node **clients, size_t client_count) {
 	qsort(clients, client_count, sizeof(struct Node *), client_load_compare_dec);
 }
 
-static int clients_load_sum(ArrayList clientsAL) {
+static uint32_t clients_load_sum(ArrayList clientsAL) {
 	size_t clients_count = ArrayList_length(clientsAL);
 	struct Node **clients = (struct Node **)ArrayList_getData(clientsAL);
 
-	int result = 0;
-	for (int i = 0; i < clients_count; i++) {
+	uint32_t result = 0;
+	for (size_t i = 0; i < clients_count; i++) {
 		uint32_t load = clients[i]->load;
 		result += roundload(load);
 	}
@@ -53,7 +54,8 @@ static int clients_load_sum(ArrayList clientsAL) {
 static size_t find_lowest_load(ArrayList solution) {
 	int sensor_count = ArrayList_length(solution);
 
-	int loads[sensor_count];
+	uint32_t loads[sensor_count];
+	memset(loads, 0, sensor_count * sizeof(*loads));
 
 	/* get load sums */
 	for (size_t i = 0; i < sensor_count; i++) {
