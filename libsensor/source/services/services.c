@@ -93,7 +93,7 @@ static bool checkHeaderConstans(struct Header *header) {
 
 static bool checkHeaderLength(struct Header *header, int readLen) {
 	if (ntohl(header->length) > readLen) {
-		DERROR("Length read is insufficient: expected=%i, has=%i", header->length, readLen);
+		DERROR("Length read is insufficient: expected=%i, has=%i\n", ntohl(header->length), readLen);
 		return false;
 	}
 	return true;
@@ -154,7 +154,7 @@ void Services_Request(ServicesData self, Service service, struct Node *to, void 
 		int res = makeRequest(self->udp_sock, service->ID, data.buffer, data.len, to);
 		free(data.buffer);
 		if (res != -1) {
-			DINFO("Service request successful: %s\n", service->Name);
+			DINFO("Service request successful: %s (%i)\n", service->Name, data.len);
 		} else {
 			DINFO("Service request failed: %s (%s)\n", service->Name, strerror(errno));
 		}
@@ -245,7 +245,7 @@ static void Services_ReceiveData(ServicesData self, uint8_t *data, int len, stru
 }
 
 void Services_Receive(ServicesData self) {
-	size_t bufferSize = 512 * sizeof(uint8_t);
+	size_t bufferSize = 4095 * sizeof(uint8_t);
 	uint8_t *buffer = malloc(bufferSize);
 
 	struct sockaddr_in address;

@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "arraylist.h"
 #include "balancing.h"
@@ -89,6 +90,7 @@ void load_count(HashMap clientMomentLoads, ArrayList owned, uint32_t load_interv
 	for (int i = 0; i < len; i++) {
 		struct Node *client = ArrayList_get(owned, i);
 		ArrayList momentLoads = get_client_moment_load(clientMomentLoads, client);
+		assert(momentLoads);
 		struct NodeLoad *lastLoad = load_get_last(momentLoads);
 
 		if (!lastLoad) {
