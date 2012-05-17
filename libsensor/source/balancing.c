@@ -111,29 +111,6 @@ bool balancing_is_valid_addreses(Balancer self, uint32_t ip4from, uint32_t ip4to
 	return false;
 }
 
-/* -------------------------- loading */
-
-
-
-static struct Node *get_client(Balancer self, uint8_t *buffer, int length) {
-	struct iphdr *ipheader = packet_map_ip(buffer, length);
-	if (!ipheader) {
-		return NULL;
-	}
-
-	if (is_valid_source(self, ipheader->saddr) && !balancing_is_in_session(self, ipheader->saddr)) {
-		return nodes_get_node(ipheader->saddr);
-	}
-
-	if (is_valid_source(self, ipheader->daddr) && !balancing_is_in_session(self, ipheader->daddr)) {
-		return nodes_get_node(ipheader->daddr);
-	}
-
-	return NULL;
-
-}
-
-/* ---------------------------------------------- */
 
 /* callback when session removed hashmap */
 static void session_destroy(struct SensorSession *session) {
@@ -207,14 +184,20 @@ void balancing_disconnect(Balancer self) {
 }
 
 void balancing_add_load(Balancer self, uint8_t *buffer, size_t length) {
-	struct Node *client = get_client(self, buffer, length);
-	if (client != NULL) {
-		ArrayList momentLoads = HashMap_get(self->clientMomentLoads,
-				&client->ip4addr);
-		if (momentLoads) {
-			load_bytes_add(momentLoads, length);
-		}
-	}
+	struct iphdr *ipheader = packet_map_ip(buffer, length);
+	if (!ipheader)
+		return;
+
+	ArrayList momentLoads;
+
+	momentLoads = HashMap_get(self->clientMomentLoads, &ipheader->saddr);
+	if (momentLoads)
+		load_bytes_add(momentLoads, length);
+
+	momentLoads = HashMap_get(self->clientMomentLoads, &ipheader->daddr);
+	if (momentLoads)
+		load_bytes_add(momentLoads, length);
+
 }
 
 void balancing_count_load(Balancer self, uint32_t l_interval, uint32_t l_count) {
