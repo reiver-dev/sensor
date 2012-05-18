@@ -36,7 +36,7 @@ void nodes_init(struct CurrentAddress *curr) {
 	memcpy(Me->hwaddr, current->hwaddr, ETH_ALEN);
 	Me->owned_by = NULL;
 	Me->load = 0;
-	Me->current_load = 0;
+	Me->current_load = NODE_LOAD_NOT_READY;
 	Me->last_check = 0;
 	Me->is_online = true;
 

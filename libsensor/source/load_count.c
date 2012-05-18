@@ -50,13 +50,13 @@ static void load_close(ArrayList momentLoads, struct Node *client, uint32_t inte
 
 	qsort(data, loads, sizeof(void *), load_compare);
 
-	int load;
+	uint32_t load;
 	if (loads % 2) {
-		int index = loads / 2;
+		size_t index = loads / 2;
 		struct NodeLoad *median = data[index];
 		load = median->load;
 	} else {
-		int index = loads / 2;
+		size_t index = loads / 2;
 		struct NodeLoad *median = data[index];
 		load = median->load;
 		index++;
@@ -102,7 +102,7 @@ void load_count(HashMap clientMomentLoads, ArrayList owned, uint32_t load_interv
 		uint32_t interval = now - lastLoad->timestamp;
 		if (interval >= load_interval && loads >= load_count) {
 			load_close(momentLoads, client, load_interval);
-			ArrayList_remove_fast(momentLoads, 0);
+			ArrayList_remove(momentLoads, 0);
 		} else if (interval >= load_interval) {
 			load_create_item(momentLoads);
 		}

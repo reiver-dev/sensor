@@ -9,11 +9,7 @@
 #include "arraylist.h"
 
 
-#define NODE_TYPE_OFFLINE 0
-#define NODE_TYPE_SENSOR 1
-#define NODE_TYPE_CLIENT 2
-#define NODE_TYPE_GATEWAY 3
-
+const uint32_t NODE_LOAD_NOT_READY = UINT32_MAX;
 
 /* Types */
 struct NodeLoad {

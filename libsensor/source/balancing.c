@@ -232,6 +232,7 @@ void balancing_release_node(Balancer self, uint32_t ip4c) {
 		DNOTIFY("Releasing node (%s)\n", Ip4ToStr(client->ip4addr));
 		ArrayList_removeItem(self->Me.owned, client, NULL);
 		HashMap_remove(self->clientMomentLoads, &client->ip4addr);
+		client->current_load = NODE_LOAD_NOT_READY;
 	}
 }
 
