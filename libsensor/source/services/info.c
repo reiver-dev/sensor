@@ -54,7 +54,8 @@ static struct RequestData push_info(ServicesData servicesData) {
 	AddToBuffer32(&ptr, ownedCount);
 	for (int i = 0; i < ownedCount; i++) {
 		struct Node *node = ARRAYLIST_GET(ownedNodes, struct Node*, i);
-		node->load = node->current_load;
+		if (balancing_is_load_ready(servicesData->balancer, node->ip4addr))
+			node->load = node->current_load;
 		AddToBuffer32NoOrder(&ptr, node->ip4addr);
 		AddToBuffer32(&ptr, node->load);
 		AddToBuffer(&ptr, node->hwaddr, ETH_ALEN);

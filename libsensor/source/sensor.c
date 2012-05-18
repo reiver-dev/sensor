@@ -415,9 +415,6 @@ int sensor_loop(sensor_t config) {
 	struct timer balancing_timer = {iteration_time, config->opt.balancing.timeout};
 	struct timer spoof_timer     = {iteration_time, config->opt.balancing.modify_timeout};
 
-	uint32_t load_interval = config->opt.balancing.load_interval;
-	uint32_t load_count = config->opt.balancing.load_count;
-
 	/* Main loop */
 	DNOTIFY("%s\n", "Starting capture");
 	while(config->activated || queue_length(config->captured) || queue_length(config->dissected)){
@@ -465,7 +462,7 @@ int sensor_loop(sensor_t config) {
 					}
 
 					balancing_add_load(balancer, buffer, read_len);
-					balancing_count_load(balancer, load_interval, load_count);
+					balancing_count_load(balancer);
 
 					/* put captured packet in queue for dissection */
 					captured = init_captured(buffer, read_len);

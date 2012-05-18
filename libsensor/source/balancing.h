@@ -31,7 +31,8 @@ void balancing_sensor_info_refreshed(Balancer self, uint32_t ip4s);
 void balancing_node_owned(Balancer self, uint32_t ip4s, uint32_t ip4c, uint32_t load);
 
 void balancing_add_load(Balancer self, uint8_t *buffer, size_t length);
-void balancing_count_load(Balancer self, uint32_t load_interval, uint32_t load_count);
+void balancing_count_load(Balancer self);
+bool balancing_is_load_ready(Balancer self, uint32_t ip4addr);
 
 bool balancing_is_valid_addreses(Balancer self, uint32_t ip4from, uint32_t ip4to);
 bool balancing_is_in_session(Balancer self, uint32_t ip);

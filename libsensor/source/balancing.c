@@ -51,6 +51,8 @@ struct balancer {
 	time_t info_interval;
 	time_t session_interval;
 	time_t survey_interval;
+	uint32_t load_interval;
+	uint32_t load_count;
 
 	uint8_t State;
 
@@ -159,6 +161,9 @@ Balancer balancing_init(sensor_t config) {
 	self->Me.node = nodes_get_me();
 	self->Me.created = time(NULL);
 
+	self->load_interval = config->opt.balancing.load_interval;
+	self->load_count = config->opt.balancing.load_count;
+
 	return self;
 }
 
@@ -200,8 +205,16 @@ void balancing_add_load(Balancer self, uint8_t *buffer, size_t length) {
 
 }
 
-void balancing_count_load(Balancer self, uint32_t l_interval, uint32_t l_count) {
-	load_count(self->clientMomentLoads, self->Me.owned, l_interval, l_count);
+void balancing_count_load(Balancer self) {
+	load_count(self->clientMomentLoads, self->Me.owned, self->load_interval, self->load_count);
+}
+
+bool balancing_is_load_ready(Balancer self, uint32_t ip4addr) {
+	ArrayList momentLoads = HashMap_get(self->clientMomentLoads, &ip4addr);
+	if (momentLoads && ArrayList_length(momentLoads) >= self->load_count)
+		return true;
+	else
+		return false;
 }
 
 void balancing_receive_service(Balancer self) {
