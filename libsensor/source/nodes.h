@@ -9,7 +9,7 @@
 #include "arraylist.h"
 
 
-const uint32_t NODE_LOAD_NOT_READY = UINT32_MAX;
+#define NODE_LOAD_NOT_READY UINT32_MAX
 
 /* Types */
 struct NodeLoad {

@@ -67,15 +67,23 @@ struct balancer {
 
 };
 
-void debug_client(void *n) {
+void debug_client_load(void *n) {
 	struct Node *node = n;
 	DINFOA("Node: (%s) -- (%i)\n", Ip4ToStr(node->ip4addr), node->load);
+}
+
+void debug_client_current_load(void *n) {
+	struct Node *node = n;
+	DINFOA("Node: (%s) -- (%i)\n", Ip4ToStr(node->ip4addr), node->current_load);
 }
 
 void debug_owned_clients(Balancer self) {
 	ArrayList owned = self->Me.owned;
 	DINFO("%s", "Owned Nodes:\n");
-	ArrayList_foreach(owned, debug_client);
+	ArrayList_foreach(owned,
+			self->State == STATE_ALONE ?
+					debug_client_current_load :
+					debug_client_load);
 }
 
 bool is_same_network_ip4(Balancer self, uint32_t ip) {
@@ -337,7 +345,7 @@ void balancing_node_owned(Balancer self, uint32_t ip4s, uint32_t ip4c, uint32_t 
 static int sort_sessions_by_time(const void *n1, const void *n2) {
 	time_t t1 = (*(struct SensorSession **)n1)->created;
 	time_t t2 = (*(struct SensorSession **)n2)->created;
-	if (t1 == t1) {
+	if (t1 == t2) {
 		uint32_t ip1 = (*(struct SensorSession **) n1)->node->ip4addr;
 		uint32_t ip2 = (*(struct SensorSession **) n2)->node->ip4addr;
 		return ip1 == ip2 ? 0 : ip1 < ip2 ? -1 : 1;
