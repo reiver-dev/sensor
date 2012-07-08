@@ -3,7 +3,6 @@
 
 #include <stdbool.h>
 #include <net/ethernet.h>
-#include "queue.h"
 #include "sensor.h"
 
 
@@ -30,8 +29,6 @@ struct sensor {
 	int sock;
 	struct CurrentAddress current;
 	sensor_options_t opt;
-	Queue_t captured;
-	Queue_t dissected;
 	sensor_dissect_f dissect_function;
 	sensor_persist_f persist_function;
 };

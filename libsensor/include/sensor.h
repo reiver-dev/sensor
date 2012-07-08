@@ -4,7 +4,6 @@
 #include <stdbool.h>
 #include <time.h>
 #include <net/if.h>
-#include <queue.h>
 
 
 typedef struct sensor_captured_s{
@@ -26,7 +25,7 @@ typedef struct sensor_dissected_s{
 
 
 typedef sensor_dissected_t *(*sensor_dissect_f)(sensor_captured_t *captured);
-typedef int (*sensor_persist_f)(Queue_t in);
+typedef int (*sensor_persist_f)(sensor_dissected_t *dissected);
 
 
 /* Options */

@@ -9,6 +9,7 @@
 
 #include "sensor_private.h"
 #include "socket_utils.h"
+#include "queue.h"
 #include "debug.h"
 #include "dissect.h"
 #include "nodes.h"
@@ -49,17 +50,13 @@ int sensor_empty(){
 	return 0;
 }
 
-int empty_persist(Queue_t in){
-	sensor_dissected_t *packet = queue_pop(in);
-	free(packet);
+int empty_persist(sensor_dissected_t *packet){
 	return 0;
 }
 
 
 
 int commit_config(sensor_t config){
-	config->captured = queue_init();
-	config->dissected = queue_init();
 
 	config->sock = create_raw_socket();
 
@@ -98,8 +95,6 @@ int commit_config(sensor_t config){
 int sensor_clean(sensor_t config){
 	assert(config);
 	DNOTIFY("%s\n", "Destroying sensor");
-	queue_destroy(config->captured);
-	queue_destroy(config->dissected);
 	if (config->opt.capture.promiscuous) {
 		int res = set_iface_promiscuous(config->sock, config->opt.device_name, false);
 		if (res)
@@ -317,15 +312,19 @@ int sensor_loop(sensor_t config) {
 	}
 
 	iteration_time = time(0);
-	struct timer dissect_timer   = {iteration_time, config->opt.dissect.timeout};
-	struct timer persist_timer   = {iteration_time, config->opt.persist.timeout};
 	struct timer survey_timer    = {iteration_time, config->opt.survey.timeout};
 	struct timer balancing_timer = {iteration_time, config->opt.balancing.timeout};
 	struct timer spoof_timer     = {iteration_time, config->opt.balancing.modify_timeout};
+	struct timer dissect_timer   = {iteration_time, config->opt.dissect.timeout};
+	struct timer persist_timer   = {iteration_time, config->opt.persist.timeout};
+
+
+	Queue_t Qcaptured = queue_init();
+	Queue_t Qdissected = queue_init();
 
 	/* Main loop */
 	DNOTIFY("%s\n", "Starting capture");
-	while(config->activated || queue_length(config->captured) || queue_length(config->dissected)){
+	while(config->activated || queue_length(Qcaptured) || queue_length(Qdissected)){
 		iteration_time = time(0);
 
 		/* complete only queue if we broke the loop */
@@ -374,28 +373,30 @@ int sensor_loop(sensor_t config) {
 
 					/* put captured packet in queue for dissection */
 					captured = init_captured(buffer, read_len);
-					queue_push(config->captured, captured);
+					queue_push(Qcaptured, captured);
 				}
 			}
 
 		}
 
 		/* Dissection */
-		if ((queue_length(config->captured)	&& timer_check(&dissect_timer, iteration_time)) || !config->activated) {
+		if ((queue_length(Qcaptured) && timer_check(&dissect_timer, iteration_time)) || !config->activated) {
 			DINFO("Dissecting: %d packets\n", queue_length(config->captured));
-			while(queue_length(config->captured)) {
-				captured = queue_pop(config->captured);
+			while(queue_length(Qcaptured)) {
+				captured = queue_pop(Qcaptured);
 				dissected = config->dissect_function(captured);
 				free(captured);
-				queue_push(config->dissected, dissected);
+				queue_push(Qdissected, dissected);
 			}
 			timer_ping(&dissect_timer);
 		}
 
 		/* Persistance */
-		if ((queue_length(config->dissected) && timer_check(&persist_timer, iteration_time)) || !config->activated)	{
-			while(queue_length(config->dissected) != 0) {
-				config->persist_function(config->dissected);
+		if ((queue_length(Qdissected) && timer_check(&persist_timer, iteration_time)) || !config->activated)	{
+			while(queue_length(Qdissected) != 0) {
+				dissected = queue_pop(Qdissected);
+				config->persist_function(dissected);
+				free(dissected);
 			}
 			timer_ping(&persist_timer);
 		}
@@ -405,10 +406,15 @@ int sensor_loop(sensor_t config) {
 		}
 
 	} /* while */
+
 	DNOTIFY("%s\n","Capture ended");
 	balancing_destroy(balancer);
 	nodes_destroy();
+
 	free(buffer);
+	queue_destroy(Qcaptured);
+	queue_destroy(Qdissected);
+
 	sensor_clean(config);
 	return SENSOR_SUCCESS;
 }

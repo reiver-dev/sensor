@@ -12,7 +12,6 @@
 #include <sys/wait.h>
 
 #include <sensor.h>
-#include <queue.h>
 
 #include "dbrelated.h"
 #include "arguments.h"
@@ -21,8 +20,7 @@
 sensor_t sensor;
 sensor_options_t opts;
 
-int persist_callback(Queue_t in){
-	sensor_dissected_t *packet = queue_pop(in);
+int persist_callback(sensor_dissected_t *packet){
 	db_execute_statement(
 			packet->timestamp,
 			packet->mac_source,
@@ -31,8 +29,6 @@ int persist_callback(Queue_t in){
 			packet->payload,
 			packet->payload_length
 			);
-
-	free(packet);
 	return 0;
 }
 

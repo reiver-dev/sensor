@@ -68,13 +68,11 @@ struct balancer {
 };
 
 void debug_client_load(void *n) {
-	struct Node *node = n;
-	DINFOA("Node: (%s) -- (%i)\n", Ip4ToStr(node->ip4addr), node->load);
+	DINFOA("Node: (%s) -- (%i)\n", Ip4ToStr(((struct Node *)n)->ip4addr), ((struct Node *)n)->load);
 }
 
 void debug_client_current_load(void *n) {
-	struct Node *node = n;
-	DINFOA("Node: (%s) -- (%i)\n", Ip4ToStr(node->ip4addr), node->current_load);
+	DINFOA("Node: (%s) -- (%i)\n", Ip4ToStr(((struct Node *)n)->ip4addr), ((struct Node *)n)->current_load);
 }
 
 void debug_owned_clients(Balancer self) {
