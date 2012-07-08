@@ -1,5 +1,4 @@
 #include <stdlib.h>                // Standard Libraries
-#include <stdio.h>
 
 #include <stdint.h>                // Additional libraries
 #include <stdbool.h>
@@ -7,31 +6,15 @@
 #include <unistd.h>
 #include <time.h>
 #include <assert.h>
-#include <errno.h>
-
-#include <sys/select.h>            // For package capture
-
-#include <sys/ioctl.h>             // For interface flags change
-
-#include <netinet/in.h>            // Basic address related functions and types
-#include <netinet/ether.h>
-#include <net/if.h>
-
-#include <arpa/inet.h>
-
-#include <netpacket/packet.h>
 
 #include "sensor_private.h"
+#include "socket_utils.h"
 #include "debug.h"
-
 #include "dissect.h"
-
 #include "nodes.h"
-#include "services/services.h"
 #include "balancing.h"
 #include "survey.h"
 #include "spoof.h"
-
 #include "netinfo.h"
 #include "util.h"
 
@@ -61,61 +44,6 @@ void timer_ping(struct timer *timer) {
 
 
 //------------PRIVATE---------------------
-//---------socket-related---------------
-
-int create_raw_socket() {
-	/*
-	 * Packet family
-	 * Linux specific way of getting packets at the dev level
-	 * Capturing every packet
-	 */
-	int sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
-	return sock;
-}
-
-
-int close_socket(int socket) {
-	shutdown(socket, 2);
-	return close(socket);
-}
-
-
-int set_iface_promiscuous(int sock, const char* interfaceName, bool state) {
-	struct ifreq interface;
-
-	strcpy(interface.ifr_name, interfaceName);
-
-	//reading flags
-	if (ioctl(sock, SIOCGIFFLAGS, &interface) == -1) {
-		DERROR("%s\n", "get interface flags failed");
-		return SENSOR_IFACE_GET_FLAGS;
-	}
-
-	if (state) {
-		interface.ifr_flags |= IFF_PROMISC;
-	} else {
-		interface.ifr_flags &= ~IFF_PROMISC;
-	}
-
-	//setting flags
-	if (ioctl(sock, SIOCSIFFLAGS, &interface) == -1) {
-		DERROR("%s\n", "set interface flags failed");
-		return SENSOR_IFACE_SET_FLAGS;
-	}
-
-	return SENSOR_SUCCESS;
-}
-
-int set_socket_timeout(int sock, int seconds) {
-	struct timeval timeout;
-	timeout.tv_sec = seconds;
-	timeout.tv_usec = 0;
-	int res = setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-	DINFO("Set socket timeout, result: %d\n", res);
-	return res;
-}
-
-
 //-----------sensor-related
 int sensor_empty(){
 	return 0;
@@ -333,26 +261,6 @@ sensor_dissected_t *init_dissected(int content_length, int payload_length) {
 
 	return dissected;
 }
-
-/* DEPRACHATED */
-void destroy_captured(sensor_captured_t *captured){
-	assert(captured);
-	assert(captured->buffer);
-	free(captured->buffer);
-	free(captured);
-}
-/* DEPRACHATED */
-void destroy_dissected(sensor_dissected_t *dissected){
-	assert(dissected);
-	if (dissected->content) {
-		free(dissected->content);
-	}
-	if (dissected->payload) {
-		free(dissected->payload);
-	}
-	free(dissected);
-}
-
 
 /* Main sensor loop */
 void sensor_breakloop(sensor_t config) {

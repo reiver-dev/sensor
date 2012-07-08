@@ -34,21 +34,21 @@ typedef struct {
 	bool promiscuous;
 	uint32_t buffersize;
 	uint32_t timeout;
-} sensor_capture_opt;
+} sensor_opt_capture;
 
 typedef struct {
 	uint32_t timeout;
-} sensor_dissect_opt;
+} sensor_opt_dissect;
 
 typedef struct {
 	uint32_t timeout;
-} sensor_persist_opt;
+} sensor_opt_persist;
 
 typedef struct {
 	uint32_t timeout;
 	uint32_t initial_timeout;
 	uint32_t node_disconnect_timeout;
-} sensor_survey_opt;
+} sensor_opt_survey;
 
 typedef struct {
 	uint32_t timeout;
@@ -60,15 +60,15 @@ typedef struct {
 	uint32_t load_interval;
 	bool enable_redirect;
 	bool enable_modify;
-} sensor_balancing_opt;
+} sensor_opt_balancing;
 
 typedef struct {
 	char device_name[IF_NAMESIZE];
-	sensor_capture_opt capture;
-	sensor_dissect_opt dissect;
-	sensor_persist_opt persist;
-	sensor_survey_opt survey;
-	sensor_balancing_opt balancing;
+	sensor_opt_capture   capture;
+	sensor_opt_dissect   dissect;
+	sensor_opt_persist   persist;
+	sensor_opt_survey    survey;
+	sensor_opt_balancing balancing;
 } sensor_options_t;
 
 
@@ -80,8 +80,6 @@ sensor_captured_t *init_captured(uint8_t *buffer, int len);
 sensor_dissected_t *init_dissected(int content_length, int payload_length);
 void destroy_captured(sensor_captured_t *captured);
 void destroy_dissected(sensor_dissected_t *dissected);
-
-
 
 sensor_t sensor_init();
 void sensor_destroy(sensor_t config);
