@@ -6,8 +6,8 @@ int RemoveElement(void *array, size_t size, int length, int index);
 void *Reallocate(void *array, size_t size, int length, int index, int period);
 
 char *Ip4ToStr(const uint32_t ip);
-
 char *EtherToStr(const uint8_t eth[ETH_ALEN]);
+char *Time4ToStr(const time_t t);
 
 int bitcount(unsigned int n);
 

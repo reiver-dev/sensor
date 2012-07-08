@@ -1,5 +1,4 @@
 #include <stdlib.h>                // Standard Libraries
-#include <stdio.h>
 
 #include <stdint.h>                // Additional libraries
 #include <stdbool.h>
@@ -7,31 +6,15 @@
 #include <unistd.h>
 #include <time.h>
 #include <assert.h>
-#include <errno.h>
-
-#include <sys/select.h>            // For package capture
-
-#include <sys/ioctl.h>             // For interface flags change
-
-#include <netinet/in.h>            // Basic address related functions and types
-#include <netinet/ether.h>
-#include <net/if.h>
-
-#include <arpa/inet.h>
-
-#include <netpacket/packet.h>
 
 #include "sensor_private.h"
+#include "socket_utils.h"
 #include "debug.h"
-
 #include "dissect.h"
-
 #include "nodes.h"
-#include "services/services.h"
 #include "balancing.h"
 #include "survey.h"
 #include "spoof.h"
-
 #include "netinfo.h"
 #include "util.h"
 
@@ -61,61 +44,6 @@ void timer_ping(struct timer *timer) {
 
 
 //------------PRIVATE---------------------
-//---------socket-related---------------
-
-int create_raw_socket() {
-	/*
-	 * Packet family
-	 * Linux specific way of getting packets at the dev level
-	 * Capturing every packet
-	 */
-	int sock = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
-	return sock;
-}
-
-
-int close_socket(int socket) {
-	shutdown(socket, 2);
-	return close(socket);
-}
-
-
-int set_iface_promiscuous(int sock, const char* interfaceName, bool state) {
-	struct ifreq interface;
-
-	strcpy(interface.ifr_name, interfaceName);
-
-	//reading flags
-	if (ioctl(sock, SIOCGIFFLAGS, &interface) == -1) {
-		DERROR("%s\n", "get interface flags failed");
-		return SENSOR_IFACE_GET_FLAGS;
-	}
-
-	if (state) {
-		interface.ifr_flags |= IFF_PROMISC;
-	} else {
-		interface.ifr_flags &= ~IFF_PROMISC;
-	}
-
-	//setting flags
-	if (ioctl(sock, SIOCSIFFLAGS, &interface) == -1) {
-		DERROR("%s\n", "set interface flags failed");
-		return SENSOR_IFACE_SET_FLAGS;
-	}
-
-	return SENSOR_SUCCESS;
-}
-
-int set_socket_timeout(int sock, int seconds) {
-	struct timeval timeout;
-	timeout.tv_sec = seconds;
-	timeout.tv_usec = 0;
-	int res = setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
-	DINFO("Set socket timeout, result: %d\n", res);
-	return res;
-}
-
-
 //-----------sensor-related
 int sensor_empty(){
 	return 0;
@@ -203,12 +131,13 @@ bool prepare_redirect(sensor_t sensor, uint8_t* buffer, int captured) {
 	if (ethernetType == ETH_P_IP) {
 		struct iphdr *ipheader = (struct iphdr*) (buffer + position);
 
+		struct Node *dest;
 		if (ipheader->daddr != sensor->current.ip4addr
 			&& ipheader->saddr != sensor->current.ip4addr
 			&& !memcmp(ethernet->ether_dhost, sensor->current.hwaddr, ETH_ALEN)
-			&& memcmp(ethernet->ether_shost, sensor->current.hwaddr, ETH_ALEN)) {
+			&& memcmp(ethernet->ether_shost, sensor->current.hwaddr, ETH_ALEN)
+			&& (dest = nodes_get_destination(ipheader->daddr))) {
 
-			struct Node *dest = node_get_destination(ipheader->daddr);
 			memcpy(ethernet->ether_dhost, dest->hwaddr, ETH_ALEN);
 			memcpy(ethernet->ether_shost, sensor->current.hwaddr, ETH_ALEN);
 			return true;
@@ -236,7 +165,10 @@ bool restore_redirect(sensor_t sensor, uint8_t* buffer, int captured) {
 			&& memcmp(ethernet->ether_dhost, sensor->current.hwaddr, ETH_ALEN)
 			&& !memcmp(ethernet->ether_shost, sensor->current.hwaddr, ETH_ALEN)) {
 
-			struct Node *source = node_get_destination(ipheader->saddr);
+			struct Node *source = nodes_get_destination(ipheader->saddr);
+			if (!source)
+				return false;
+
 			memcpy(ethernet->ether_shost, source->hwaddr, ETH_ALEN);
 			return true;
 		}
@@ -330,26 +262,6 @@ sensor_dissected_t *init_dissected(int content_length, int payload_length) {
 	return dissected;
 }
 
-/* DEPRACHATED */
-void destroy_captured(sensor_captured_t *captured){
-	assert(captured);
-	assert(captured->buffer);
-	free(captured->buffer);
-	free(captured);
-}
-/* DEPRACHATED */
-void destroy_dissected(sensor_dissected_t *dissected){
-	assert(dissected);
-	if (dissected->content) {
-		free(dissected->content);
-	}
-	if (dissected->payload) {
-		free(dissected->payload);
-	}
-	free(dissected);
-}
-
-
 /* Main sensor loop */
 void sensor_breakloop(sensor_t config) {
 	config->activated = false;
@@ -377,13 +289,13 @@ int sensor_loop(sensor_t config) {
 	buflength = config->opt.capture.buffersize;
 	buffer = malloc(buflength);
 
-	balancer = balancing_init(config);
 	nodes_init(&config->current);
+	balancer = balancing_init(config);
 
 	/* Initial */
 	iteration_time = time(0);
 	survey_perform_survey(&config->current, config->sock);
-	while ((time(0) - iteration_time) < 5) {
+	while ((time(0) - iteration_time) < config->opt.survey.initial_timeout) {
 		int read_len = recv(config->sock, buffer, buflength, 0);
 		if (read_len > 0) {
 			survey_process_response(&config->current, buffer, read_len);
@@ -392,7 +304,7 @@ int sensor_loop(sensor_t config) {
 
 	iteration_time = time(0);
 	balancing_process(balancer);
-	while ((time(0) - iteration_time) < 5) {
+	while ((time(0) - iteration_time) < config->opt.balancing.initial_timeout) {
 		balancing_receive_service(balancer);
 		usleep(500);
 	}
@@ -402,18 +314,14 @@ int sensor_loop(sensor_t config) {
 	if (config->opt.balancing.enable_modify) {
 		ArrayList owned = balancing_get_owned(balancer);
 		Spoof_nodes(config->sock, owned, &config->current);
-		ArrayList_destroy(owned);
 	}
 
 	iteration_time = time(0);
 	struct timer dissect_timer   = {iteration_time, config->opt.dissect.timeout};
 	struct timer persist_timer   = {iteration_time, config->opt.persist.timeout};
-	struct timer survey_timer    = {iteration_time, config->opt.balancing.survey_timeout};
+	struct timer survey_timer    = {iteration_time, config->opt.survey.timeout};
 	struct timer balancing_timer = {iteration_time, config->opt.balancing.timeout};
-	struct timer spoof_timer     = {iteration_time, config->opt.balancing.spoof_timeout};
-
-	uint32_t load_interval = 2;
-	uint32_t load_count = 5;
+	struct timer spoof_timer     = {iteration_time, config->opt.balancing.modify_timeout};
 
 	/* Main loop */
 	DNOTIFY("%s\n", "Starting capture");
@@ -432,7 +340,6 @@ int sensor_loop(sensor_t config) {
 				if (timer_check(&spoof_timer, iteration_time)) {
 					ArrayList owned = balancing_get_owned(balancer);
 					Spoof_nodes(config->sock, owned, &config->current);
-					ArrayList_destroy(owned);
 					timer_ping(&spoof_timer);
 				}
 
@@ -463,7 +370,7 @@ int sensor_loop(sensor_t config) {
 					}
 
 					balancing_add_load(balancer, buffer, read_len);
-					balancing_count_load(balancer, load_interval, load_count);
+					balancing_count_load(balancer);
 
 					/* put captured packet in queue for dissection */
 					captured = init_captured(buffer, read_len);
@@ -491,6 +398,10 @@ int sensor_loop(sensor_t config) {
 				config->persist_function(config->dissected);
 			}
 			timer_ping(&persist_timer);
+		}
+
+		if (!config->activated) {
+			balancing_disconnect(balancer);
 		}
 
 	} /* while */

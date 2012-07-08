@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <assert.h>
 
 #include "arraylist.h"
 #include "balancing.h"
@@ -7,6 +8,8 @@
 #include "hashmap.h"
 #include "nodes.h"
 #include "util.h"
+
+
 
 static inline ArrayList get_client_moment_load(HashMap clientMomentLoads, struct Node *client) {
 	return HashMap_get(clientMomentLoads, &client->ip4addr);
@@ -47,13 +50,13 @@ static void load_close(ArrayList momentLoads, struct Node *client, uint32_t inte
 
 	qsort(data, loads, sizeof(void *), load_compare);
 
-	int load;
+	uint32_t load;
 	if (loads % 2) {
-		int index = loads / 2;
+		size_t index = loads / 2;
 		struct NodeLoad *median = data[index];
 		load = median->load;
 	} else {
-		int index = loads / 2;
+		size_t index = loads / 2;
 		struct NodeLoad *median = data[index];
 		load = median->load;
 		index++;
@@ -66,15 +69,13 @@ static void load_close(ArrayList momentLoads, struct Node *client, uint32_t inte
 
 	load /= interval;
 
-	DINFO("New load of node (%s) is %i\n", Ip4ToStr(client->ip4addr), load);
-
-	client->load = load;
+	client->current_load = load;
 
 }
 
-void load_bytes_add(ArrayList momentLoads, int len) {
+void load_bytes_add(ArrayList momentLoads, size_t len) {
 	struct NodeLoad *mload = load_get_last(momentLoads);
-	if (!momentLoads) {
+	if (!mload) {
 		mload = load_create_item(momentLoads);
 	}
 	mload->load += len;
@@ -89,6 +90,7 @@ void load_count(HashMap clientMomentLoads, ArrayList owned, uint32_t load_interv
 	for (int i = 0; i < len; i++) {
 		struct Node *client = ArrayList_get(owned, i);
 		ArrayList momentLoads = get_client_moment_load(clientMomentLoads, client);
+		assert(momentLoads);
 		struct NodeLoad *lastLoad = load_get_last(momentLoads);
 
 		if (!lastLoad) {
@@ -100,7 +102,7 @@ void load_count(HashMap clientMomentLoads, ArrayList owned, uint32_t load_interv
 		uint32_t interval = now - lastLoad->timestamp;
 		if (interval >= load_interval && loads >= load_count) {
 			load_close(momentLoads, client, load_interval);
-			ArrayList_remove_fast(momentLoads, 0);
+			ArrayList_remove(momentLoads, 0);
 		} else if (interval >= load_interval) {
 			load_create_item(momentLoads);
 		}

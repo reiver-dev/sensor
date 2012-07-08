@@ -31,17 +31,24 @@ Service BootstrapService_Get() {
 static struct RequestData bootstrap_request(ServicesData servicesData, void *request) {
 	BootstrapRequest *req = request;
 
-	uint8_t *buf = malloc(1);
+	uint8_t *buf = malloc(5);
+	uint8_t *ptr = buf;
 
+	size_t len = 0;
 	switch (req->type) {
 	case BOOTSTRAP_TYPE_CONNECT:
-		*buf = BOOTSTRAP_TYPE_CONNECT;
+		AddToBuffer8(&ptr, BOOTSTRAP_TYPE_CONNECT);
+		AddToBuffer32(&ptr, balancing_get_created(servicesData->balancer));
+		len=5;
 		break;
 	case BOOTSTRAP_TYPE_DISCONNECT:
-		*buf = BOOTSTRAP_TYPE_DISCONNECT;
+		AddToBuffer8(&ptr, BOOTSTRAP_TYPE_DISCONNECT);
+		len=1;
 		break;
 	case BOOTSTRAP_TYPE_CONNECT_ACK:
-		*buf = BOOTSTRAP_TYPE_DISCONNECT;
+		AddToBuffer8(&ptr, BOOTSTRAP_TYPE_CONNECT_ACK);
+		AddToBuffer32(&ptr, balancing_get_created(servicesData->balancer));
+		len=5;
 		break;
 	default:
 		free(buf);
@@ -49,7 +56,7 @@ static struct RequestData bootstrap_request(ServicesData servicesData, void *req
 		return data;
 	}
 
-	struct RequestData data = {1, buf};
+	struct RequestData data = {len, buf};
 	return data;
 }
 
@@ -58,30 +65,41 @@ static void bootstrap_response(ServicesData servicesData, struct Node *from, str
 	int type  = GetFromBuffer8(&ptr);
 
 	if (type == BOOTSTRAP_TYPE_CONNECT) {
-		node_set_sensor(from);
+		if (data->len != 5) {
+			DERROR("BOOTSTRAP_TYPE_CONNECT len incorrect (%i)\n", data->len);
+			return;
+		}
+		time_t t = GetFromBuffer32(&ptr);
+		balancing_init_sensor_session(servicesData->balancer, from->ip4addr, t);
 
 		BootstrapRequest bootreq = {BOOTSTRAP_TYPE_CONNECT_ACK};
-		Services_Request(servicesData, BootstrapService_Get(), 0, &bootreq);
+		Services_Request(servicesData, BootstrapService_Get(), from, &bootreq);
 
-	} else if (BOOTSTRAP_TYPE_DISCONNECT) {
-		node_set_client(from);
+	} else if (type == BOOTSTRAP_TYPE_DISCONNECT) {
+		balancing_break_sensor_session(servicesData->balancer, from->ip4addr);
 
-	} else if (BOOTSTRAP_TYPE_CONNECT_ACK) {
+	} else if (type == BOOTSTRAP_TYPE_CONNECT_ACK) {
 
 		if (from == NULL) {
 			DERROR("%s", "Got connect ack broadcasted");
 			return;
 		}
 
-		int State = balancing_get_state(servicesData->balancer);
-		if (State != STATE_WAIT_SENSORS) {
-			DERROR("Got connect ack while not in STATE_WAIT_SENSORS from (%s)", Ip4ToStr(from->ip4addr));
+		if (data->len != 5) {
+			DERROR("BOOTSTRAP_TYPE_CONNECT_ACK len incorrect (%i)\n", data->len);
 			return;
 		}
 
-		node_set_sensor(from);
+		int State = balancing_get_state(servicesData->balancer);
+		if (State != STATE_WAIT_SENSORS) {
+			DERROR("Got connect ack while not in STATE_WAIT_SENSORS from (%s)\n", Ip4ToStr(from->ip4addr));
+			return;
+		}
 
-		InfoRequest inforeq = {INFO_TYPE_PUSH};
+		time_t created = GetFromBuffer32(&ptr);
+		balancing_init_sensor_session(servicesData->balancer, from->ip4addr, created);
+
+		InfoRequest inforeq = {INFO_TYPE_POP};
 		Services_Request(servicesData, InfoService_Get(), 0, &inforeq);
 
 	}

@@ -25,10 +25,19 @@ struct arguments {
 	int persist_period;
 	bool enable_persistance;
 
-	/* balancing */
+	/* survey */
 	int survey_timeout;
-	int balancing_period;
-	int spoof_timeout;
+	int survey_initial_timeout;
+	int survey_nodedisconnect_timeout;
+
+	/* balancing */
+	int balancing_timeout;
+	int balancing_initial_timeout;
+	int balancing_info_timeout;
+	int balancing_session_timeout;
+	int balancing_modify_timeout;
+	int balancing_load_count;
+	int balancing_interval;
 	bool enable_redirect;
 	bool enable_modify;
 
@@ -37,6 +46,7 @@ struct arguments {
 
 
 };
+
 
 struct arguments args_get_default();
 int args_parse(int argc, char** argv, struct arguments *arguments);

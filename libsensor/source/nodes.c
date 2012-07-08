@@ -12,77 +12,18 @@
 #include "util.h"
 #include "debug.h"
 #include "arraylist.h"
+#include "hashmap.h"
+
 
 /* Locals */
-static struct Node *Nodes;
-static long NodeCount;
-
 static struct Node *Me;
-static ArrayList SensorNodes;
+static HashMap Nodes;
 
 static struct CurrentAddress *current;
 
-
-static char *get_node_type(int type) {
-	switch (type) {
-	case NODE_TYPE_CLIENT:
-		return "client";
-		break;
-	case NODE_TYPE_SENSOR:
-		return "sensor";
-		break;
-	case NODE_TYPE_GATEWAY:
-		return "gateway";
-		break;
-	case NODE_TYPE_UNKNOWN:
-		return "unknown";
-	default:
-		return "UNDEFINED_TYPE";
-	}
-}
-
-
-static bool check_node_type(struct Node *node, int expectedType) {
-	assert(node);
-	if (node->type == expectedType) {
-		return true;
-	} else {
-		DWARNING("Node (%s) is %s - expected %s\n",
-				Ip4ToStr(node->ip4addr),
-				get_node_type(node->type),
-				get_node_type(expectedType));
-		return false;
-	}
-}
-
-static bool check_sensor_client(struct Node *sensor, struct Node *client) {
-	return check_node_type(sensor, NODE_TYPE_SENSOR) && check_node_type(client, NODE_TYPE_CLIENT);
-}
-
-static uint32_t get_node_index(uint32_t ip) {
-	uint32_t ind = ntohl(ip) - ntohl(current->ip4addr & current->netmask) - 1;
-	return ind;
-}
-
-
-/* node conditions*/
-bool is_owned_by(struct Node *sensor, struct Node *client) {
-
-	bool result;
-	if (!check_sensor_client(sensor, client)) {
-		result = false;
-	} else if (client->owned_by == sensor) {
-		result = true;
-	} /* if */
-
-	return result;
-}
-
-
-/* node destructors */
-static void _node_init(struct Node *client) {
-	client->owned_by = NULL;
-	client->load = 0;
+static bool is_same_network_ip4(uint32_t ip) {
+	uint32_t network = current->ip4addr & current->netmask;
+	return (network & ip) == network;
 }
 
 /* Main functions */
@@ -90,162 +31,88 @@ void nodes_init(struct CurrentAddress *curr) {
 	/* memorize current addreses */
 
 	current = curr;
+	Me = malloc(sizeof(struct Node));
+	Me->ip4addr = current->ip4addr;
+	memcpy(Me->hwaddr, current->hwaddr, ETH_ALEN);
+	Me->owned_by = NULL;
+	Me->load = 0;
+	Me->current_load = NODE_LOAD_NOT_READY;
+	Me->last_check = 0;
+	Me->is_online = true;
 
-	NodeCount = (1 << (32 - bitcount(current->netmask))) - 2;
-	DNOTIFY("Node count is: %i\n", NodeCount);
-	assert(NodeCount > 0);
-	Nodes = malloc(NodeCount * sizeof(*Nodes));
-	memset(Nodes, '\0', NodeCount);
-
-	uint32_t network = ntohl(current->ip4addr & current->netmask);
-
-	for (uint32_t i = 0; i < NodeCount; i++) {
-		struct Node *node = & Nodes[i];
-		node->ip4addr = htonl(network + i + 1);
-		memset(node->hwaddr, 0, ETH_ALEN);
-		node->type    = NODE_TYPE_UNKNOWN;
-		node->last_check = 0;
-		node->is_online = false;
-	}
-
-	Me = node_get(curr->ip4addr);
-	node_set_sensor(Me);
-	SensorNodes = ArrayList_init(0, (ArrayList_destroyer) node_set_client);
-
-	if (curr->gateway) {
-		struct Node *gw = node_get(curr->gateway);
-		node_set_gateway(gw);
-	}
+	Nodes = HashMap_initInt32(free, free);
 
 }
 
 void nodes_destroy() {
-	ArrayList_destroy(SensorNodes);
-	free(Nodes);
-	NodeCount = 0;
+	HashMap_destroy(Nodes);
+	free(Me);
 }
 
-
-void node_set_sensor(struct Node *node) {
-	DINFO("Node (%s) is becoming sensor\n", Ip4ToStr(node->ip4addr));
-	if (node->type != NODE_TYPE_SENSOR) {
-		_node_init(node);
-		node->type = NODE_TYPE_SENSOR;
-	}
-}
-
-void node_set_client(struct Node *node) {
-	DINFO("Node (%s) is becoming client\n", Ip4ToStr(node->ip4addr));
-	if (node->type != NODE_TYPE_CLIENT) {
-		_node_init(node);
-		node->type = NODE_TYPE_CLIENT;
-	}
-}
-
-void node_set_gateway(struct Node *node) {
-	DINFO("Node (%s) is becoming gateway\n", Ip4ToStr(node->ip4addr));
-	if (node->type != NODE_TYPE_GATEWAY) {
-		_node_init(node);
-		node->type = NODE_TYPE_GATEWAY;
-	}
+size_t nodes_count() {
+	return HashMap_size(Nodes);
 }
 
 void node_answered(uint32_t ip4, uint8_t *hw) {
 
-	struct Node *node = node_get(ip4);
+	struct Node *node = nodes_get_node(ip4);
 
-	DINFO("Node last check was: %i\n", node->last_check);
-
-	if (node->is_online) {
-		DINFO("Node (%s) is still online\n", Ip4ToStr(node->ip4addr));
+	if (node) {
+		node->last_check = time(NULL);
 	} else {
-		if (node->type == NODE_TYPE_UNKNOWN) {
-			node_set_client(node);
-		}
+		DINFO("Node found (%s)\n", Ip4ToStr(ip4));
+		node = malloc(sizeof(struct Node));
+		node->ip4addr = ip4;
 		memcpy(node->hwaddr, hw, ETH_ALEN);
 		node->is_online = true;
+		node->load = 0;
+		node->current_load = 0;
+		node->owned_by = NULL;
+		node->last_check = time(NULL);
+		HashMap_addInt32(Nodes, ip4, node);
 	}
 
-	node->last_check = time(0);
 }
 
-struct Node *node_get(uint32_t ip) {
-	uint32_t index = get_node_index(ip);
-	if (index < 0 || index > NodeCount) {
-		DERROR("Node with address %s not found\n", Ip4ToStr(ip));
-		return NULL;
-	}
-	return &Nodes[index];
+
+struct Node *nodes_get_node(uint32_t ip) {
+	return HashMap_get(Nodes, &ip);
 }
 
-struct Node *node_get_destination(uint32_t ip) {
-	uint32_t index = get_node_index(ip);
-	if (index < 0 || index > NodeCount) {
+void nodes_remove(uint32_t ip) {
+	HashMap_remove(Nodes, &ip);
+}
+
+struct Node *nodes_get_destination(uint32_t ip) {
+	if (!is_same_network_ip4(ip)) {
 		if (current->gateway)
-			index = get_node_index(current->gateway);
+			return HashMap_get(Nodes, &current->gateway);
 		else
 			return NULL;
 	}
-	return &Nodes[index];
+	return HashMap_get(Nodes, &ip);
 }
 
-struct Node *node_get_gateway() {
-	if (current->gateway) {
-		return node_get(current->gateway);
+bool nodes_is_me(struct Node *node) {
+	assert(node);
+	if (node->ip4addr == current->ip4addr) {
+		return true;
 	}
-	return NULL;
+	return false;
 }
 
+struct Node *nodes_get_gateway() {
+	return nodes_get_node(current->gateway);
+}
 
-struct Node *node_get_me() {
+struct Node **nodes_get() {
+	return (struct Node **)HashMap_getValues(Nodes, NULL);
+}
+
+struct Node *nodes_get_me() {
 	return Me;
 }
 
-int nodes_count() {
-	return NodeCount;
-}
-
-struct Node *nodes_get() {
-	return Nodes;
-}
-
-bool node_is_me(struct Node *node) {
-	return node != NULL && node == Me;
-}
-
-ArrayList nodes_get_sensors() {
-	return SensorNodes;
-}
-
-#define STRVAL(str, key, val) sprintf(str + strlen(str), "%s = %s\n", key, val);
-char *node_toString(struct Node *node) {
-	static char str[128];
-	memset(str, 0, 128);
-
-	char *node_type;
-	switch (node->type) {
-	case NODE_TYPE_CLIENT:
-		node_type = "NODE_TYPE_CLIENT";
-		break;
-	case NODE_TYPE_SENSOR:
-		node_type = "NODE_TYPE_SENSOR";
-		break;
-	case NODE_TYPE_GATEWAY:
-		node_type = "NODE_TYPE_GATEWAY";
-		break;
-	default:
-		node_type = "NODE_TYPE_UNKNOWN";
-		break;
-	}
-
-	char last_check[32];
-	strftime(last_check, sizeof(last_check), "%T", localtime(&node->last_check));
-
-	STRVAL(str, "IP", Ip4ToStr(node->ip4addr));
-	STRVAL(str, "HW", EtherToStr(node->hwaddr));
-	STRVAL(str, "Online", node->is_online ? "true" : "false");
-	STRVAL(str, "Type", node_type);
-	STRVAL(str, "Last Check", last_check);
-
-	return str;
+bool nodes_is_my_addr(uint32_t ip4) {
+	return ip4 == current->ip4addr;
 }

@@ -11,7 +11,7 @@
 #define POINTER void *
 
 struct ArrayList {
-	int length;
+	size_t length;
 	size_t size;
 
 	void (*destroyer) (void *);
@@ -19,8 +19,8 @@ struct ArrayList {
 	void **data;
 };
 
-static void moveData(void **data, int to, int from, int length) {
-	memmove(&data[to], &data[from], (length - to) * sizeof(POINTER));
+static void moveData(void **data, size_t to, size_t from, size_t length) {
+	memmove(&data[to], &data[from], (length) * sizeof(POINTER));
 }
 
 static void ensureSize(ArrayList self, int more) {
@@ -49,6 +49,15 @@ ArrayList ArrayList_init(size_t size, ArrayList_destroyer func) {
 
 	return list;
 
+}
+
+ArrayList ArrayList_fromArray(void **data, size_t size, ArrayList_destroyer func) {
+	ArrayList list = malloc(sizeof(*list));
+	list->data = data;
+	list->length = size;
+	list->size = size;
+	list->destroyer = func;
+	return list;
 }
 
 static bool checkLength(ArrayList self, int index) {
@@ -111,14 +120,14 @@ void **ArrayList_getDataCopy(ArrayList self) {
 	return dataCopy;
 }
 
-void *ArrayList_get(ArrayList self, int index) {
+void *ArrayList_get(ArrayList self, size_t index) {
 	assert(index >= 0);
 	assert(index < self->length);
 	RETURN_IF_FAILV(checkLength(self, index), NULL);
 	return self->data[index];
 }
 
-int ArrayList_length(ArrayList self) {
+size_t ArrayList_length(ArrayList self) {
 	return self->length;
 }
 
@@ -132,7 +141,7 @@ void ArrayList_add(ArrayList self, void *item) {
 	self->length++;
 }
 
-void ArrayList_remove(ArrayList self, int index) {
+void ArrayList_remove(ArrayList self, size_t index) {
 	RETURN_IF_FAIL(checkLength(self, index));
 
 	if (self->destroyer != NULL)
@@ -145,7 +154,7 @@ void ArrayList_remove(ArrayList self, int index) {
 	self->length--;
 }
 
-void ArrayList_remove_fast(ArrayList self, int index) {
+void ArrayList_remove_fast(ArrayList self, size_t index) {
 	RETURN_IF_FAIL(checkLength(self, index));
 
 	if (self->destroyer != NULL)
@@ -157,7 +166,7 @@ void ArrayList_remove_fast(ArrayList self, int index) {
 	self->length--;
 }
 
-void *ArrayList_steal(ArrayList self, int index) {
+void *ArrayList_steal(ArrayList self, size_t index) {
 	RETURN_IF_FAILV(checkLength(self, index), NULL);
 
 	void *temp = self->data[index];
@@ -170,7 +179,7 @@ void *ArrayList_steal(ArrayList self, int index) {
 	return temp;
 }
 
-void *ArrayList_steal_fast(ArrayList self, int index) {
+void *ArrayList_steal_fast(ArrayList self, size_t index) {
 	RETURN_IF_FAILV(checkLength(self, index), NULL);
 
 	void *temp = self->data[index];
@@ -182,6 +191,33 @@ void *ArrayList_steal_fast(ArrayList self, int index) {
 
 	return temp;
 }
+
+void ArrayList_removeItem(ArrayList self, void *item, ArrayList_equals eq) {
+	ssize_t temp = ArrayList_indexOf(self, item, eq);
+	if (temp >= 0)
+		ArrayList_remove(self, temp);
+}
+
+void ArrayList_removeItem_fast(ArrayList self, void *item, ArrayList_equals eq) {
+	ssize_t temp = ArrayList_indexOf(self, item, eq);
+	if (temp >= 0)
+		ArrayList_remove_fast(self, temp);
+}
+
+void *ArrayList_stealItem(ArrayList self, void *item, ArrayList_equals eq) {
+	ssize_t temp = ArrayList_indexOf(self, item, eq);
+	if (temp >= 0)
+		return ArrayList_steal(self, temp);
+	return NULL;
+}
+
+void *ArrayList_stealItem_fast(ArrayList self, void *item, ArrayList_equals eq) {
+	ssize_t temp = ArrayList_indexOf(self, item, eq);
+	if (temp >= 0)
+		return ArrayList_steal_fast(self, temp);
+	return NULL;
+}
+
 
 static bool equals_by_link(void *a, void *b) {
 	return a == b ? true : false;
@@ -205,7 +241,7 @@ void *ArrayList_find(ArrayList self, void *item, bool (*equals)(void *element, v
 	return result;
 }
 
-int ArrayList_indexOf(ArrayList self, void *item, bool (*equals)(void *element, void *item)) {
+ssize_t ArrayList_indexOf(ArrayList self, void *item, bool (*equals)(void *element, void *item)) {
 	assert(item);
 
 	if (equals == NULL) {

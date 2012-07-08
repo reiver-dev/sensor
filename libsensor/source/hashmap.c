@@ -11,9 +11,9 @@
 #define CAPACITY_PEAK 0.75
 
 struct Bucket {
-	uint32_t hash;
 	void *key;
 	void *val;
+	uint32_t hash;
 	struct Bucket *next;
 };
 
@@ -30,7 +30,6 @@ struct HashMap {
 	HashMapDestroyer destroy_val;
 };
 
-
 static struct Bucket *bucket_init(uint32_t hash, void *key, void *val) {
 	struct Bucket *bucket = malloc(sizeof(*bucket));
 
@@ -40,6 +39,15 @@ static struct Bucket *bucket_init(uint32_t hash, void *key, void *val) {
 	bucket->next = NULL;
 
 	return bucket;
+}
+
+static void bucket_destroy_steal(HashMap self, struct Bucket *bucket) {
+
+	if (self->destroy_key) {
+		self->destroy_key(bucket->key);
+	}
+
+	free(bucket);
 }
 
 static void bucket_destroy(HashMap self, struct Bucket *bucket) {
@@ -72,11 +80,7 @@ static struct Bucket *get_bucket(HashMap self, uint32_t hash, void *key) {
 	size_t index = get_place(self->length, hash);
 
 	struct Bucket *bucket = self->data[index];
-	if (bucket == NULL || bucket->next == NULL) {
-		return bucket;
-	}
 
-	/* collision */
 	while (bucket != NULL) {
 		if (bucket_equals(self, bucket, hash, key)) {
 			break;
@@ -91,17 +95,14 @@ static struct Bucket *steal_bucket(HashMap self, uint32_t hash, void *key) {
 	size_t index = get_place(self->length, hash);
 
 	struct Bucket *bucket = self->data[index];
-	if (bucket == NULL || bucket->next == NULL) {
-		self->data[index] = NULL;
-		return bucket;
-	}
-
-	/* collision */
 	struct Bucket *prev = NULL;
+
 	while (bucket != NULL) {
 		if (bucket_equals(self, bucket, hash, key)) {
-			if (prev && bucket->next) {
-				prev = bucket->next;
+			if (prev) {
+				prev->next = bucket->next;
+			} else {
+				self->data[index] = bucket->next;
 			}
 			break;
 		}
@@ -213,7 +214,6 @@ HashMap HashMap_initInt32(HashMapDestroyer key, HashMapDestroyer value) {
 	return HashMap_init(hash_int32, equals_int32, key, value);
 }
 
-
 void HashMap_destroy(HashMap self) {
 	assert(self);
 
@@ -238,7 +238,7 @@ size_t HashMap_size(HashMap self) {
 	return self->capacity;
 }
 
-void **HashMap_getKeys(HashMap self) {
+void **HashMap_getKeys(HashMap self, void **keys) {
 
 	size_t length = self->length;
 	size_t capacity = self->capacity;
@@ -248,8 +248,10 @@ void **HashMap_getKeys(HashMap self) {
 		return NULL;
 	}
 
-	void **keys = malloc((capacity + 1) * sizeof(uintptr_t));
-	memset(keys, 0, (capacity + 1) * sizeof(uintptr_t));
+	if (keys == NULL) {
+		keys = malloc((capacity + 1) * sizeof(uintptr_t));
+		memset(keys, 0, (capacity + 1) * sizeof(uintptr_t));
+	}
 
 	size_t index = 0;
 	for (size_t i = 0; i < length && capacity; i++) {
@@ -264,7 +266,7 @@ void **HashMap_getKeys(HashMap self) {
 
 	return keys;
 }
-void **HashMap_getValues(HashMap self) {
+void **HashMap_getValues(HashMap self, void **vals) {
 
 	size_t length = self->length;
 	size_t capacity = self->capacity;
@@ -274,8 +276,10 @@ void **HashMap_getValues(HashMap self) {
 		return NULL;
 	}
 
-	void **vals = malloc((capacity + 1) * sizeof(uintptr_t));
-	memset(vals, 0, (capacity + 1) * sizeof(uintptr_t));
+	if (vals == NULL) {
+		vals = malloc((capacity + 1) * sizeof(uintptr_t));
+		memset(vals, 0, (capacity + 1) * sizeof(uintptr_t));
+	}
 
 	size_t index = 0;
 	for (size_t i = 0; i < length && capacity; i++) {
@@ -378,6 +382,7 @@ bool HashMap_add(HashMap self, void *key, void *val) {
 
 void HashMap_addInt32(HashMap self, uint32_t key, void *val) {
 	uint32_t *temp = malloc(sizeof(*temp));
+	*temp = key;
 	if (!HashMap_add(self, temp, val)) {
 		free(temp);
 	}
@@ -392,9 +397,67 @@ void HashMap_remove(HashMap self, void *key) {
 	struct Bucket *bucket = steal_bucket(self, hash, key);
 	if (bucket != NULL) {
 		bucket_destroy(self, bucket);
+		self->capacity--;
+	}
+}
+
+void *HashMap_steal(HashMap self, void *key) {
+	assert(self);
+	assert(key);
+
+	uint32_t hash = self->hashf(key);
+
+	struct Bucket *bucket = steal_bucket(self, hash, key);
+	if (bucket != NULL) {
+		void *val = bucket->val;
+		bucket_destroy_steal(self, bucket);
+		self->capacity--;
+		return val;
 	}
 
-	self->capacity--;
+	return NULL;
 
 }
 
+
+struct HashMapIndex HashMap_first(HashMap self) {
+	struct HashMapIndex hmindex = {
+			.pos = 0,
+			.index = 0,
+			.this = NULL
+	};
+	return hmindex;
+}
+
+bool HashMap_hasNext(HashMap self, struct HashMapIndex *index) {
+	if (self->capacity && index->pos < self->capacity && index->index < self->length)
+		return true;
+
+	return false;
+}
+
+struct HashMapPair *HashMap_next(HashMap self, struct HashMapIndex *index) {
+
+	size_t length = self->length;
+	struct Bucket **data = self->data;
+
+	if (!HashMap_hasNext(self, index))
+		return NULL;
+
+	struct Bucket *now = (struct Bucket *)index->this;
+	if (index->this != NULL && now->next != NULL) {
+		index->this = (struct HashMapPair *)now->next;
+
+	} else {
+		for (size_t i = index->index; i < length; i++) {
+			if (data[i]) {
+				index->index = i;
+				index->this = (struct HashMapPair *)data[i];
+				break;
+			}
+		}
+	}
+
+	index->pos++;
+	return index->this;
+}

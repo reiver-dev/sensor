@@ -2,7 +2,9 @@ cmake_minimum_required (VERSION 2.8)
 
 project (sensord C)
 
-#file (GLOB HEADERS source/*.h)
+add_definitions(-std=c99)
+
+file (GLOB HEADERS source/*.h)
 file (GLOB SOURCES source/*.c)
 
 set (LIBRARIES

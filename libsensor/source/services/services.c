@@ -50,12 +50,9 @@ static bool addressToNode(struct sockaddr_in *sockaddr, struct Node **node) {
 	}
 
 	uint32_t ip4addr = sockaddr->sin_addr.s_addr;
-	if (ip4addr != INADDR_BROADCAST) {
-		*node = node_get(ip4addr);
-	}
-
-	if (node_is_me(*node)) {
-		DWARNING("Got mirror request from (%s:%i)\n", Ip4ToStr(sockaddr->sin_addr.s_addr), ntohs(sockaddr->sin_port));
+	*node = nodes_get_node(ip4addr);
+	if (!*node) {
+		DWARNING("Unknown node for (%s)\n", Ip4ToStr(ip4addr));
 		return false;
 	}
 
@@ -96,7 +93,7 @@ static bool checkHeaderConstans(struct Header *header) {
 
 static bool checkHeaderLength(struct Header *header, int readLen) {
 	if (ntohl(header->length) > readLen) {
-		DERROR("Length read is insufficient: expected=%i, has=%i", header->length, readLen);
+		DERROR("Length read is insufficient: expected=%i, has=%i\n", ntohl(header->length), readLen);
 		return false;
 	}
 	return true;
@@ -157,7 +154,7 @@ void Services_Request(ServicesData self, Service service, struct Node *to, void 
 		int res = makeRequest(self->udp_sock, service->ID, data.buffer, data.len, to);
 		free(data.buffer);
 		if (res != -1) {
-			DINFO("Service request successful: %s\n", service->Name);
+			DINFO("Service request successful: %s (%i)\n", service->Name, data.len);
 		} else {
 			DINFO("Service request failed: %s (%s)\n", service->Name, strerror(errno));
 		}
@@ -228,6 +225,10 @@ static void Services_ReceiveData(ServicesData self, uint8_t *data, int len, stru
 	int serviceID = header->service;
 
 	Service service = service_get(self->services, serviceID);
+	if (service != BootstrapService_Get() && !balancing_is_in_session(self->balancer, from->ip4addr)) {
+		DWARNING("Unsessioned request of service (%s) from (%s)\n", service->Name, Ip4ToStr(from->ip4addr));
+		return;
+	}
 
 	struct RequestData requestData = {messageLength, data + HEADER_SIZE};
 
@@ -244,7 +245,7 @@ static void Services_ReceiveData(ServicesData self, uint8_t *data, int len, stru
 }
 
 void Services_Receive(ServicesData self) {
-	size_t bufferSize = 512 * sizeof(uint8_t);
+	size_t bufferSize = 4095 * sizeof(uint8_t);
 	uint8_t *buffer = malloc(bufferSize);
 
 	struct sockaddr_in address;
@@ -256,7 +257,7 @@ void Services_Receive(ServicesData self) {
 	time_t now = time(NULL);
 	do {
 		bytesRead = recvfrom(self->udp_sock, buffer, bufferSize, 0, &address, &addressSize);
-		if (bytesRead > 0) {
+		if (bytesRead > 0 && !nodes_is_my_addr(address.sin_addr.s_addr)) {
 			DINFO("Service received: %i bytes\n", bytesRead);
 			struct Node *from;
 			if (addressToNode(&address, &from)) {
@@ -282,21 +283,8 @@ bool Services_isResponse(uint8_t *buffer, int len) {
 		return false;
 	}
 
-	struct Node *from = node_get_destination(ip_header->saddr);
-	struct Node *to = node_get_destination(ip_header->daddr);
-
-	if (from == NULL || from == to) /* if sender is unknown record it*/
-		return false;
-
-	/* if from any sensor to me OR broadcast */
-	if (from->type == NODE_TYPE_SENSOR && (to == NULL || to->type == NODE_TYPE_SENSOR)) {
-		uint8_t *data = packet_map_payload(buffer, len);
-		if (data
-			&& checkHeaderConstans((struct Header *)data)
-			&& checkHeaderLength((struct Header *)data, len - ((uintptr_t)data - (uintptr_t)buffer)))
-		{
-			return true;
-		}
+	if (udp_header->dest == ServicePort && udp_header->source == ServicePort) {
+		return true;
 	}
 
 	return false;
