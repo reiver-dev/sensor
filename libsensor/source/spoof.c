@@ -3,7 +3,9 @@
 #include <assert.h>
 #include <string.h>
 #include <stdbool.h>
-#include <netinet/if_ether.h>
+#include <unistd.h>
+
+#include <netinet/ether.h>
 #include <netinet/in.h>
 
 #include "spoof.h"
@@ -19,7 +21,7 @@ struct arp_ip4 {
 
 #define ARPREPLY_SIZE (sizeof(struct ether_header) + sizeof(struct arphdr) + sizeof(struct arp_ip4))
 
-void spoof_packet(uint8_t *buffer, uint32_t from_ip4, const uint8_t from_hw[ETH_ALEN], uint32_t to_ip4, const uint8_t to_hw[ETH_ALEN]) {
+static void spoof_packet(uint8_t *buffer, uint32_t from_ip4, const uint8_t from_hw[ETH_ALEN], uint32_t to_ip4, const uint8_t to_hw[ETH_ALEN]) {
 	assert(buffer);
 	assert(from_ip4 != to_ip4);
 
@@ -48,7 +50,7 @@ void spoof_packet(uint8_t *buffer, uint32_t from_ip4, const uint8_t from_hw[ETH_
 
 }
 
-void Spoof_node(int packet_sock, uint8_t buffer[ARPREPLY_SIZE], const struct Node *victim, const struct CurrentAddress *current) {
+static void Spoof_node(int packet_sock, uint8_t buffer[ARPREPLY_SIZE], const struct Node *victim, const struct InterfaceAddress *current) {
 
 	struct Node **nodes = nodes_get();
 	int node_count = nodes_count();
@@ -75,7 +77,7 @@ void Spoof_node(int packet_sock, uint8_t buffer[ARPREPLY_SIZE], const struct Nod
 	free(nodes);
 }
 
-void Spoof_nodes(int packet_sock, ArrayList owned, const struct CurrentAddress *current) {
+void Spoof_nodes(int packet_sock, ArrayList owned, const struct InterfaceAddress *current) {
 	DINFO("%s\n", "Starting spoofing");
 
 	int owned_count = ArrayList_length(owned);
@@ -93,4 +95,3 @@ void Spoof_nodes(int packet_sock, ArrayList owned, const struct CurrentAddress *
 
 	DINFO("%s\n", "Spoofing finished");
 }
-

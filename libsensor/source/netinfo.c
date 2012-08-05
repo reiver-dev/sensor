@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <stdint.h>
+#include <unistd.h>
 #include <errno.h>
 
 #include <net/if.h>
@@ -14,6 +15,19 @@
 #include "debug.h"
 #include "util.h"
 
+
+struct InterfaceAddress read_interface_address(const char* interfaceName) {
+	struct InterfaceAddress address;
+
+	int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	get_current_mac_r(sock, interfaceName, address.hwaddr);
+	address.ip4addr = get_current_address(sock, interfaceName);
+	address.netmask = get_current_netmask(sock, interfaceName);
+	address.gateway = read_default_gateway(interfaceName);
+	close(sock);
+
+	return address;
+}
 
 uint8_t* get_current_mac(int sock, const char* interfaceName) {
 	static uint8_t hwaddr[ETH_ALEN] = {0};

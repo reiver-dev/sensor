@@ -1,17 +1,20 @@
 #include <stdlib.h>                // Standard Libraries
-
 #include <stdint.h>                // Additional libraries
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
 #include <time.h>
 #include <assert.h>
+#include <pcap.h>
+
+#include <netinet/ether.h>
+#include <netinet/ip.h>
 
 #include "sensor_private.h"
 #include "socket_utils.h"
+
 #include "queue.h"
 #include "debug.h"
-#include "dissect.h"
 #include "nodes.h"
 #include "balancing.h"
 #include "survey.h"
@@ -22,9 +25,6 @@
 #define SENSOR_DEFAULT_READ_BUFFER_SIZE 65536
 #define SENSOR_DEFAULT_TIMEOUT 1
 #define SENSOR_DEFAULT_PROMISC false
-
-
-
 
 struct timer {
 	time_t last;
@@ -43,20 +43,14 @@ void timer_ping(struct timer *timer) {
 	timer_ping_r(timer, time(0));
 }
 
-
 //------------PRIVATE---------------------
 //-----------sensor-related
-int sensor_empty(){
+
+int empty_persist(sensor_captured_t *packet) {
 	return 0;
 }
 
-int empty_persist(sensor_dissected_t *packet){
-	return 0;
-}
-
-
-
-int commit_config(sensor_t config){
+int commit_config(sensor_t config) {
 
 	config->sock = create_raw_socket();
 
@@ -65,12 +59,13 @@ int commit_config(sensor_t config){
 	}
 
 	if (config->opt.capture.promiscuous) {
-		int res = set_iface_promiscuous(config->sock, config->opt.device_name, true);
+		int res = set_iface_promiscuous(config->sock,
+				config->opt.capture.device_name, true);
 		if (res)
 			return res;
 	}
 
-	bind_socket_to_interface(config->sock, config->opt.device_name);
+	bind_socket_to_interface(config->sock, config->opt.capture.device_name);
 
 	if (config->opt.capture.timeout) {
 		int res = set_socket_timeout(config->sock, config->opt.capture.timeout);
@@ -78,32 +73,32 @@ int commit_config(sensor_t config){
 			return res;
 	}
 
-	get_current_mac_r(config->sock, config->opt.device_name, config->current.hwaddr);
-	config->current.ip4addr = get_current_address(config->sock, config->opt.device_name);
-	config->current.netmask = get_current_netmask(config->sock, config->opt.device_name);
-	config->current.gateway = read_default_gateway(config->opt.device_name);
+	get_current_mac_r(config->sock, config->opt.capture.device_name,
+			config->current.hwaddr);
+	config->current.ip4addr = get_current_address(config->sock,
+			config->opt.capture.device_name);
+	config->current.netmask = get_current_netmask(config->sock,
+			config->opt.capture.device_name);
+	config->current.gateway = read_default_gateway(
+			config->opt.capture.device_name);
 
-	DNOTIFY("Current MAC: %s\n",     EtherToStr(config->current.hwaddr));
-	DNOTIFY("Current IP4: %s\n",     Ip4ToStr(config->current.ip4addr));
-	DNOTIFY("Current NETMASK: %s\n", Ip4ToStr(config->current.netmask));
-	DNOTIFY("Current GATEWAY: %s\n", Ip4ToStr(config->current.gateway));
-
+	DNOTIFY("Current MAC: %s\n", EtherToStr(config->current.hwaddr));DNOTIFY("Current IP4: %s\n", Ip4ToStr(config->current.ip4addr));DNOTIFY("Current NETMASK: %s\n", Ip4ToStr(config->current.netmask));DNOTIFY("Current GATEWAY: %s\n", Ip4ToStr(config->current.gateway));
 
 	return 0;
 }
 
-int sensor_clean(sensor_t config){
+int sensor_clean(sensor_t config) {
 	assert(config);
 	DNOTIFY("%s\n", "Destroying sensor");
 	if (config->opt.capture.promiscuous) {
-		int res = set_iface_promiscuous(config->sock, config->opt.device_name, false);
+		int res = set_iface_promiscuous(config->sock,
+				config->opt.capture.device_name, false);
 		if (res)
 			return res;
 	}
 	close_socket(config->sock);
 	return 0;
 }
-
 
 //------------------------------------------------
 
@@ -128,10 +123,12 @@ bool prepare_redirect(sensor_t sensor, uint8_t* buffer, int captured) {
 
 		struct Node *dest;
 		if (ipheader->daddr != sensor->current.ip4addr
-			&& ipheader->saddr != sensor->current.ip4addr
-			&& !memcmp(ethernet->ether_dhost, sensor->current.hwaddr, ETH_ALEN)
-			&& memcmp(ethernet->ether_shost, sensor->current.hwaddr, ETH_ALEN)
-			&& (dest = nodes_get_destination(ipheader->daddr))) {
+				&& ipheader->saddr != sensor->current.ip4addr
+				&& !memcmp(ethernet->ether_dhost, sensor->current.hwaddr,
+						ETH_ALEN)
+				&& memcmp(ethernet->ether_shost, sensor->current.hwaddr,
+						ETH_ALEN)
+				&& (dest = nodes_get_destination(ipheader->daddr))) {
 
 			memcpy(ethernet->ether_dhost, dest->hwaddr, ETH_ALEN);
 			memcpy(ethernet->ether_shost, sensor->current.hwaddr, ETH_ALEN);
@@ -156,9 +153,11 @@ bool restore_redirect(sensor_t sensor, uint8_t* buffer, int captured) {
 		struct iphdr *ipheader = (struct iphdr*) (buffer + position);
 
 		if (ipheader->daddr != sensor->current.ip4addr
-			&& ipheader->saddr != sensor->current.ip4addr
-			&& memcmp(ethernet->ether_dhost, sensor->current.hwaddr, ETH_ALEN)
-			&& !memcmp(ethernet->ether_shost, sensor->current.hwaddr, ETH_ALEN)) {
+				&& ipheader->saddr != sensor->current.ip4addr
+				&& memcmp(ethernet->ether_dhost, sensor->current.hwaddr,
+						ETH_ALEN)
+				&& !memcmp(ethernet->ether_shost, sensor->current.hwaddr,
+						ETH_ALEN)) {
 
 			struct Node *source = nodes_get_destination(ipheader->saddr);
 			if (!source)
@@ -173,23 +172,22 @@ bool restore_redirect(sensor_t sensor, uint8_t* buffer, int captured) {
 }
 
 //-----------------interfaces---------------------
-sensor_t sensor_init(){
+sensor_t sensor_init() {
 	sensor_options_t options;
 	sensor_t result = malloc(sizeof(*result));
 	result->activated = false;
 	result->sock = 0;
 	result->opt = options;
-	result->dissect_function = sensor_dissect_simple;
-	result->persist_function = sensor_empty;
+	result->persist_function = empty_persist;
 	return result;
 }
 
-void sensor_destroy(sensor_t config){
+void sensor_destroy(sensor_t config) {
 	assert(config);
 	free(config);
 }
 
-int sensor_set_options(sensor_t config, sensor_options_t options){
+int sensor_set_options(sensor_t config, sensor_options_t options) {
 	if (config->activated) {
 		return SENSOR_ALREADY_ACTIVATED;
 	}
@@ -197,23 +195,7 @@ int sensor_set_options(sensor_t config, sensor_options_t options){
 	return SENSOR_SUCCESS;
 }
 
-int sensor_set_dissection_default(sensor_t config){
-	if (config->activated) {
-		return SENSOR_ALREADY_ACTIVATED;
-	}
-	config->dissect_function = sensor_dissect_simple;
-	return SENSOR_SUCCESS;
-}
-
-int sensor_set_dissection(sensor_t config, sensor_dissect_f callback){
-	if (config->activated) {
-		return SENSOR_ALREADY_ACTIVATED;
-	}
-	config->dissect_function = callback;
-	return SENSOR_SUCCESS;
-}
-
-int sensor_set_persist_callback(sensor_t config, sensor_persist_f callback){
+int sensor_set_persist_callback(sensor_t config, sensor_persist_f callback) {
 	if (config->activated) {
 		return SENSOR_ALREADY_ACTIVATED;
 	}
@@ -227,34 +209,19 @@ int sensor_set_persist_callback(sensor_t config, sensor_persist_f callback){
 
 //----------------------------------------------------------
 
-sensor_captured_t *init_captured(uint8_t *buffer, int len){
+sensor_captured_t *init_captured(uint8_t *buffer, int len) {
 	assert(buffer);
 
 	uint8_t *begin = malloc(sizeof(sensor_captured_t) + len);
 	uint8_t *content = begin + sizeof(sensor_captured_t);
 
-	sensor_captured_t *captured = (sensor_captured_t *)begin;
-	captured->timestamp = time(0);
-	captured->length = len;
+	sensor_captured_t *captured = (sensor_captured_t *) begin;
+	gettimeofday(&captured->header.ts, NULL);
+	captured->header.caplen = len;
+	captured->header.len = len;
 	captured->buffer = content;
 	memcpy(captured->buffer, buffer, len);
 	return captured;
-}
-
-sensor_dissected_t *init_dissected(int content_length, int payload_length) {
-	// 2 is spacer
-	uint8_t *begin = malloc(sizeof(sensor_dissected_t) + content_length + payload_length );
-	uint8_t *content = begin + sizeof(sensor_dissected_t);
-	uint8_t *payload = content + content_length;
-
-	sensor_dissected_t *dissected = (sensor_dissected_t *)begin;
-	dissected->content = (char *)content;
-	dissected->payload = payload;
-
-	dissected->content_length = content_length;
-	dissected->payload_length = payload_length;
-
-	return dissected;
 }
 
 /* Main sensor loop */
@@ -265,7 +232,6 @@ void sensor_breakloop(sensor_t config) {
 int sensor_loop(sensor_t config) {
 
 	sensor_captured_t *captured;
-	sensor_dissected_t *dissected;
 	int buflength;
 	uint8_t *buffer;
 	Balancer balancer;
@@ -312,19 +278,18 @@ int sensor_loop(sensor_t config) {
 	}
 
 	iteration_time = time(0);
-	struct timer survey_timer    = {iteration_time, config->opt.survey.timeout};
-	struct timer balancing_timer = {iteration_time, config->opt.balancing.timeout};
-	struct timer spoof_timer     = {iteration_time, config->opt.balancing.modify_timeout};
-	struct timer dissect_timer   = {iteration_time, config->opt.dissect.timeout};
-	struct timer persist_timer   = {iteration_time, config->opt.persist.timeout};
-
+	struct timer survey_timer = { iteration_time, config->opt.survey.timeout };
+	struct timer balancing_timer = { iteration_time,
+			config->opt.balancing.timeout };
+	struct timer spoof_timer = { iteration_time,
+			config->opt.balancing.modify_timeout };
+	struct timer persist_timer = { iteration_time, config->opt.persist.timeout };
 
 	Queue_t Qcaptured = queue_init();
-	Queue_t Qdissected = queue_init();
 
 	/* Main loop */
 	DNOTIFY("%s\n", "Starting capture");
-	while(config->activated || queue_length(Qcaptured) || queue_length(Qdissected)){
+	while (config->activated || queue_length(Qcaptured)) {
 		iteration_time = time(0);
 
 		/* complete only queue if we broke the loop */
@@ -347,7 +312,6 @@ int sensor_loop(sensor_t config) {
 				timer_ping(&balancing_timer);
 			}
 
-
 			/* wait for packet for given timeout and then read it */
 			int read_len = recv(config->sock, buffer, buflength, 0);
 			//DINFO("Captured: %d bytes\n", read_len);
@@ -358,12 +322,12 @@ int sensor_loop(sensor_t config) {
 				balancing_receive_service(balancer);
 				/* if not survey or balancing packet */
 				if (!survey_process_response(&config->current, buffer, read_len)
-					&& !balancing_filter_response(balancer, buffer, read_len)) {
+						&& !balancing_filter_response(balancer, buffer,
+								read_len)) {
 
 					/* perform redirect if enabled and packet addresses replacement */
 					if (config->opt.balancing.enable_redirect
-						&& prepare_redirect(config, buffer, read_len))
-					{
+							&& prepare_redirect(config, buffer, read_len)) {
 						send(config->sock, buffer, read_len, 0);
 						restore_redirect(config, buffer, read_len);
 					}
@@ -379,24 +343,12 @@ int sensor_loop(sensor_t config) {
 
 		}
 
-		/* Dissection */
-		if ((queue_length(Qcaptured) && timer_check(&dissect_timer, iteration_time)) || !config->activated) {
-			DINFO("Dissecting: %d packets\n", queue_length(config->captured));
-			while(queue_length(Qcaptured)) {
-				captured = queue_pop(Qcaptured);
-				dissected = config->dissect_function(captured);
-				free(captured);
-				queue_push(Qdissected, dissected);
-			}
-			timer_ping(&dissect_timer);
-		}
-
 		/* Persistance */
-		if ((queue_length(Qdissected) && timer_check(&persist_timer, iteration_time)) || !config->activated)	{
-			while(queue_length(Qdissected) != 0) {
-				dissected = queue_pop(Qdissected);
-				config->persist_function(dissected);
-				free(dissected);
+		if ((queue_length(Qcaptured) && timer_check(&persist_timer, iteration_time)) || !config->activated) {
+			while (queue_length(Qcaptured)) {
+				captured = queue_pop(Qcaptured);
+				config->persist_function(captured);
+				free(captured);
 			}
 			timer_ping(&persist_timer);
 		}
@@ -413,7 +365,6 @@ int sensor_loop(sensor_t config) {
 
 	free(buffer);
 	queue_destroy(Qcaptured);
-	queue_destroy(Qdissected);
 
 	sensor_clean(config);
 	return SENSOR_SUCCESS;

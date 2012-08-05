@@ -8,8 +8,7 @@ file (GLOB HEADERS source/*.h)
 file (GLOB SOURCES source/*.c)
 
 set (LIBRARIES
-    libsensor
-    mysqlclient)
+    libsensor)
 
 include_directories (
     ../libsensor/include

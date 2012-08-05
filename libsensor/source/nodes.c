@@ -19,7 +19,7 @@
 static struct Node *Me;
 static HashMap Nodes;
 
-static struct CurrentAddress *current;
+static struct InterfaceAddress *current;
 
 static bool is_same_network_ip4(uint32_t ip) {
 	uint32_t network = current->ip4addr & current->netmask;
@@ -27,7 +27,7 @@ static bool is_same_network_ip4(uint32_t ip) {
 }
 
 /* Main functions */
-void nodes_init(struct CurrentAddress *curr) {
+void nodes_init(struct InterfaceAddress *curr) {
 	/* memorize current addreses */
 
 	current = curr;

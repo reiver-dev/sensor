@@ -2,8 +2,8 @@
 #define SENSOR_PRIVATE_H_
 
 #include <stdbool.h>
-#include <net/ethernet.h>
 #include "sensor.h"
+#include "netinfo.h"
 
 
 enum sensor_error_e {
@@ -16,20 +16,11 @@ enum sensor_error_e {
 	SENSOR_IFACE_GET_INDEX
 };
 
-
-struct CurrentAddress {
-	uint32_t ip4addr;
-	uint32_t netmask;
-	uint8_t hwaddr[ETH_ALEN];
-	uint32_t gateway;
-};
-
 struct sensor {
 	bool activated;
 	int sock;
-	struct CurrentAddress current;
+	struct InterfaceAddress current;
 	sensor_options_t opt;
-	sensor_dissect_f dissect_function;
 	sensor_persist_f persist_function;
 };
 

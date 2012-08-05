@@ -16,12 +16,10 @@ struct arguments {
 	int buffersize;
 	int capture_timeout;
 
-	/* dissection */
-	int dissection_period;
-
 	/* persistance */
-	char *db_host, *db_username, *db_password, *db_schema, *db_table;
-	int db_port;
+	char *head_host, *head_key;
+	int head_util_port;
+	int head_dump_port;
 	int persist_period;
 	bool enable_persistance;
 

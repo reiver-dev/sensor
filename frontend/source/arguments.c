@@ -20,16 +20,13 @@ const struct argp_option options[] = {
 		{"buffer", 'b', "BYTES", 0, "Specify capture buffer size (DEFAULT 65536)"},
 
 		// persistance
-		{"host", 'H', "HOSTNAME", 0, "MySQL database connection host address", 1},
-		{"port", 'P', "UNAME", 0, "MySQL database connection port", 1},
-		{"username", 'U', "UNAME", 0, "MySQL database username", 1},
-		{"password", 'W', "PASS", 0, "MySQL database password", 1},
-		{"schema", 'S', "SCHEMA", 0, "MySQL database schema (DEFAULT sniffer)", 1},
-		{"tablename", 'T', "TABLENAME", 0, "MySQL database tablename (DEFAULT sniffer)", 1},
+		{"host", 'H', "HOSTNAME", 0, "Head connection host address", 1},
+		{"port", 'P', "PORT", 0, "Head connection util port", 1},
+		{"dump", 'D', "PORT", 0, "Head connection dump port", 1},
+		{"headkey", 'K', "KEY", 0, "SHA2 key for head", 1},
 
 		// period
 		{"capture-timeout", 't', "SECONDS", 0, "Specify capture timeout (DEFAULT 5)", 2},
-		{"dissection-timeout", 'd', "SECONDS", 0, "Specify dissection period (DEFAULT 5)", 2},
 		{"writeout-timeout", 'w', "SECONDS", 0, "Specify DB persistance period (DEFAULT 10)", 2},
 
 		// disable
@@ -67,31 +64,21 @@ error_t parse_options(int key, char *arg, struct argp_state *state){
 
 	// for database
 	case 'H':
-		arguments->db_host = arg;
+		arguments->head_host = arg;
 		break;
 	case 'P':
-		arguments->db_port = atoi(arg);
+		arguments->head_util_port = atoi(arg);
 		break;
-	case 'U':
-		arguments->db_username = arg;
+	case 'D':
+		arguments->head_dump_port = atoi(arg);
 		break;
-	case 'W':
-		arguments->db_password = arg;
-		break;
-	case 'S':
-		arguments->db_schema = arg;
-		break;
-	case 'T':
-		arguments->db_table = arg;
+	case 'K':
+		arguments->head_key = arg;
 		break;
 
 
 	case 't':
 		arguments->capture_timeout = atoi(arg);
-		break;
-
-	case 'd':
-		arguments->dissection_period = atoi(arg);
 		break;
 
 	case 'w':
@@ -138,15 +125,12 @@ struct arguments args_get_default() {
 	arguments.promiscuous = false;
 	arguments.buffersize = 65536;
 	// mysql
-	arguments.db_host = "localhost";
-	arguments.db_username = 0;
-	arguments.db_password = 0;
-	arguments.db_schema = "sniffer";
-	arguments.db_table = "sniffer";
-	arguments.db_port = 0;
+	arguments.head_host = "localhost";
+	arguments.head_util_port = 0;
+	arguments.head_dump_port = 0;
+	arguments.head_key = "dummy";
 	// periods
 	arguments.capture_timeout = 5;
-	arguments.dissection_period = 5;
 	arguments.persist_period = 10;
 	// debug
 	arguments.enable_persistance = true;

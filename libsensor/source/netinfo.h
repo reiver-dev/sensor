@@ -1,6 +1,32 @@
 #ifndef REDIRECT_H_
 #define REDIRECT_H_
 
+#include <netinet/ether.h>
+#include <netinet/in.h>
+
+struct InterfaceAddress {
+	uint32_t ip4addr;
+	uint32_t netmask;
+	uint8_t hwaddr[ETH_ALEN];
+	uint32_t gateway;
+};
+
+struct IntenetAddress4 {
+	struct in_addr local;
+	struct in_addr netmask;
+	struct in_addr gateway;
+	struct ether_addr hw;
+};
+
+struct IntenetAddress6 {
+	struct in6_addr local;
+	struct in6_addr netmask;
+	struct in6_addr gateway;
+	struct ether_addr hw;
+};
+
+struct InterfaceAddress read_interface_address(const char* interfaceName);
+
 uint8_t* get_current_mac(int sock, const char* interfaceName);
 uint8_t* get_current_mac_r(int sock, const char* interfaceName, uint8_t* hwaddr);
 uint32_t get_current_address(int sock, const char* interfaceName);

@@ -56,7 +56,7 @@ struct balancer {
 
 	uint8_t State;
 
-	struct CurrentAddress *current;
+	struct InterfaceAddress *current;
 
 	struct SensorSession Me;
 	HashMap clientMomentLoads;
@@ -154,7 +154,7 @@ Balancer balancing_init(sensor_t config) {
 	/* memorize current addreses */
 	self->current = &config->current;
 	self->State = STATE_BEGIN;
-	self->servicesData = Services_Init(self, config->opt.device_name);
+	self->servicesData = Services_Init(self, config->opt.capture.device_name);
 
 	self->info_interval = config->opt.balancing.info_timeout;
 	self->survey_interval = config->opt.survey.node_disconnect_timeout;

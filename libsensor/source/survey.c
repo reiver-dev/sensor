@@ -2,10 +2,10 @@
 #include <assert.h>
 #include <string.h>
 #include <stdbool.h>
-#include <netinet/if_ether.h>
-#include <netinet/in.h>
-#include <net/ethernet.h>
+#include <unistd.h>
 
+#include <netinet/ether.h>
+#include <netinet/in.h>
 
 #include "sensor_private.h"
 #include "nodes.h"
@@ -23,7 +23,6 @@
 
 /* Protocol types */
 struct arp_ip4 {
-	struct arphdr header;
     uint8_t  ar_sha[ETH_ALEN];  /* Sender hardware address.     */
     uint32_t ar_sip;            /* Sender IP address.           */
     uint8_t ar_tha[ETH_ALEN];   /* Target hardware address.     */
@@ -34,60 +33,63 @@ struct arp_ip4 {
 static const uint8_t EtherBroadcast[ETH_ALEN] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
 
 uint8_t *survey_packet(int *out_length, const uint32_t toaddr, const uint32_t current_ip4,
-		const uint8_t current_mac[ETH_ALEN]) {
+		       const uint8_t current_mac[ETH_ALEN]) {
 
-	static uint8_t survey_buf[SURVEY_BUFFER_SIZE];
+  static uint8_t survey_buf[SURVEY_BUFFER_SIZE];
 
-	struct ether_header *ethernet;
-	struct arp_ip4 *arpheader;
+  struct ether_header *ethernet;
+  struct arphdr *header;
+  struct arp_ip4 *arpheader;
 
-	memset(survey_buf, '\0', SURVEY_BUFFER_SIZE);
-	ethernet = (struct ether_header *) &survey_buf[0];
-	arpheader = (struct arp_ip4 *) &survey_buf[ETHERNET_LENGTH];
 
-	memcpy(ethernet->ether_dhost, EtherBroadcast, ETH_ALEN);
-	memcpy(ethernet->ether_shost, current_mac, ETH_ALEN);
-	ethernet->ether_type = htons(ETH_P_ARP);
+  memset(survey_buf, '\0', SURVEY_BUFFER_SIZE);
+  ethernet = (struct ether_header *) &survey_buf[0];
+  header = (struct arphdr *)(survey_buf + sizeof(struct ether_header));
+  arpheader = (struct arp_ip4 *)(survey_buf + sizeof(struct ether_header) + sizeof(struct arphdr));
 
-	arpheader->header.ar_hrd = htons(ARPHRD_ETHER);
-	arpheader->header.ar_pro = htons(ETH_P_IP);
-	arpheader->header.ar_hln = ETH_ALEN;
-	arpheader->header.ar_pln = 4;
-	arpheader->header.ar_op  = htons(ARPOP_REQUEST);
+  memcpy(ethernet->ether_dhost, EtherBroadcast, ETH_ALEN);
+  memcpy(ethernet->ether_shost, current_mac, ETH_ALEN);
+  ethernet->ether_type = htons(ETH_P_ARP);
 
-	memcpy(arpheader->ar_sha, current_mac, ETH_ALEN);
-	arpheader->ar_sip = current_ip4;
-	/* leave target mac as zeros */
-	arpheader->ar_tip = toaddr;
+  header->ar_hrd = htons(ARPHRD_ETHER);
+  header->ar_pro = htons(ETH_P_IP);
+  header->ar_hln = ETH_ALEN;
+  header->ar_pln = 4;
+  header->ar_op  = htons(ARPOP_REQUEST);
 
-	*out_length = ARP_SURVEY_BUF_LENGTH;
-	return survey_buf;
+  memcpy(arpheader->ar_sha, current_mac, ETH_ALEN);
+  arpheader->ar_sip = current_ip4;
+  memset(arpheader->ar_tha, 0, ETH_ALEN);
+  arpheader->ar_tip = toaddr;
+
+  *out_length = ARP_SURVEY_BUF_LENGTH;
+  return survey_buf;
 
 }
-
 
 void survey_set_target_ip(uint8_t *buffer, uint32_t ip) {
-	struct arp_ip4 *arpheader = (struct arp_ip4 *) &buffer[ETHERNET_LENGTH];
-	arpheader->ar_tip = ip;
+  struct arp_ip4 *arpheader = (struct arp_ip4 *)(buffer + sizeof(struct ether_header) + sizeof(struct arphdr));
+  arpheader->ar_tip = ip;
 }
 
-
-bool survey_is_response(const struct CurrentAddress *current, const uint8_t *buffer, int length) {
+bool survey_is_response(const struct InterfaceAddress *current, const uint8_t *buffer, int length) {
 	if (length < ARP_SURVEY_BUF_LENGTH) {
 		return false;
 	}
 
 	struct ether_header *ethernet;
-	ethernet = (struct ether_header *) &buffer[0];
-
+	struct arphdr *header;
 	struct arp_ip4 *arpheader;
-	arpheader = (struct arp_ip4 *) &buffer[ETHERNET_LENGTH];
+
+	ethernet = (struct ether_header *) &buffer[0];
+	header = (struct arphdr *) (buffer + sizeof(struct ether_header));
+	arpheader = (struct arp_ip4 *) (buffer + sizeof(struct ether_header) + sizeof(struct arphdr));
 
 
 	if (!memcmp(ethernet->ether_shost, current->hwaddr, ETH_ALEN)    /* source mac is not me */
 		|| memcmp(ethernet->ether_dhost, current->hwaddr, ETH_ALEN)  /* dest mac is me       */
 		|| ethernet->ether_type != ntohs(ETH_P_ARP)                  /* arp protocol         */
-		|| arpheader->header.ar_op != ntohs(ARPOP_REPLY)             /* arp reply operation  */
+		|| header->ar_op != ntohs(ARPOP_REPLY)                       /* arp reply operation  */
 		|| !memcmp(arpheader->ar_sha, current->hwaddr, ETH_ALEN)     /* source is not me     */
 		|| memcmp(arpheader->ar_tha, current->hwaddr, ETH_ALEN)      /* dest is me           */
 		) {
@@ -99,14 +101,14 @@ bool survey_is_response(const struct CurrentAddress *current, const uint8_t *buf
 }
 
 
-bool survey_process_response(const struct CurrentAddress *current, const uint8_t *buffer, int length) {
+bool survey_process_response(const struct InterfaceAddress *current, const uint8_t *buffer, int length) {
 
 	if (!survey_is_response(current, buffer, length)) {
 		return false;
 	}
 
 	struct arp_ip4 *arpheader;
-	arpheader = (struct arp_ip4 *) &buffer[ETHERNET_LENGTH];
+	arpheader = (struct arp_ip4 *) (buffer + sizeof(struct ether_header) + sizeof(struct arphdr));
 
 	uint32_t ip4 = arpheader->ar_sip;
 	uint8_t hw[ETH_ALEN];
@@ -118,7 +120,7 @@ bool survey_process_response(const struct CurrentAddress *current, const uint8_t
 
 }
 
-void survey_perform_survey(const struct CurrentAddress *current, int packet_sock) {
+void survey_perform_survey(const struct InterfaceAddress *current, int packet_sock) {
 	DINFO("%s\n", "Starting survey");
 
 	int length;

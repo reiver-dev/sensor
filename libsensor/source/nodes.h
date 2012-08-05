@@ -31,7 +31,7 @@ struct Node {
 
 typedef void (*node_func)(struct Node *);
 
-void nodes_init(struct CurrentAddress *curr);
+void nodes_init(struct InterfaceAddress *curr);
 void nodes_destroy();
 
 size_t nodes_count();

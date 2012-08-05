@@ -13,29 +13,19 @@
 
 #include <sensor.h>
 
-#include "dbrelated.h"
 #include "arguments.h"
 #include "kvset.h"
 
 sensor_t sensor;
 sensor_options_t opts;
 
-int persist_callback(sensor_dissected_t *packet){
-	db_execute_statement(
-			packet->timestamp,
-			packet->mac_source,
-			packet->mac_dest,
-			packet->content,
-			packet->payload,
-			packet->payload_length
-			);
-	return 0;
-}
-
 void break_loop() {
 	sensor_breakloop(sensor);
 }
 
+int persist_callback(sensor_captured_t *captured) {
+	return 0;
+}
 
 void detach() {
 	pid_t pid = fork();
@@ -92,43 +82,39 @@ void forking() {
 
 int read_config(struct arguments *arguments) {
 	char *filename = arguments->config;
-	const char *sections[] = {"main", "capture", "dissection", "persistance", "survey", "balancing", "misc"};
+	const char *sections[] = {"main", "capture", "persistance", "survey", "balancing", "misc"};
 	kvset kvs = InitKVS(6, sections);
 	/* main */
-	AddKVS(kvs, 0, KVS_STRING, "Interface", &arguments->interface);
 	AddKVS(kvs, 0, KVS_BOOL, "Fork", &arguments->enable_fork);
 	AddKVS(kvs, 0, KVS_BOOL, "Background", &arguments->enable_background);
 	/* capture */
+	AddKVS(kvs, 1, KVS_STRING, "Interface", &arguments->interface);
 	AddKVS(kvs, 1, KVS_BOOL, "Promiscuous", &arguments->promiscuous);
 	AddKVS(kvs, 1, KVS_UINT32, "Buffersize", &arguments->buffersize);
 	AddKVS(kvs, 1, KVS_UINT32, "Timeout", &arguments->capture_timeout);
-	/* dissection */
-	AddKVS(kvs, 2, KVS_UINT32, "Timeout", &arguments->dissection_period);
 	/* persistance */
-	AddKVS(kvs, 3, KVS_BOOL, "Enable", &arguments->enable_persistance);
-	AddKVS(kvs, 3, KVS_STRING, "Host", &arguments->db_host);
-	AddKVS(kvs, 3, KVS_UINT32, "Port", &arguments->db_port);
-	AddKVS(kvs, 3, KVS_STRING, "Login", &arguments->db_username);
-	AddKVS(kvs, 3, KVS_STRING, "Password", &arguments->db_password);
-	AddKVS(kvs, 3, KVS_STRING, "Schema", &arguments->db_schema);
-	AddKVS(kvs, 3, KVS_STRING, "Table", &arguments->db_table);
-	AddKVS(kvs, 3, KVS_UINT32, "Timeout", &arguments->persist_period);
+	AddKVS(kvs, 2, KVS_BOOL, "Enable", &arguments->enable_persistance);
+	AddKVS(kvs, 2, KVS_STRING, "Host", &arguments->head_host);
+	AddKVS(kvs, 2, KVS_UINT32, "UtilPort", &arguments->head_util_port);
+	AddKVS(kvs, 2, KVS_UINT32, "DumpPort", &arguments->head_dump_port);
+	AddKVS(kvs, 2, KVS_STRING, "Key", &arguments->head_key);
+	AddKVS(kvs, 2, KVS_UINT32, "Timeout", &arguments->persist_period);
 
 	/* survey */
-	AddKVS(kvs, 4, KVS_UINT32, "Timeout", &arguments->survey_timeout);
-	AddKVS(kvs, 4, KVS_UINT32, "InitialTimeout", &arguments->survey_initial_timeout);
-	AddKVS(kvs, 4, KVS_UINT32, "NodeDisconnectTimeout", &arguments->survey_nodedisconnect_timeout);
+	AddKVS(kvs, 3, KVS_UINT32, "Timeout", &arguments->survey_timeout);
+	AddKVS(kvs, 3, KVS_UINT32, "InitialTimeout", &arguments->survey_initial_timeout);
+	AddKVS(kvs, 3, KVS_UINT32, "NodeDisconnectTimeout", &arguments->survey_nodedisconnect_timeout);
 
 	/* balancing */
-	AddKVS(kvs, 5, KVS_UINT32, "Timeout", &arguments->balancing_timeout);
-	AddKVS(kvs, 5, KVS_UINT32, "InitialTimeout", &arguments->balancing_initial_timeout);
-	AddKVS(kvs, 5, KVS_UINT32, "InfoTimeout", &arguments->balancing_info_timeout);
-	AddKVS(kvs, 5, KVS_UINT32, "SessionTimeout", &arguments->balancing_session_timeout);
-	AddKVS(kvs, 5, KVS_UINT32, "ModifyTimeout", &arguments->balancing_modify_timeout);
-	AddKVS(kvs, 5, KVS_UINT32, "LoadCount", &arguments->balancing_load_count);
-	AddKVS(kvs, 5, KVS_UINT32, "LoadInterval", &arguments->balancing_interval);
-	AddKVS(kvs, 5, KVS_BOOL, "Redirect", &arguments->enable_redirect);
-	AddKVS(kvs, 5, KVS_BOOL, "Modify", &arguments->enable_modify);
+	AddKVS(kvs, 4, KVS_UINT32, "Timeout", &arguments->balancing_timeout);
+	AddKVS(kvs, 4, KVS_UINT32, "InitialTimeout", &arguments->balancing_initial_timeout);
+	AddKVS(kvs, 4, KVS_UINT32, "InfoTimeout", &arguments->balancing_info_timeout);
+	AddKVS(kvs, 4, KVS_UINT32, "SessionTimeout", &arguments->balancing_session_timeout);
+	AddKVS(kvs, 4, KVS_UINT32, "ModifyTimeout", &arguments->balancing_modify_timeout);
+	AddKVS(kvs, 4, KVS_UINT32, "LoadCount", &arguments->balancing_load_count);
+	AddKVS(kvs, 4, KVS_UINT32, "LoadInterval", &arguments->balancing_interval);
+	AddKVS(kvs, 4, KVS_BOOL, "Redirect", &arguments->enable_redirect);
+	AddKVS(kvs, 4, KVS_BOOL, "Modify", &arguments->enable_modify);
 
 	LoadKVS(kvs, filename);
 	DestroyKVS(kvs);
@@ -159,22 +145,17 @@ int main(int argc, char** argv) {
 	sensor = sensor_init();
 
 	if (arguments.enable_persistance) {
-		db_init(&arguments);
-		db_connect();
-		db_prepare_statement();
 		sensor_set_persist_callback(sensor, persist_callback);
 	} else {
 		sensor_set_persist_callback(sensor, 0);
 	}
 
-
 	opts.capture.promiscuous = arguments.promiscuous;
-	strncpy(opts.device_name, arguments.interface, IF_NAMESIZE);
+	strncpy(opts.capture.device_name, arguments.interface, IF_NAMESIZE);
 	opts.capture.buffersize = arguments.buffersize;
 
 	opts.capture.timeout = arguments.capture_timeout;
 	opts.persist.timeout = arguments.persist_period;
-	opts.dissect.timeout = arguments.dissection_period;
 	opts.balancing.enable_redirect = arguments.enable_redirect;
 	opts.balancing.enable_modify = arguments.enable_modify;
 
@@ -191,13 +172,7 @@ int main(int argc, char** argv) {
 	opts.balancing.load_interval = arguments.balancing_interval;
 
 	sensor_set_options(sensor, opts);
-	sensor_set_dissection_default(sensor);
 	sensor_loop(sensor);
-
-	if (arguments.enable_persistance) {
-		db_close_statement();
-		db_disconnect();
-	}
 
 	sensor_destroy(sensor);
 
