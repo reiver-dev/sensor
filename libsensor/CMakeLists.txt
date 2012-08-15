@@ -10,3 +10,4 @@ include_directories("include")
 
 add_library(${PROJECT_NAME} SHARED ${HEADERS} ${SOURCES})
 set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "")
+target_link_libraries (${PROJECT_NAME} pthread pcap zmq)

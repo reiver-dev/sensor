@@ -90,7 +90,7 @@ int read_config(struct arguments *arguments) {
 	/* capture */
 	AddKVS(kvs, 1, KVS_STRING, "Interface", &arguments->interface);
 	AddKVS(kvs, 1, KVS_BOOL, "Promiscuous", &arguments->promiscuous);
-	AddKVS(kvs, 1, KVS_UINT32, "Buffersize", &arguments->buffersize);
+	AddKVS(kvs, 1, KVS_UINT32, "BufferSize", &arguments->buffersize);
 	AddKVS(kvs, 1, KVS_UINT32, "Timeout", &arguments->capture_timeout);
 	/* persistance */
 	AddKVS(kvs, 2, KVS_BOOL, "Enable", &arguments->enable_persistance);
@@ -172,7 +172,8 @@ int main(int argc, char** argv) {
 	opts.balancing.load_interval = arguments.balancing_interval;
 
 	sensor_set_options(sensor, opts);
-	sensor_loop(sensor);
+	//sensor_loop(sensor);
+	sensor_main(sensor);
 
 	sensor_destroy(sensor);
 

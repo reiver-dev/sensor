@@ -5,7 +5,7 @@
 #include <unistd.h>
 #include <time.h>
 #include <assert.h>
-#include <pcap.h>
+#include <pthread.h>
 
 #include <netinet/ether.h>
 #include <netinet/ip.h>
@@ -13,6 +13,7 @@
 #include "sensor_private.h"
 #include "socket_utils.h"
 
+#include "traffic_capture.h"
 #include "queue.h"
 #include "debug.h"
 #include "nodes.h"
@@ -368,4 +369,49 @@ int sensor_loop(sensor_t config) {
 
 	sensor_clean(config);
 	return SENSOR_SUCCESS;
+}
+
+#define MQCORE 1
+#define MQPERSIST 2
+int sensor_main(sensor_t config) {
+	MessageQueueContext mqContext = MessageQueue_context();
+	DINFO("%s\n", "Message queue context created");
+
+	MessageQueue coreMQ = MessageQueue_getReceiver(mqContext, MQCORE);
+
+	DERROR("%s\n", "Core receiver MQ created");
+
+	struct TrafficCapture captureContext;
+	captureContext.context = config;
+	captureContext.queueToCore = MessageQueue_getSender(mqContext, MQCORE);
+	captureContext.queueToPersist = 0;
+
+
+	config->activated = true;
+
+	DNOTIFY("%s\n", "Starting");
+
+	pthread_t captureThread;
+	pthread_create(&captureThread, NULL, capture_thread, &captureContext);
+
+	while (config->activated) {
+		void *data = NULL;
+		size_t size;
+		MessageQueue_recv(coreMQ, &data, &size);
+		if (size && data) {
+			DINFO("received %i bytes\n", size);
+			free(data);
+		}
+	}
+
+	DINFO("%s\n", "Closing threads");
+
+	pthread_join(captureThread, NULL);
+
+	DNOTIFY("%s\n", "Cleaning up MQ");
+	MessageQueue_destroy(coreMQ);
+	MessageQueue_destroy(captureContext.queueToCore);
+	MessageQueue_contextDestroy(mqContext);
+
+	return 0;
 }
