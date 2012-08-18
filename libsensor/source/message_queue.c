@@ -6,8 +6,6 @@
 
 #include <zmq.h>
 
-#include "debug.h"
-
 typedef void* MessageQueue;
 typedef void* MessageQueueContext;
 
@@ -83,7 +81,6 @@ bool MessageQueue_sendCopy(MessageQueue queue, void *data, size_t size) {
 	memcpy(zmq_msg_data(&msg), data, size);
 	bool send_success = !zmq_send(queue, &msg, 0);
 	if (init_success) {
-		DINFO("%s\n", "message sent");
 		zmq_msg_close(&msg);
 	}
 	return init_success && send_success;
@@ -95,11 +92,9 @@ bool MessageQueue_recv(MessageQueue queue, void **out_data, size_t *size) {
 	success = !zmq_msg_init(&msg);
 	success = success && !zmq_recv(queue, &msg, 0);
 	if (success) {
-		DINFO("%s\n", "Message Received");
 		*out_data = malloc(zmq_msg_size(&msg));
 		memcpy(*out_data, zmq_msg_data(&msg), zmq_msg_size(&msg));
 		*size = zmq_msg_size(&msg);
-		DINFO("Closing message: size %i\n", *size);
 		zmq_msg_close(&msg);
 	}
 	return success;
