@@ -382,17 +382,18 @@ int sensor_main(sensor_t config) {
 	DERROR("%s\n", "Core receiver MQ created");
 
 	struct TrafficCapture captureContext;
-	captureContext.context = config;
 	captureContext.queueToCore = MessageQueue_getSender(mqContext, MQCORE);
 	captureContext.queueToPersist = 0;
 
+
+	TrafficCapture_prepare(&captureContext, config);
 
 	config->activated = true;
 
 	DNOTIFY("%s\n", "Starting");
 
 	pthread_t captureThread;
-	pthread_create(&captureThread, NULL, capture_thread, &captureContext);
+	pthread_create(&captureThread, NULL, (void *(*)(void*))TrafficCapture_start, &captureContext);
 
 	while (config->activated) {
 		void *data = NULL;
@@ -403,12 +404,14 @@ int sensor_main(sensor_t config) {
 			free(data);
 		}
 	}
-
 	DINFO("%s\n", "Closing threads");
+
+	TrafficCapture_stop(&captureContext);
 
 	pthread_join(captureThread, NULL);
 
 	DNOTIFY("%s\n", "Cleaning up MQ");
+
 	MessageQueue_destroy(coreMQ);
 	MessageQueue_destroy(captureContext.queueToCore);
 	MessageQueue_contextDestroy(mqContext);
