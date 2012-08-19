@@ -19,7 +19,7 @@ enum sensor_error_e {
 struct sensor {
 	bool activated;
 	int sock;
-	struct InterfaceAddress current;
+	struct InterfaceInfo current;
 	sensor_options_t opt;
 	sensor_persist_f persist_function;
 };

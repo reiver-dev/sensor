@@ -50,7 +50,7 @@ static void spoof_packet(uint8_t *buffer, uint32_t from_ip4, const uint8_t from_
 
 }
 
-static void Spoof_node(int packet_sock, uint8_t buffer[ARPREPLY_SIZE], const struct Node *victim, const struct InterfaceAddress *current) {
+static void Spoof_node(int packet_sock, uint8_t buffer[ARPREPLY_SIZE], const struct Node *victim, const struct InterfaceInfo *current) {
 
 	struct Node **nodes = nodes_get();
 	int node_count = nodes_count();
@@ -58,16 +58,16 @@ static void Spoof_node(int packet_sock, uint8_t buffer[ARPREPLY_SIZE], const str
 	struct Node *gateway = nodes_get_gateway();
 
 	if (gateway) {
-		uint8_t *gw_hw = gateway->hwaddr;
-		spoof_packet(buffer, victim->ip4addr, current->hwaddr, current->gateway, gw_hw);
+		uint8_t *gw_hw = gateway->addr.hw;
+		spoof_packet(buffer, victim->addr.in, current->addr.hw, current->gateway, gw_hw);
 		send(packet_sock, buffer, ARPREPLY_SIZE, 0);
 		send(packet_sock, buffer, ARPREPLY_SIZE, 0);
 		send(packet_sock, buffer, ARPREPLY_SIZE, 0);
 	}
 
 	for (int i = 0; i < node_count; i++) {
-		if (nodes[i]->is_online && nodes[i]->ip4addr != victim->ip4addr) {
-			spoof_packet(buffer, nodes[i]->ip4addr, current->hwaddr, victim->ip4addr, victim->hwaddr);
+		if (nodes[i]->is_online && nodes[i]->addr.in != victim->addr.in) {
+			spoof_packet(buffer, nodes[i]->addr.in, current->addr.hw, victim->addr.in, victim->addr.hw);
 			send(packet_sock, buffer, ARPREPLY_SIZE, 0);
 			send(packet_sock, buffer, ARPREPLY_SIZE, 0);
 			send(packet_sock, buffer, ARPREPLY_SIZE, 0);
@@ -77,7 +77,7 @@ static void Spoof_node(int packet_sock, uint8_t buffer[ARPREPLY_SIZE], const str
 	free(nodes);
 }
 
-void Spoof_nodes(int packet_sock, ArrayList owned, const struct InterfaceAddress *current) {
+void Spoof_nodes(int packet_sock, ArrayList owned, const struct InterfaceInfo *current) {
 	DINFO("%s\n", "Starting spoofing");
 
 	int owned_count = ArrayList_length(owned);

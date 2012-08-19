@@ -18,8 +18,7 @@ struct NodeLoad {
 };
 
 struct Node {
-	uint32_t ip4addr;
-	uint8_t  hwaddr[ETH_ALEN];
+	struct NetAddress addr;
 
 	time_t   last_check;
 	bool     is_online;
@@ -31,7 +30,7 @@ struct Node {
 
 typedef void (*node_func)(struct Node *);
 
-void nodes_init(struct InterfaceAddress *curr);
+void nodes_init(struct InterfaceInfo *curr);
 void nodes_destroy();
 
 size_t nodes_count();

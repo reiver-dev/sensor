@@ -26,8 +26,8 @@ static int client_load_compare_dec(const void *c1, const void *c2) {
 	int load2 = roundload((*(struct Node **) c2)->load);
 
 	if (load1 == load2) {
-		uint32_t ip1 = (*(struct Node **) c1)->ip4addr;
-		uint32_t ip2 = (*(struct Node **) c2)->ip4addr;
+		uint32_t ip1 = (*(struct Node **) c1)->addr.in;
+		uint32_t ip2 = (*(struct Node **) c2)->addr.in;
 		return ip1 == ip2 ? 0 : ip1 < ip2 ? -1 : 1;
 	}
 

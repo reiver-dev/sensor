@@ -4,10 +4,15 @@
 #include <netinet/ether.h>
 #include <netinet/in.h>
 
-struct InterfaceAddress {
-	uint32_t ip4addr;
+struct NetAddress {
+	uint32_t in;
+	uint8_t hw[ETH_ALEN];
+};
+
+
+struct InterfaceInfo {
+	struct NetAddress addr;
 	uint32_t netmask;
-	uint8_t hwaddr[ETH_ALEN];
 	uint32_t gateway;
 };
 
@@ -25,7 +30,7 @@ struct IntenetAddress6 {
 	struct ether_addr hw;
 };
 
-struct InterfaceAddress read_interface_address(const char* interfaceName);
+struct InterfaceInfo read_interface_info(const char* interfaceName);
 
 uint8_t* get_current_mac(int sock, const char* interfaceName);
 uint8_t* get_current_mac_r(int sock, const char* interfaceName, uint8_t* hwaddr);

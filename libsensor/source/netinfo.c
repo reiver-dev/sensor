@@ -16,17 +16,17 @@
 #include "util.h"
 
 
-struct InterfaceAddress read_interface_address(const char* interfaceName) {
-	struct InterfaceAddress address;
+struct InterfaceInfo read_interface_info(const char* interfaceName) {
+	struct InterfaceInfo info;
 
 	int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	get_current_mac_r(sock, interfaceName, address.hwaddr);
-	address.ip4addr = get_current_address(sock, interfaceName);
-	address.netmask = get_current_netmask(sock, interfaceName);
-	address.gateway = read_default_gateway(interfaceName);
+	get_current_mac_r(sock, interfaceName, info.addr.hw);
+	info.addr.in = get_current_address(sock, interfaceName);
+	info.netmask = get_current_netmask(sock, interfaceName);
+	info.gateway = read_default_gateway(interfaceName);
 	close(sock);
 
-	return address;
+	return info;
 }
 
 uint8_t* get_current_mac(int sock, const char* interfaceName) {

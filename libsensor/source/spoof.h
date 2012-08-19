@@ -5,7 +5,7 @@
 #include "sensor_private.h"
 #include "nodes.h"
 
-void Spoof_nodes(int packet_sock, ArrayList owned, const struct InterfaceAddress *current);
+void Spoof_nodes(int packet_sock, ArrayList owned, const struct InterfaceInfo *current);
 
 
 #endif /* SPOOF_H_ */

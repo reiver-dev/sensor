@@ -72,7 +72,7 @@ void survey_set_target_ip(uint8_t *buffer, uint32_t ip) {
   arpheader->ar_tip = ip;
 }
 
-bool survey_is_response(const struct InterfaceAddress *current, const uint8_t *buffer, int length) {
+bool survey_is_response(const struct InterfaceInfo *current, const uint8_t *buffer, int length) {
 	if (length < ARP_SURVEY_BUF_LENGTH) {
 		return false;
 	}
@@ -86,12 +86,12 @@ bool survey_is_response(const struct InterfaceAddress *current, const uint8_t *b
 	arpheader = (struct arp_ip4 *) (buffer + sizeof(struct ether_header) + sizeof(struct arphdr));
 
 
-	if (!memcmp(ethernet->ether_shost, current->hwaddr, ETH_ALEN)    /* source mac is not me */
-		|| memcmp(ethernet->ether_dhost, current->hwaddr, ETH_ALEN)  /* dest mac is me       */
+	if (!memcmp(ethernet->ether_shost, current->addr.hw, ETH_ALEN)    /* source mac is not me */
+		|| memcmp(ethernet->ether_dhost, current->addr.hw, ETH_ALEN)  /* dest mac is me       */
 		|| ethernet->ether_type != ntohs(ETH_P_ARP)                  /* arp protocol         */
 		|| header->ar_op != ntohs(ARPOP_REPLY)                       /* arp reply operation  */
-		|| !memcmp(arpheader->ar_sha, current->hwaddr, ETH_ALEN)     /* source is not me     */
-		|| memcmp(arpheader->ar_tha, current->hwaddr, ETH_ALEN)      /* dest is me           */
+		|| !memcmp(arpheader->ar_sha, current->addr.hw, ETH_ALEN)     /* source is not me     */
+		|| memcmp(arpheader->ar_tha, current->addr.hw, ETH_ALEN)      /* dest is me           */
 		) {
 
 		return false;
@@ -101,7 +101,7 @@ bool survey_is_response(const struct InterfaceAddress *current, const uint8_t *b
 }
 
 
-bool survey_process_response(const struct InterfaceAddress *current, const uint8_t *buffer, int length) {
+bool survey_process_response(const struct InterfaceInfo *current, const uint8_t *buffer, int length) {
 
 	if (!survey_is_response(current, buffer, length)) {
 		return false;
@@ -120,11 +120,11 @@ bool survey_process_response(const struct InterfaceAddress *current, const uint8
 
 }
 
-void survey_perform_survey(const struct InterfaceAddress *current, int packet_sock) {
+void survey_perform_survey(const struct InterfaceInfo *current, int packet_sock) {
 	DINFO("%s\n", "Starting survey");
 
 	int length;
-	uint8_t *survey_buf = survey_packet(&length, 0, current->ip4addr, current->hwaddr);
+	uint8_t *survey_buf = survey_packet(&length, 0, current->addr.in, current->addr.hw);
 
 	assert(survey_buf != 0);
 	assert(length > 0);
@@ -132,11 +132,11 @@ void survey_perform_survey(const struct InterfaceAddress *current, int packet_so
 	int result;
 
 	int nodeCount = (1 << (32 - bitcount(current->netmask))) - 2;
-	uint32_t network = ntohl(current->ip4addr & current->netmask);
+	uint32_t network = ntohl(current->addr.in & current->netmask);
 
 	for (int i = 0; i < nodeCount;  i++) {
 		uint32_t ip4addr = htonl(network + i + 1);
-		if (ip4addr != current->ip4addr) {
+		if (ip4addr != current->addr.in) {
 			survey_set_target_ip(survey_buf, ip4addr);
 			result = send(packet_sock, survey_buf, length, 0);
 			if (result == -1) {

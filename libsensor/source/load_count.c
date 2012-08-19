@@ -12,7 +12,7 @@
 
 
 static inline ArrayList get_client_moment_load(HashMap clientMomentLoads, struct Node *client) {
-	return HashMap_get(clientMomentLoads, &client->ip4addr);
+	return HashMap_get(clientMomentLoads, &client->addr.in);
 }
 
 static int load_compare(const void *m1, const void *m2) {

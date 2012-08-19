@@ -19,21 +19,20 @@
 static struct Node *Me;
 static HashMap Nodes;
 
-static struct InterfaceAddress *current;
+static struct InterfaceInfo *current;
 
 static bool is_same_network_ip4(uint32_t ip) {
-	uint32_t network = current->ip4addr & current->netmask;
+	uint32_t network = current->addr.in & current->netmask;
 	return (network & ip) == network;
 }
 
 /* Main functions */
-void nodes_init(struct InterfaceAddress *curr) {
+void nodes_init(struct InterfaceInfo *curr) {
 	/* memorize current addreses */
 
 	current = curr;
 	Me = malloc(sizeof(struct Node));
-	Me->ip4addr = current->ip4addr;
-	memcpy(Me->hwaddr, current->hwaddr, ETH_ALEN);
+	Me->addr = current->addr;
 	Me->owned_by = NULL;
 	Me->load = 0;
 	Me->current_load = NODE_LOAD_NOT_READY;
@@ -62,8 +61,8 @@ void node_answered(uint32_t ip4, uint8_t *hw) {
 	} else {
 		DINFO("Node found (%s)\n", Ip4ToStr(ip4));
 		node = malloc(sizeof(struct Node));
-		node->ip4addr = ip4;
-		memcpy(node->hwaddr, hw, ETH_ALEN);
+		node->addr.in = ip4;
+		memcpy(node->addr.hw, hw, ETH_ALEN);
 		node->is_online = true;
 		node->load = 0;
 		node->current_load = 0;
@@ -95,7 +94,7 @@ struct Node *nodes_get_destination(uint32_t ip) {
 
 bool nodes_is_me(struct Node *node) {
 	assert(node);
-	if (node->ip4addr == current->ip4addr) {
+	if (node->addr.in == current->addr.in) {
 		return true;
 	}
 	return false;
@@ -114,5 +113,5 @@ struct Node *nodes_get_me() {
 }
 
 bool nodes_is_my_addr(uint32_t ip4) {
-	return ip4 == current->ip4addr;
+	return ip4 == current->addr.in;
 }
