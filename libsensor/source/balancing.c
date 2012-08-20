@@ -43,20 +43,13 @@ struct SensorSession {
 };
 
 struct balancer {
+	struct NetAddress current;
+	ArrayList owned;
 
-	uint32_t load_interval;
-	uint32_t load_count;
-
-	uint8_t State;
-
-	struct InterfaceAddress *current;
-
-	struct SensorSession Me;
 	HashMap clientMomentLoads;
-
 	HashMap sensorSessions;
-
 };
+
 
 
 
