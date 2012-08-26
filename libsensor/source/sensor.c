@@ -13,19 +13,26 @@
 #include "sensor_private.h"
 #include "socket_utils.h"
 
+/* thread modules */
 #include "traffic_capture.h"
+#include "poluter.h"
+
 #include "queue.h"
 #include "debug.h"
 #include "nodes.h"
 #include "balancing.h"
-#include "survey.h"
-#include "spoof.h"
 #include "netinfo.h"
 #include "util.h"
 
 #define SENSOR_DEFAULT_READ_BUFFER_SIZE 65536
 #define SENSOR_DEFAULT_TIMEOUT 1
 #define SENSOR_DEFAULT_PROMISC false
+
+enum {
+	MQCAPTURE,
+	MQPOLUTER,
+	MQNEGOTIATOR
+};
 
 struct timer {
 	time_t last;
@@ -76,24 +83,8 @@ int commit_config(sensor_t config) {
 
 	config->current = read_interface_info(config->opt.capture.device_name);
 
-	DNOTIFY("Current MAC: %s\n", EtherToStr(config->current.addr.hw));
-	DNOTIFY("Current IP4: %s\n", Ip4ToStr(config->current.addr.in));
-	DNOTIFY("Current NETMASK: %s\n", Ip4ToStr(config->current.netmask));
-	DNOTIFY("Current GATEWAY: %s\n", Ip4ToStr(config->current.gateway));
 
-	return 0;
-}
 
-int sensor_clean(sensor_t config) {
-	assert(config);
-	DNOTIFY("%s\n", "Destroying sensor");
-	if (config->opt.capture.promiscuous) {
-		int res = set_iface_promiscuous(config->sock,
-				config->opt.capture.device_name, false);
-		if (res)
-			return res;
-	}
-	close_socket(config->sock);
 	return 0;
 }
 
@@ -206,6 +197,48 @@ int sensor_set_persist_callback(sensor_t config, sensor_persist_f callback) {
 
 //----------------------------------------------------------
 
+
+
+static pcap_t *create_pcap_handle(sensor_t context) {
+	char errbuf[PCAP_ERRBUF_SIZE] = {0};
+	pcap_t *pcapHandle = NULL;
+	pcap_t *result = NULL;
+
+	bool success = true;
+	pcapHandle = pcap_create(context->opt.capture.device_name, errbuf);
+	DINFO("Pcap created %s\n", errbuf);
+
+	success = !pcap_set_promisc(pcapHandle, context->opt.capture.promiscuous);
+	success = success && !pcap_set_buffer_size(pcapHandle, context->opt.capture.buffersize);
+
+	if (!pcap_setdirection(pcapHandle, PCAP_D_OUT)) {
+		DWARNING("%s\n", "can't set PCAP_D_IN");
+	}
+
+	success = success && !pcap_activate(pcapHandle);
+
+	if (success) {
+		result = pcapHandle;
+		DINFO("Pcap initialized successfully\n", errbuf);
+	} else {
+		pcap_close(pcapHandle);
+		DERROR("Pcap crash: %s\n", pcap_geterr(pcapHandle));
+	}
+
+	return result;
+}
+
+
+
+
+
+
+
+
+
+
+
+//----------------------------------------------------------
 sensor_captured_t *init_captured(uint8_t *buffer, int len) {
 	assert(buffer);
 
@@ -226,50 +259,89 @@ void sensor_breakloop(sensor_t config) {
 	config->activated = false;
 }
 
-#define MQCORE 1
-#define MQPERSIST 2
 int sensor_main(sensor_t config) {
-	MessageQueueContext mqContext = MessageQueue_context();
+	struct TrafficCapture captureContext;
+	struct Poluter poluterContext;
+
+	pthread_t captureThread, poluterThread;
+
+	MessageQueueContext mqContext;
+	MessageQueue trafficEx, trafficCore, negotiatorEx, negotiatorCore, poluterEx, poluterCore;
+
+	pcap_t *handle;
+
+	config->current = read_interface_info(config->opt.capture.device_name);
+	DNOTIFY("Current MAC: %s\n", EtherToStr(config->current.addr.hw));
+	DNOTIFY("Current IP4: %s\n", Ip4ToStr(config->current.addr.in));
+	DNOTIFY("Current NETMASK: %s\n", Ip4ToStr(config->current.netmask));
+	DNOTIFY("Current GATEWAY: %s\n", Ip4ToStr(config->current.gateway));
+
+	DNOTIFY("%s\n", "Creating pcap");
+	handle = create_pcap_handle(config);
+
+	mqContext = MessageQueue_context();
 	DINFO("%s\n", "Message queue context created");
 
-	MessageQueue coreMQ = MessageQueue_getReceiver(mqContext, MQCORE);
+	MessageQueue_getPair(mqContext, MQCAPTURE, &trafficEx, &trafficCore);
+	MessageQueue_getPair(mqContext, MQNEGOTIATOR, &negotiatorEx, &negotiatorCore);
+	MessageQueue_getPair(mqContext, MQPOLUTER, &poluterEx, &poluterCore);
 
-	DERROR("%s\n", "Core receiver MQ created");
+	captureContext.queueToCore = trafficEx;
+	TrafficCapture_prepare(&captureContext, config, handle);
 
-	struct TrafficCapture captureContext;
-	captureContext.queueToCore = MessageQueue_getSender(mqContext, MQCORE);
-	captureContext.queueToPersist = 0;
+	poluterContext.queueToCore = poluterEx;
+	Poluter_prepare(&poluterContext, config, handle);
 
-
-	TrafficCapture_prepare(&captureContext, config);
+	time_t iteration_time = time(0);
+	struct timer survey_timer = {iteration_time, config->opt.survey.timeout};
+	//struct timer balancing_timer = {iteration_time, config->opt.balancing.timeout};
+	//struct timer spoof_timer = {iteration_time, config->opt.balancing.modify_timeout};
 
 	config->activated = true;
 
 	DNOTIFY("%s\n", "Starting");
 
-	pthread_t captureThread;
 	pthread_create(&captureThread, NULL, (void *(*)(void*))TrafficCapture_start, &captureContext);
+	pthread_create(&poluterThread, NULL, (void *(*)(void*))Poluter_start, &poluterContext);
+
+	DNOTIFY("%s\n", "Threads Started");
+
+	int type;
+	char data[256];
+	size_t of_data;
 
 	while (config->activated) {
-		void *data = NULL;
-		size_t size;
-		MessageQueue_recv(coreMQ, &data, &size);
-		if (size && data) {
-			DINFO("received %i bytes\n", size);
-			free(data);
+		iteration_time = time(0);
+		MessageQueue_recv(trafficCore, &type, data, &of_data);
+		if (timer_check(&survey_timer, iteration_time)) {
+			MessageQueue_send(poluterCore, POLUTER_MSG_SURVEY, data, 0);
+			timer_ping(&survey_timer);
 		}
 	}
-	DINFO("%s\n", "Closing threads");
+	DNOTIFY("%s\n", "Stopping threads");
 
+	Poluter_stop(&poluterContext);
 	TrafficCapture_stop(&captureContext);
-
-	pthread_join(captureThread, NULL);
 
 	DNOTIFY("%s\n", "Cleaning up MQ");
 
-	MessageQueue_destroy(coreMQ);
-	MessageQueue_destroy(captureContext.queueToCore);
+	MessageQueue_destroy(trafficCore);
+	MessageQueue_destroy(trafficEx);
+	MessageQueue_destroy(negotiatorCore);
+	MessageQueue_destroy(negotiatorEx);
+	MessageQueue_destroy(poluterCore);
+	MessageQueue_destroy(poluterEx);
+
 	MessageQueue_contextDestroy(mqContext);
+
+	DNOTIFY("%s\n", "Waiting for threads exit");
+
+	pthread_join(poluterThread, NULL);
+	pthread_join(captureThread, NULL);
+
+	DNOTIFY("%s\n", "Closing pcap");
+
+	pcap_close(handle);
 
 	return 0;
 }

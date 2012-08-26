@@ -18,6 +18,7 @@ size_t TsHashMap_size(TsHashMap self);
 bool TsHashMap_add(TsHashMap self, void *key, void *val);
 bool TsHashMap_replace(TsHashMap self, void *key, void *val);
 bool TsHashMap_get(TsHashMap self, void *key, void *val);
+void *TsHashMap_getAll(TsHashMap self, size_t *count);
 bool TsHashMap_steal(TsHashMap self, void *key, void *val);
 bool TsHashMap_contains(TsHashMap self, void *key);
 bool TsHashMap_remove(TsHashMap self, void *key);

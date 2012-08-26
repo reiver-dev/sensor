@@ -6,17 +6,22 @@
 #include "sensor_private.h"
 #include "message_queue.h"
 
+
+#define PACKET_INFO 0x10
+struct PacketInfoRequest {
+	size_t size;
+};
+
 struct TrafficCapture {
 	bool active;
+	struct InterfaceInfo info;
 	pcap_t *handle;
-	MessageQueue *queueToCore;
-	MessageQueue *queueToPersist;
+	MessageQueue queueToCore;
 };
 
 void *capture_thread(void *arg);
 
-bool TrafficCapture_prepare(struct TrafficCapture *self, sensor_t context);
-void TrafficCapture_close(struct TrafficCapture *self);
+void TrafficCapture_prepare(struct TrafficCapture *self, sensor_t context, pcap_t *handle);
 void *TrafficCapture_start(struct TrafficCapture *self);
 void TrafficCapture_stop(struct TrafficCapture *self);
 bool TrafficCapture_isRunning(struct TrafficCapture *self);

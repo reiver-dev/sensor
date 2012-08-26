@@ -214,6 +214,39 @@ bool TsHashMap_get(TsHashMap self, void *key, void *val) {
 	return found;
 }
 
+void *TsHashMap_getAll(TsHashMap self, size_t *out_count) {
+	assert(self);
+
+	MAP_LOCK_READ(self);
+
+	size_t length = self->length;
+	size_t capacity = self->capacity;
+
+	if (capacity == 0) {
+		return NULL;
+	}
+
+	uint8_t *buffer = malloc(capacity * self->val_size);
+	size_t count = 0;
+
+	struct Bucket **data = self->data;
+
+	for (size_t i = 0; i < length && count < capacity; i++) {
+		struct Bucket *next;
+		for (struct Bucket *b = data[i]; b; b = next) {
+			next = b->next;
+			memcpy(buffer + self->val_size * count, b->val, self->val_size);
+			count++;
+		}
+	}
+
+	*out_count = count;
+
+	MAP_LOCK_UNLOCK(self);
+
+	return buffer;
+}
+
 bool TsHashMap_contains(TsHashMap self, void *key) {
 	assert(self);
 	assert(key);
