@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <stdio.h>
 
-#include "debug.h"
+#include "debug.hpp"
 
 
 
@@ -16,12 +16,12 @@ void debug_set_level(int lvl) {
 }
 
 
-void debug(int level, const char *function, char *format, ...){
+void debug(int level, const char *function, const char *format, ...){
 
 	if (rvr_debug < level)
 		return;
 
-	char *_level;
+	const char *_level;
 	char line[512];
 	time_t now;
 

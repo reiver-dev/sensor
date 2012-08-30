@@ -3,10 +3,9 @@
 
 #include <pcap.h>
 
-#include "sensor_private.h"
-#include "message_queue.h"
-#include "tshashmap.h"
-#include "netinfo.h"
+#include "sensor_private.hpp"
+#include "message_queue.hpp"
+#include "netinfo.hpp"
 
 enum {
 	POLUTER_MSG_SPOOF,
@@ -24,8 +23,6 @@ struct Poluter {
 	pcap_t *handle;
 	struct InterfaceInfo info;
 	MessageQueue queueToCore;
-	TsHashMap nodes;
-	TsHashMap sessions;
 };
 
 void Poluter_prepare(struct Poluter *self, sensor_t context, pcap_t *handle);

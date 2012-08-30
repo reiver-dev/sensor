@@ -6,6 +6,15 @@
 #include <net/if.h>
 #include <sys/time.h>
 
+#ifdef __cplusplus
+#define CPP_EXTERN_C_BEGIN extern "C" {
+#define CPP_EXTERN_C_END }
+#else
+#define CPP_EXTERN_C_BEGIN
+#define CPP_EXTERN_C_END
+#endif
+
+CPP_EXTERN_C_BEGIN
 
 struct sensor_header_s {
 	struct timeval ts;
@@ -70,5 +79,6 @@ int sensor_set_persist_callback(sensor_t config, sensor_persist_f callback);
 int sensor_main(sensor_t config);
 void sensor_breakloop(sensor_t config);
 
+CPP_EXTERN_C_END
 
 #endif /*SENSOR_H*/

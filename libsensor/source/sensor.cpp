@@ -10,19 +10,17 @@
 #include <netinet/ether.h>
 #include <netinet/ip.h>
 
-#include "sensor_private.h"
-#include "socket_utils.h"
+#include "sensor_private.hpp"
+#include "socket_utils.hpp"
 
 /* thread modules */
-#include "traffic_capture.h"
-#include "poluter.h"
+#include "traffic_capture.hpp"
+#include "poluter.hpp"
 
-#include "queue.h"
-#include "debug.h"
-#include "nodes.h"
-#include "balancing.h"
-#include "netinfo.h"
-#include "util.h"
+#include "debug.hpp"
+#include "nodes.hpp"
+#include "netinfo.hpp"
+#include "util.hpp"
 
 #define SENSOR_DEFAULT_READ_BUFFER_SIZE 65536
 #define SENSOR_DEFAULT_TIMEOUT 1
@@ -96,8 +94,8 @@ int commit_config(sensor_t config) {
  *
  * returns true if rewrite occurred, false otherwise
  */
-
-bool prepare_redirect(sensor_t sensor, uint8_t* buffer, int captured) {
+/*
+bool prepare_redirect(sensor_t sensor, uint8_t* buffer, size_t captured) {
 	if (captured < (sizeof(struct ether_header) + sizeof(struct iphdr))) {
 		return false;
 	}
@@ -126,8 +124,8 @@ bool prepare_redirect(sensor_t sensor, uint8_t* buffer, int captured) {
 	}
 
 	return false;
-}
-
+}*/
+/*
 bool restore_redirect(sensor_t sensor, uint8_t* buffer, int captured) {
 	if (captured < (sizeof(struct ether_header) + sizeof(struct iphdr))) {
 		return false;
@@ -157,12 +155,12 @@ bool restore_redirect(sensor_t sensor, uint8_t* buffer, int captured) {
 	}
 
 	return false;
-}
+}*/
 
 //-----------------interfaces---------------------
 sensor_t sensor_init() {
 	sensor_options_t options;
-	sensor_t result = malloc(sizeof(*result));
+	sensor_t result = (sensor_t)malloc(sizeof(*result));
 	result->activated = false;
 	result->sock = 0;
 	result->opt = options;
@@ -242,7 +240,7 @@ static pcap_t *create_pcap_handle(sensor_t context) {
 sensor_captured_t *init_captured(uint8_t *buffer, int len) {
 	assert(buffer);
 
-	uint8_t *begin = malloc(sizeof(sensor_captured_t) + len);
+	uint8_t *begin = (uint8_t *)malloc(sizeof(sensor_captured_t) + len);
 	uint8_t *content = begin + sizeof(sensor_captured_t);
 
 	sensor_captured_t *captured = (sensor_captured_t *) begin;

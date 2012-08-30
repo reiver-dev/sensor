@@ -1,7 +1,7 @@
 #ifndef MESSAGE_QUEUE_H_
 #define MESSAGE_QUEUE_H_
 
-#include <stdbool.h>
+#include <cstddef>
 
 typedef void* MessageQueue;
 typedef void* MessageQueueContext;

@@ -3,8 +3,8 @@
 
 #include <pcap.h>
 
-#include "sensor_private.h"
-#include "message_queue.h"
+#include "sensor_private.hpp"
+#include "message_queue.hpp"
 
 
 #define PACKET_INFO 0x10

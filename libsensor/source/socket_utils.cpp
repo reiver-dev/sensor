@@ -10,8 +10,8 @@
 #include <errno.h>
 
 
-#include "socket_utils.h"
-#include "debug.h"
+#include "socket_utils.hpp"
+#include "debug.hpp"
 
 /*
  * Packet family

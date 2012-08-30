@@ -6,14 +6,15 @@
 #define DEBUG_LEVEL_NOTIFY 2
 #define DEBUG_LEVEL_INFO 3
 
+extern "C" {
 
 #ifdef DEBUG
 
 //-----------------------------
 
-void debug(int level, const char *function, char *format, ...);
+void debug(int level, const char *function, const char *format, ...);
 void debug_set_level(int lvl);
-void debug_append(int level, char *format, ...);
+void debug_append(int level, const char *format, ...);
 
 #define DEBUG_LVL(lvl) debug_set_level(int lvl);
 
@@ -41,5 +42,6 @@ void debug_append(int level, char *format, ...);
 
 #endif /* DEBUG */
 
+}
 
 #endif /* DEBUG_H_ */

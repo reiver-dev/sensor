@@ -1,11 +1,11 @@
 cmake_minimum_required(VERSION 2.8)
 
-project(libsensor C)
+project(libsensor CXX)
 
-add_definitions(-std=c99 -D_GNU_SOURCE)
+add_definitions(-std=gnu++11)
 
-file(GLOB HEADERS source/*.h source/services/*.h)
-file(GLOB SOURCES source/*.c source/services/*.c)
+file(GLOB HEADERS source/*.hpp source/services/*.hpp)
+file(GLOB SOURCES source/*.cpp source/services/*.cpp)
 include_directories("include")
 
 add_library(${PROJECT_NAME} SHARED ${HEADERS} ${SOURCES})

@@ -1,10 +1,10 @@
 #include <stdbool.h>
 #include <pcap.h>
 
-#include "traffic_capture.h"
-#include "debug.h"
-#include "arputil.h"
-#include "util.h"
+#include "traffic_capture.hpp"
+#include "debug.hpp"
+#include "arputil.hpp"
+#include "util.hpp"
 
 void TrafficCapture_prepare(struct TrafficCapture *self, sensor_t context, pcap_t *handle) {
 	self->active = false;
@@ -23,7 +23,7 @@ void *TrafficCapture_start(struct TrafficCapture *self) {
 	while (self->active) {
 		res = pcap_next_ex(self->handle, &packet_header, &packet_data);
 		if (res < 0) {
-			pcap_perror(self->handle, "\n");
+			pcap_perror(self->handle, (char *)"\n");
 			self->active = false;
 			return 0;
 		} else if (res > 0) {

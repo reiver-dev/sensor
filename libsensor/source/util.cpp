@@ -7,44 +7,8 @@
 #include <arpa/inet.h>
 #include <netinet/ether.h>
 
-#include "util.h"
-#include "debug.h"
-
-int RemoveElement(void *array, size_t size, int length, int index) {
-	assert(array);
-	assert(size > 0);
-	assert(length > 0);
-	assert(index < length);
-
-	uint8_t *arr = array;
-	memcpy(&arr[index], &arr[length], size);
-	memset(&arr[length], 0, size);
-
-	return length - 1;
-}
-
-#define PERIODS_COUNT(i, period) (i / period + i % period ? 1 : 0)
-void *Reallocate(void *array, size_t size, int length, int index, int period) {
-	assert(size > 0);
-	assert(length >= 0);
-	assert(index >= 0);
-	assert(period > 0);
-
-	int allocated_periods = PERIODS_COUNT(length, period);
-	int requested_periods = PERIODS_COUNT(index, period);
-
-	if (requested_periods > allocated_periods) {
-		int newSize = size * requested_periods * period;
-		if (array == NULL) {
-			array = malloc(newSize);
-		} else {
-			array = realloc(array, newSize);
-		}
-	}
-
-	return array;
-}
-
+#include "util.hpp"
+#include "debug.hpp"
 
 char *Ip4ToStr(const uint32_t ip) {
 	return inet_ntoa(*(struct in_addr *)&ip);
@@ -185,12 +149,16 @@ uint8_t hex_to_uint8(const char hex) {
 	return result;
 }
 
+
+static uint8_t combine(uint8_t half1, uint8_t half2) {
+	return half1 << 4 | half2;
+}
 uint32_t hex_to_uint32(const char *hex) {
 	uint8_t a[] = {
-		(hex_to_uint8(hex[0]) << 4) | hex_to_uint8(hex[1]),
-		(hex_to_uint8(hex[2]) << 4) | hex_to_uint8(hex[3]),
-		(hex_to_uint8(hex[4]) << 4) | hex_to_uint8(hex[5]),
-		(hex_to_uint8(hex[6]) << 4) | hex_to_uint8(hex[7])
+		combine(hex_to_uint8(hex[0]), hex_to_uint8(hex[1])),
+		combine(hex_to_uint8(hex[2]), hex_to_uint8(hex[3])),
+		combine(hex_to_uint8(hex[4]), hex_to_uint8(hex[5])),
+		combine(hex_to_uint8(hex[6]), hex_to_uint8(hex[7]))
 	};
 	uint32_t *result = (uint32_t *) a;
 	return *result;

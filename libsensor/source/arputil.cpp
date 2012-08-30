@@ -5,7 +5,7 @@
 #include <netinet/in.h>
 #include <netinet/ether.h>
 
-#include "arputil.h"
+#include "arputil.hpp"
 
 
 static const uint8_t EtherBroadcast[ETH_ALEN] = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
@@ -72,7 +72,7 @@ void arp_request_set_to_ip(uint8_t *buffer, uint32_t to_ip4) {
 }
 
 
-bool arp_is_reply(const uint8_t *buffer, int length, const struct InterfaceInfo *current, struct NetAddress *out) {
+bool arp_is_reply(const uint8_t *buffer, size_t length, const struct InterfaceInfo *current, struct NetAddress *out) {
 	if (length < ARP_IP4_SIZE) {
 		return false;
 	}

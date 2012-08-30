@@ -6,8 +6,8 @@
 
 #include <zmq.h>
 
-#include "message_queue.h"
-#include "debug.h"
+#include "message_queue.hpp"
+#include "debug.hpp"
 
 MessageQueueContext MessageQueue_context() {
 	void *context = zmq_init(1);
@@ -47,7 +47,7 @@ bool MessageQueue_send(MessageQueue queue, int type, void *data, size_t data_siz
 
 	bool init_success =	!zmq_msg_init_size(&msg, sizeof(type) + data_size);
 
-	char *msg_data = zmq_msg_data(&msg);
+	char *msg_data = (char *)zmq_msg_data(&msg);
 
 	memcpy(msg_data, &type, sizeof(type));
 
@@ -74,7 +74,7 @@ bool MessageQueue_recv(MessageQueue queue, int *type, void *data, size_t *data_s
 		size_t of_type = sizeof(*type);
 		size_t of_data = zmq_msg_size(&msg) - of_type;
 
-		char *msg_data = zmq_msg_data(&msg);
+		char *msg_data = (char *)zmq_msg_data(&msg);
 		memcpy(type, msg_data, of_type);
 
 		if (of_data) {
