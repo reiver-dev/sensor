@@ -17,13 +17,28 @@ struct PoluterMsgSpoof {
 	struct NetAddress *targets;
 };
 
+class Poluter {
+public:
+	Poluter(sensor_t context, pcap_t *handle, MessageQueue toCore) :
+		active(false), handle(handle), info(context->current), queueToCore(toCore) {}
+	void stop();
+	bool isRunning();
 
-struct Poluter {
+	static void* start(Poluter *self)  {
+		self->run();
+		return 0;
+	}
+private:
+	void run();
+	void perform_survey();
+	void spoof_nodes(struct NetAddress *targets, size_t targets_count);
+
 	bool active;
 	pcap_t *handle;
 	struct InterfaceInfo info;
 	MessageQueue queueToCore;
 };
+
 
 void Poluter_prepare(struct Poluter *self, sensor_t context, pcap_t *handle);
 void *Poluter_start(struct Poluter *self);

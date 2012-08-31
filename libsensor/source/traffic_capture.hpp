@@ -12,9 +12,22 @@ struct PacketInfoRequest {
 	size_t size;
 };
 
-struct TrafficCapture {
+class TrafficCapture {
+public:
+	TrafficCapture(sensor_t context, pcap_t *handle, MessageQueue toCore) :
+		active(false), info(context->current), handle(handle), queueToCore(toCore) {}
+	void stop();
+	bool isRunning();
+
+	static void* start(TrafficCapture *self)  {
+		self->run();
+		return 0;
+	}
+private:
+	void run();
+
 	bool active;
-	struct InterfaceInfo info;
+	InterfaceInfo info;
 	pcap_t *handle;
 	MessageQueue queueToCore;
 };

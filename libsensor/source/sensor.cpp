@@ -258,8 +258,7 @@ void sensor_breakloop(sensor_t config) {
 }
 
 int sensor_main(sensor_t config) {
-	struct TrafficCapture captureContext;
-	struct Poluter poluterContext;
+
 
 	pthread_t captureThread, poluterThread;
 
@@ -284,11 +283,9 @@ int sensor_main(sensor_t config) {
 	MessageQueue_getPair(mqContext, MQNEGOTIATOR, &negotiatorEx, &negotiatorCore);
 	MessageQueue_getPair(mqContext, MQPOLUTER, &poluterEx, &poluterCore);
 
-	captureContext.queueToCore = trafficEx;
-	TrafficCapture_prepare(&captureContext, config, handle);
+	TrafficCapture captureContext(config, handle, trafficEx);
 
-	poluterContext.queueToCore = poluterEx;
-	Poluter_prepare(&poluterContext, config, handle);
+	Poluter poluterContext(config, handle, poluterEx);
 
 	time_t iteration_time = time(0);
 	struct timer survey_timer = {iteration_time, config->opt.survey.timeout};
@@ -299,8 +296,8 @@ int sensor_main(sensor_t config) {
 
 	DNOTIFY("%s\n", "Starting");
 
-	pthread_create(&captureThread, NULL, (void *(*)(void*))TrafficCapture_start, &captureContext);
-	pthread_create(&poluterThread, NULL, (void *(*)(void*))Poluter_start, &poluterContext);
+	pthread_create(&captureThread, NULL, (void *(*)(void*))TrafficCapture::start, &captureContext);
+	pthread_create(&poluterThread, NULL, (void *(*)(void*))Poluter::start, &poluterContext);
 
 	DNOTIFY("%s\n", "Threads Started");
 
@@ -318,8 +315,8 @@ int sensor_main(sensor_t config) {
 	}
 	DNOTIFY("%s\n", "Stopping threads");
 
-	Poluter_stop(&poluterContext);
-	TrafficCapture_stop(&captureContext);
+	poluterContext.stop();
+	captureContext.stop();
 
 	DNOTIFY("%s\n", "Cleaning up MQ");
 
