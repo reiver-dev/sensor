@@ -39,10 +39,4 @@ private:
 	MessageQueue queueToCore;
 };
 
-
-void Poluter_prepare(struct Poluter *self, sensor_t context, pcap_t *handle);
-void *Poluter_start(struct Poluter *self);
-void Poluter_stop(struct Poluter *self);
-bool Poluter_isRunning(struct Poluter *self);
-
 #endif /* POLUTER_H_ */

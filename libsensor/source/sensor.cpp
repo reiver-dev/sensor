@@ -256,9 +256,9 @@ sensor_captured_t *init_captured(uint8_t *buffer, int len) {
 void sensor_breakloop(sensor_t config) {
 	config->activated = false;
 }
-
+#include "ts_hash_table.hpp"
 int sensor_main(sensor_t config) {
-
+	TsHashTable<long, NetAddress> a;
 
 	pthread_t captureThread, poluterThread;
 

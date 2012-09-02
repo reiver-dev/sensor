@@ -72,18 +72,20 @@ void Poluter::run(){
 
 	while (active) {
 		struct PoluterMsgSpoof *req_spoof = NULL;
-
-		MessageQueue_recv(queueToCore, &type, buffer, &req_size);
-		switch (type) {
-		case POLUTER_MSG_SPOOF:
-			req_spoof = (struct PoluterMsgSpoof *)buffer;
-			spoof_nodes(req_spoof->targets, req_spoof->target_count);
-			break;
-		case POLUTER_MSG_SURVEY:
-			perform_survey();
-			break;
-		default:
-			DERROR("Unknown operation: %i", type);
+		if (MessageQueue_recv(queueToCore, &type, buffer, &req_size)) {
+			switch (type) {
+			case POLUTER_MSG_SPOOF:
+				req_spoof = (struct PoluterMsgSpoof *)buffer;
+				spoof_nodes(req_spoof->targets, req_spoof->target_count);
+				break;
+			case POLUTER_MSG_SURVEY:
+				perform_survey();
+				break;
+			default:
+				DERROR("Unknown operation: %i", type);
+				break;
+			}
+		} else {
 			break;
 		}
 	}
