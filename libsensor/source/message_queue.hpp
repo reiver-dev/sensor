@@ -2,18 +2,107 @@
 #define MESSAGE_QUEUE_H_
 
 #include <cstddef>
+#include <pthread.h>
+#include <functional>
+#include "mpsc_pipe.hpp"
 
-typedef void* MessageQueue;
-typedef void* MessageQueueContext;
 
-MessageQueueContext MessageQueue_context();
-bool MessageQueue_contextDestroy(MessageQueueContext context);
+class MessageQueue {
+public:
 
-bool MessageQueue_getPair(MessageQueueContext context, int id, MessageQueue *first, MessageQueue *second);
-bool MessageQueue_destroy(MessageQueue queue);
+	typedef void (*callback)(void *);
 
-bool MessageQueue_send(MessageQueue queue, int type, void *data, size_t data_size);
-bool MessageQueue_recv(MessageQueue queue, int *type, void *data, size_t *data_size);
+	static void *start(void *arg) {
+		MessageQueue *mq = (MessageQueue *) arg;
+		mq->run();
+		return NULL;
+	}
+
+	MessageQueue()
+	: running(false), pipe(new MpscPipe<Message *>) {
+
+	};
+
+	~MessageQueue() {
+		delete pipe;
+	}
+
+	void request(callback func, void *req) {
+		Message *mes = new Message;
+		mes->func = func;
+		mes->request = req;
+		pipe->send(mes);
+	}
+
+	void receive() {
+		Message *req = NULL;
+		pipe->recv(req);
+		req->func(req->request);
+		delete req;
+	}
+
+	void stop() {
+		running = false;
+		Message *nullmsg = NULL;
+		pipe->send(nullmsg);
+	}
+
+
+	void run() {
+		if (running)
+			return;
+		else
+			running = true;
+
+		Message *req;
+		while (running) {
+			req = NULL;
+			pipe->recv(req);
+			if (!req) {
+				running = false;
+				break;
+			}
+			req->func(req->request);
+			delete req;
+		}
+	}
+
+protected:
+
+	struct Message {
+		std::function<void(void *)> func;
+		void *request;
+	};
+
+	bool running;
+	MpscPipe<Message *> *pipe;
+
+};
+
+
+template<typename ThreadClass>
+class MemberMessageQueue : public MessageQueue {
+public:
+
+	typedef void (ThreadClass::*callback)(void *);
+
+	MemberMessageQueue(ThreadClass *obj) : worker(obj) {
+		//
+	};
+
+	template<typename ArgT>
+	void request(void (ThreadClass::*func)(ArgT *), ArgT *req) {
+		Message *mes = new Message;
+		auto temp = std::bind((callback)func, worker, std::placeholders::_1);
+		mes->func = temp;
+		mes->request = req;
+		pipe->send(mes);
+	}
+
+private:
+	typedef MemberMessageQueue<ThreadClass> this_type;
+	ThreadClass *worker;
+};
 
 
 

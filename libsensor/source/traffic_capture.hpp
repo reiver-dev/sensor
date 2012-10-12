@@ -14,7 +14,7 @@ struct PacketInfoRequest {
 
 class TrafficCapture {
 public:
-	TrafficCapture(sensor_t context, pcap_t *handle, MessageQueue toCore) :
+	TrafficCapture(sensor_t context, pcap_t *handle, MessageQueue *toCore) :
 		active(false), info(context->current), handle(handle), queueToCore(toCore) {}
 	void stop();
 	bool isRunning();
@@ -29,7 +29,7 @@ private:
 	bool active;
 	InterfaceInfo info;
 	pcap_t *handle;
-	MessageQueue queueToCore;
+	MessageQueue *queueToCore;
 };
 
 void *capture_thread(void *arg);

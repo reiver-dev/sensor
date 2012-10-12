@@ -195,8 +195,6 @@ int sensor_set_persist_callback(sensor_t config, sensor_persist_f callback) {
 
 //----------------------------------------------------------
 
-
-
 static pcap_t *create_pcap_handle(sensor_t context) {
 	char errbuf[PCAP_ERRBUF_SIZE] = {0};
 	pcap_t *pcapHandle = NULL;
@@ -226,16 +224,6 @@ static pcap_t *create_pcap_handle(sensor_t context) {
 	return result;
 }
 
-
-
-
-
-
-
-
-
-
-
 //----------------------------------------------------------
 sensor_captured_t *init_captured(uint8_t *buffer, int len) {
 	assert(buffer);
@@ -261,10 +249,6 @@ int sensor_main(sensor_t config) {
 	TsHashTable<long, NetAddress> a;
 
 	pthread_t captureThread, poluterThread;
-
-	MessageQueueContext mqContext;
-	MessageQueue trafficEx, trafficCore, negotiatorEx, negotiatorCore, poluterEx, poluterCore;
-
 	pcap_t *handle;
 
 	config->current = read_interface_info(config->opt.capture.device_name);
@@ -276,16 +260,14 @@ int sensor_main(sensor_t config) {
 	DNOTIFY("%s\n", "Creating pcap");
 	handle = create_pcap_handle(config);
 
-	mqContext = MessageQueue_context();
-	DINFO("%s\n", "Message queue context created");
+	// ---------------------------------------
 
-	MessageQueue_getPair(mqContext, MQCAPTURE, &trafficEx, &trafficCore);
-	MessageQueue_getPair(mqContext, MQNEGOTIATOR, &negotiatorEx, &negotiatorCore);
-	MessageQueue_getPair(mqContext, MQPOLUTER, &poluterEx, &poluterCore);
+	MessageQueue coreQueue;
 
-	TrafficCapture captureContext(config, handle, trafficEx);
+	TrafficCapture captureContext(config, handle, &coreQueue);
+	Poluter poluterContext(config, handle);
 
-	Poluter poluterContext(config, handle, poluterEx);
+	MemberMessageQueue<Poluter> poluterQueue(&poluterContext);
 
 	time_t iteration_time = time(0);
 	struct timer survey_timer = {iteration_time, config->opt.survey.timeout};
@@ -297,37 +279,27 @@ int sensor_main(sensor_t config) {
 	DNOTIFY("%s\n", "Starting");
 
 	pthread_create(&captureThread, NULL, (void *(*)(void*))TrafficCapture::start, &captureContext);
-	pthread_create(&poluterThread, NULL, (void *(*)(void*))Poluter::start, &poluterContext);
+	pthread_create(&poluterThread, NULL, (void *(*)(void*))MemberMessageQueue<Poluter>::start, &poluterQueue);
 
 	DNOTIFY("%s\n", "Threads Started");
 
-	int type;
-	char data[256];
-	size_t of_data;
 
 	while (config->activated) {
 		iteration_time = time(0);
-		MessageQueue_recv(trafficCore, &type, data, &of_data);
+		coreQueue.receive();
 		if (timer_check(&survey_timer, iteration_time)) {
-			MessageQueue_send(poluterCore, POLUTER_MSG_SURVEY, data, 0);
+			Poluter::MsgSpoof *msg = new Poluter::MsgSpoof;
+			msg->targets = NULL;
+			msg->target_count = 0;
+			poluterQueue.request(&Poluter::spoof_nodes, msg);
 			timer_ping(&survey_timer);
 		}
 	}
+
 	DNOTIFY("%s\n", "Stopping threads");
 
-	poluterContext.stop();
+	poluterQueue.stop();
 	captureContext.stop();
-
-	DNOTIFY("%s\n", "Cleaning up MQ");
-
-	MessageQueue_destroy(trafficCore);
-	MessageQueue_destroy(trafficEx);
-	MessageQueue_destroy(negotiatorCore);
-	MessageQueue_destroy(negotiatorEx);
-	MessageQueue_destroy(poluterCore);
-	MessageQueue_destroy(poluterEx);
-
-	MessageQueue_contextDestroy(mqContext);
 
 	DNOTIFY("%s\n", "Waiting for threads exit");
 

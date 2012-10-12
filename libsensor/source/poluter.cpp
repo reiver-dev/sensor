@@ -35,8 +35,12 @@ void Poluter::perform_survey() {
 	DINFO("%s\n", "Survey finished");
 }
 
-void Poluter::spoof_nodes(struct NetAddress *targets, size_t targets_count) {
+void Poluter::spoof_nodes(struct MsgSpoof *msg) {
 	DINFO("%s\n", "Starting spoofing");
+
+	struct NetAddress *targets = msg->targets;
+	size_t targets_count = msg->target_count;
+	delete msg;
 
 	struct Node gateway;
 	bool hasGW = false;
@@ -60,41 +64,4 @@ void Poluter::spoof_nodes(struct NetAddress *targets, size_t targets_count) {
 	}
 
 	DINFO("%s\n", "Spoofing finished");
-}
-
-
-void Poluter::run(){
-	int type;
-	size_t req_size;
-	uint8_t buffer[256] = {0};
-
-	active = true;
-
-	while (active) {
-		struct PoluterMsgSpoof *req_spoof = NULL;
-		if (MessageQueue_recv(queueToCore, &type, buffer, &req_size)) {
-			switch (type) {
-			case POLUTER_MSG_SPOOF:
-				req_spoof = (struct PoluterMsgSpoof *)buffer;
-				spoof_nodes(req_spoof->targets, req_spoof->target_count);
-				break;
-			case POLUTER_MSG_SURVEY:
-				perform_survey();
-				break;
-			default:
-				DERROR("Unknown operation: %i", type);
-				break;
-			}
-		} else {
-			break;
-		}
-	}
-
-	return;
-}
-void Poluter::stop() {
-	active = false;
-}
-bool Poluter::isRunning(){
-	return active;
 }
