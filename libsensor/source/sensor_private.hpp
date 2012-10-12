@@ -24,5 +24,6 @@ struct sensor {
 	sensor_persist_f persist_function;
 };
 
+void sensor_log_packet(int size);
 
 #endif /* SENSOR_PRIVATE_H_ */

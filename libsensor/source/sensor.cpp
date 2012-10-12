@@ -224,6 +224,11 @@ static pcap_t *create_pcap_handle(sensor_t context) {
 	return result;
 }
 
+
+void sensor_log_packet(int size) {
+	DNOTIFY("Got packet: %i\n", size);
+}
+
 //----------------------------------------------------------
 sensor_captured_t *init_captured(uint8_t *buffer, int len) {
 	assert(buffer);
@@ -244,6 +249,7 @@ sensor_captured_t *init_captured(uint8_t *buffer, int len) {
 void sensor_breakloop(sensor_t config) {
 	config->activated = false;
 }
+
 #include "ts_hash_table.hpp"
 int sensor_main(sensor_t config) {
 	TsHashTable<long, NetAddress> a;

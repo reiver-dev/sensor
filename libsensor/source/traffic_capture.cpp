@@ -25,7 +25,7 @@ void TrafficCapture::run() {
 		} else if (res > 0) {
 			pInfoRequest.size = packet_header->len;
 			DINFO("Captured inbound %i\n", pInfoRequest.size);
-			queueToCore->request((MessageQueue::callback) sensor_set_persist_callback, &packet_header->len);
+			queueToCore->request(sensor_log_packet, (int)packet_header->len);
 
 			struct NetAddress node;
 			if (arp_is_reply(packet_data, packet_header->len, &info, &node)) {
