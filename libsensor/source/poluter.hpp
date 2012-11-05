@@ -4,7 +4,7 @@
 #include <pcap.h>
 
 #include "sensor_private.hpp"
-#include "message_queue.hpp"
+#include "mq/msgqueue.hpp"
 #include "netinfo.hpp"
 
 

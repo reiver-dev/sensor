@@ -13,6 +13,9 @@
 #include "sensor_private.hpp"
 #include "socket_utils.hpp"
 
+#include "mq/member_msgqueue.hpp"
+#include "mq/msgqueue.hpp"
+
 /* thread modules */
 #include "traffic_capture.hpp"
 #include "poluter.hpp"
@@ -268,12 +271,12 @@ int sensor_main(sensor_t config) {
 
 	// ---------------------------------------
 
-	MessageQueue coreQueue;
+	mq::MessageQueue coreQueue;
 
 	TrafficCapture captureContext(config, handle, &coreQueue);
 	Poluter poluterContext(config, handle);
 
-	MemberMessageQueue<Poluter> poluterQueue(&poluterContext);
+	mq::MemberMessageQueue<Poluter> poluterQueue(&poluterContext);
 
 	time_t iteration_time = time(0);
 	struct timer survey_timer = {iteration_time, config->opt.survey.timeout};
@@ -285,7 +288,7 @@ int sensor_main(sensor_t config) {
 	DNOTIFY("%s\n", "Starting");
 
 	pthread_create(&captureThread, NULL, (void *(*)(void*))TrafficCapture::start, &captureContext);
-	pthread_create(&poluterThread, NULL, (void *(*)(void*))MemberMessageQueue<Poluter>::start, &poluterQueue);
+	pthread_create(&poluterThread, NULL, (void *(*)(void*))mq::MemberMessageQueue<Poluter>::start, &poluterQueue);
 
 	DNOTIFY("%s\n", "Threads Started");
 

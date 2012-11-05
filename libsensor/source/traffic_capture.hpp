@@ -4,7 +4,7 @@
 #include <pcap.h>
 
 #include "sensor_private.hpp"
-#include "message_queue.hpp"
+#include "mq/msgqueue.hpp"
 
 
 #define PACKET_INFO 0x10
@@ -14,7 +14,7 @@ struct PacketInfoRequest {
 
 class TrafficCapture {
 public:
-	TrafficCapture(sensor_t context, pcap_t *handle, MessageQueue *toCore) :
+	TrafficCapture(sensor_t context, pcap_t *handle, mq::MessageQueue *toCore) :
 		active(false), info(context->current), handle(handle), queueToCore(toCore) {}
 	void stop();
 	bool isRunning();
@@ -29,7 +29,7 @@ private:
 	bool active;
 	InterfaceInfo info;
 	pcap_t *handle;
-	MessageQueue *queueToCore;
+	mq::MessageQueue *queueToCore;
 };
 
 void *capture_thread(void *arg);

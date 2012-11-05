@@ -9,7 +9,7 @@
 extern "C" {
 
 #ifdef DEBUG
-
+#define __FUNCTION__ __PRETTY_FUNCTION__
 //-----------------------------
 
 void debug(int level, const char *function, const char *format, ...);
