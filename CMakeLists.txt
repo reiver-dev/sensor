@@ -15,6 +15,7 @@ endif()
 
 add_definitions(${CFLAGS})
 
+include_directories(libsensor/include)
 add_subdirectory(libsensor)
 add_subdirectory(frontend)
 
