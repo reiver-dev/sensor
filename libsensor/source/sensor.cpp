@@ -297,10 +297,11 @@ int sensor_main(sensor_t config) {
 		iteration_time = time(0);
 		coreQueue.receive();
 		if (timer_check(&survey_timer, iteration_time)) {
-			Poluter::MsgSpoof *msg = new Poluter::MsgSpoof;
-			msg->targets = NULL;
-			msg->target_count = 0;
-			poluterQueue.request(&Poluter::spoof_nodes, msg);
+			Poluter::MsgSpoof msg;
+			msg.targets = NULL;
+			msg.target_count = 0;
+			auto future = poluterQueue.request(&Poluter::spoof_nodes, std::move(msg));
+			printf("FUCK %i\n", future.get());
 			timer_ping(&survey_timer);
 		}
 	}

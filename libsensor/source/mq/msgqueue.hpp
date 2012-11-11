@@ -1,16 +1,24 @@
 #ifndef MSGQUEUE_H_
 #define MSGQUEUE_H_
 
-#include <cstddef>
-#include <pthread.h>
-#include <functional>
-#include "mpsc_pipe.hpp"
-#include "waitable.hpp"
-#include "delegate.hpp"
+#include "int_mpsc_pipe.hpp"
+#include "command.hpp"
 
 namespace mq {
 
 class MessageQueue {
+protected:
+
+	typedef IntMpscPipe::Node Node;
+	typedef AbstractCommand<Node> ACommand;
+
+	ACommand *getcommand(Node *node) {
+		return static_cast<ACommand *>(node->self);
+	}
+
+	bool running;
+	IntMpscPipe *pipe;
+
 public:
 
 	static void *start(void *arg) {
@@ -20,7 +28,7 @@ public:
 	}
 
 	MessageQueue()
-	: running(false), pipe(new MpscPipe<Message *>) {
+	: running(false), pipe(new IntMpscPipe()) {
 
 	};
 
@@ -28,84 +36,73 @@ public:
 		delete pipe;
 	}
 
-	void request(void func(void)) {
-		Message *mes = new Message;
-		mes->func = func;
-		pipe->send(mes);
+	template<typename RESULT, typename ...ARG>
+	void send(RESULT (*func)(ARG...), ARG&&... arg) {
+		auto mes =
+			new WaitlessCommand<Node, RESULT, ARG...>(func, std::forward<ARG>(arg)...);
+		mes->node.self = mes;
+		pipe->send(&mes->node);
 	}
 
-	void request(void func(void), Waitable &w) {
-		Message *mes = new Message;
-		mes->func = Delegate<void>(func, &w);
-		pipe->send(mes);
-		w.wait();
+	template<typename RESULT, typename ...ARG>
+	std::future<RESULT> request(RESULT (*func)(ARG...), ARG&&... arg) {
+		auto mes =
+			new Command<Node, RESULT, ARG...>(func, std::forward<ARG>(arg)...);
+		mes->node.self = mes;
+		auto future = mes->prms.get_future();
+		pipe->send(&mes->node);
+		return future;
 	}
 
-	template<typename... ArgT>
-	void request(void func(ArgT...), ArgT... req) {
-		Message *mes = new Message;
-		mes->func = std::bind(func, req...);
-		pipe->send(mes);
-	}
-
-	template<typename... ArgT>
-	void request(void func(ArgT...), Waitable &w, ArgT... args) {
-		Message *mes = new Message;
-		mes->func = Delegate<void>(std::bind(func, args...), &w);
-		pipe->send(mes);
-		w.wait();
-	}
-
-	template<typename... ArgT, typename ResultT>
-	ResultT request(ResultT func(ArgT...), Waitable &w, ArgT... arg) {
-		ResultT result;
-		Message *mes = new Message;
-		mes->func = Delegate<ResultT>(std::bind(func, arg...), &result);
-		pipe->send(mes);
-		w.wait();
-	}
-
-	void receive() {
-		Message *req = NULL;
-		pipe->recv(req);
-		req->func();
-		delete req;
+	bool receive() {
+		bool result = false;
+		Node *node = pipe->recv();
+		if (node) {
+			ACommand *cmd = getcommand(node);
+			if (cmd) {
+				cmd->call();
+				result = true;
+				delete cmd;
+			} else {
+				delete node;
+			}
+		}
+		return result;
 	}
 
 	void stop() {
 		running = false;
-		Message *nullmsg = NULL;
+		Node *nullmsg = new Node();
+		nullmsg->self = nullptr;
 		pipe->send(nullmsg);
 	}
 
 
 	void run() {
-		if (running)
+		if (running) {
 			return;
-		else
+		} else {
 			running = true;
-
-		Message *req;
+		}
 		while (running) {
-			req = NULL;
-			pipe->recv(req);
-			if (!req) {
+			Node *node = pipe->recv();
+			if (node) {
+
+				ACommand *cmd = getcommand(node);
+				if (cmd) {
+					cmd->call();
+					delete cmd;
+				} else {
+					delete node;
+					running = false;
+				}
+
+			} else {
 				running = false;
-				break;
 			}
-			req->func();
-			delete req;
 		}
 	}
 
-protected:
-
-	struct Message {
-		std::function<void(void)> func;
-	};
-
-	bool running;
-	MpscPipe<Message *> *pipe;
 
 };
 

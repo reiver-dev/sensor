@@ -35,12 +35,12 @@ void Poluter::perform_survey() {
 	DINFO("%s\n", "Survey finished");
 }
 
-void Poluter::spoof_nodes(struct MsgSpoof *msg) {
+int Poluter::spoof_nodes(struct MsgSpoof msg) {
 	DINFO("%s\n", "Starting spoofing");
 
-	struct NetAddress *targets = msg->targets;
-	size_t targets_count = msg->target_count;
-	delete msg;
+	struct NetAddress *targets = msg.targets;
+	size_t targets_count = msg.target_count;
+	//delete msg;
 
 	struct Node gateway;
 	bool hasGW = false;
@@ -64,4 +64,5 @@ void Poluter::spoof_nodes(struct MsgSpoof *msg) {
 	}
 
 	DINFO("%s\n", "Spoofing finished");
+	return 42;
 }
