@@ -7,14 +7,16 @@
 #include <assert.h>
 #include <pthread.h>
 
+#include <cstdlib>
+
 #include <netinet/ether.h>
 #include <netinet/ip.h>
 
 #include "sensor_private.hpp"
 #include "socket_utils.hpp"
 
-#include "mq/member_msgqueue.hpp"
-#include "mq/msgqueue.hpp"
+#include <member_msgqueue.hpp>
+#include <msgqueue.hpp>
 
 /* thread modules */
 #include "traffic_capture.hpp"
@@ -74,7 +76,7 @@ int commit_config(sensor_t config) {
 			return res;
 	}
 
-	bind_socket_to_interface(config->sock, config->opt.capture.device_name);
+    bind_socket_to_interface(config->sock, config->opt.capture.device_name);
 
 	if (config->opt.capture.timeout) {
 		int res = set_socket_timeout(config->sock, config->opt.capture.timeout);
@@ -300,8 +302,8 @@ int sensor_main(sensor_t config) {
 			Poluter::MsgSpoof msg;
 			msg.targets = NULL;
 			msg.target_count = 0;
-			auto future = poluterQueue.request(&Poluter::spoof_nodes, std::move(msg));
-			printf("FUCK %i\n", future.get());
+			auto fut = poluterQueue.request(&Poluter::spoof_nodes, std::move(msg));
+			printf("FUCK %i\n", fut.get());
 			timer_ping(&survey_timer);
 		}
 	}

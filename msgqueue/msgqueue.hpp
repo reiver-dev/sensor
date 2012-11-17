@@ -1,18 +1,16 @@
-#ifndef MEMBER_MSG_QUEUE_HPP_
-#define MEMBER_MSG_QUEUE_HPP_
+#ifndef MSGQUEUE_H_
+#define MSGQUEUE_H_
 
-#include <future>
-#include "int_mpsc_pipe.hpp"
-#include "member_command.hpp"
+#include "intqueue/int_mpsc_pipe.hpp"
+#include "cmd/command.hpp"
 
 namespace mq {
 
-template<class ThreadClass>
-class MemberMessageQueue {
+class MessageQueue {
 protected:
 
 	typedef IntMpscPipe::Node Node;
-	typedef AMemberCommand<ThreadClass, Node> ACommand;
+	typedef AbstractCommand<Node> ACommand;
 
 	ACommand *getcommand(Node *node) {
 		return static_cast<ACommand *>(node->self);
@@ -20,39 +18,54 @@ protected:
 
 	bool running;
 	IntMpscPipe *pipe;
-	ThreadClass *worker;
 
 public:
 
 	static void *start(void *arg) {
-		MemberMessageQueue *mq = (MemberMessageQueue *) arg;
+		MessageQueue *mq = (MessageQueue *) arg;
 		mq->run();
 		return NULL;
 	}
 
-	MemberMessageQueue(ThreadClass *worker)
-	: running(false), pipe(new IntMpscPipe()), worker(worker) {
+	MessageQueue()
+	: running(false), pipe(new IntMpscPipe()) {
 
 	};
 
-	~MemberMessageQueue() {
+	~MessageQueue() {
 		delete pipe;
 	}
 
 	template<typename RESULT, typename ...ARG>
-	void send(RESULT (ThreadClass::*func)(ARG...), ARG&&... arg) {
+	void send(RESULT (*func)(ARG...), ARG&&... arg) {
 		auto mes =
-			new MemberCommand<ThreadClass, Node, RESULT, ARG...>(worker, func, std::forward<ARG>(arg)...);
+			new WaitlessCommand<Node, RESULT, ARG...>(func, std::forward<ARG>(arg)...);
+		mes->node.self = mes;
+		pipe->send(&mes->node);
+	}
+
+	template<typename RESULT, typename ...ARG>
+	std::future<RESULT> request(RESULT (*func)(ARG...), ARG&&... arg) {
+		auto mes =
+			new Command<Node, RESULT, ARG...>(func, std::forward<ARG>(arg)...);
 		mes->node.self = mes;
 		auto future = mes->prms.get_future();
 		pipe->send(&mes->node);
 		return future;
 	}
 
-	template<typename RESULT, typename ...ARG>
-	std::future<RESULT> request(RESULT (ThreadClass::*func)(ARG...), ARG&&... arg) {
+	template<typename T, typename RESULT, typename ...ARG>
+	void send(T *obj, RESULT (T::*func)(ARG...), ARG&&... arg) {
 		auto mes =
-			new MemberCommand<ThreadClass, Node, RESULT, ARG...>(worker, func, std::forward<ARG>(arg)...);
+			new WaitlessMemberCommand<T, Node, RESULT, ARG...>(obj, func, std::forward<ARG>(arg)...);
+		mes->node.self = mes;
+		pipe->send(&mes->node);
+	}
+
+	template<typename T, typename RESULT, typename ...ARG>
+	std::future<RESULT> request(T *obj, RESULT (T::*func)(ARG...), ARG&&... arg) {
+		auto mes =
+			new MemberCommand<T, Node, RESULT, ARG...>(obj, func, std::forward<ARG>(arg)...);
 		mes->node.self = mes;
 		auto future = mes->prms.get_future();
 		pipe->send(&mes->node);
@@ -108,9 +121,9 @@ public:
 		}
 	}
 
-
 };
 
 }
 
-#endif /* MEMBER_MSG_QUEUE_HPP_ */
+
+#endif /* MSGQUEUE_H_ */

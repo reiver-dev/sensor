@@ -4,7 +4,7 @@
 #include <pcap.h>
 
 #include "sensor_private.hpp"
-#include "mq/msgqueue.hpp"
+#include <msgqueue.hpp>
 
 
 #define PACKET_INFO 0x10

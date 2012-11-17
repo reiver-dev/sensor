@@ -5,7 +5,7 @@
 #include <iostream>
 
 #include "sensor_private.hpp"
-#include "mq/msgqueue.hpp"
+#include <msgqueue.hpp>
 #include "netinfo.hpp"
 
 

@@ -1,0 +1,58 @@
+#ifndef MEMBER_MSG_QUEUE_HPP_
+#define MEMBER_MSG_QUEUE_HPP_
+
+#include <future>
+#include "msgqueue.hpp"
+
+namespace mq {
+
+template<class ThreadClass>
+class MemberMessageQueue {
+protected:
+
+	MessageQueue queue;
+	ThreadClass *worker;
+
+public:
+
+	static void *start(void *arg) {
+		MemberMessageQueue *mq = (MemberMessageQueue *) arg;
+		mq->run();
+		return NULL;
+	}
+
+	MemberMessageQueue(ThreadClass *worker) : worker(worker) {
+		//
+	};
+
+	~MemberMessageQueue() {
+		//
+	}
+
+	template<typename RESULT, typename ...ARG>
+	void send(RESULT (ThreadClass::*func)(ARG...), ARG&&... arg) {
+		queue.send(worker, func, std::forward<ARG>(arg)...);
+	}
+
+	template<typename RESULT, typename ...ARG>
+	std::future<RESULT> request(RESULT (ThreadClass::*func)(ARG...), ARG&&... arg) {
+		return queue.request(worker, func, std::forward<ARG>(arg)...);
+	}
+
+	bool receive() {
+		return queue.receive();
+	}
+
+	void stop() {
+		queue.stop();
+	}
+
+	void run() {
+		queue.run();
+	}
+
+};
+
+}
+
+#endif /* MEMBER_MSG_QUEUE_HPP_ */

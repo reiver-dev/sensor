@@ -19,17 +19,7 @@ public:
 	}
 
 	~IntMpscQueue() {
-//		Node *next = head.load(std::memory_order_relaxed);
-//		Node *node = next;
-//		if (node) {
-//			next = node->next;
-//			delete node;
-//		}
-//		while((node = next)) {
-//			next = node->next;
-//			clearData(node->data);
-//			delete node;
-//		}
+
 	}
 
 	void push(Node *next) {
@@ -38,43 +28,34 @@ public:
 		prev->next = next;
 	}
 
-//	Node *pop() {
-//		Node *h = head.load(std::memory_order_relaxed);
-//		Node *next = h->next;
-//		if (next) {
-//			head.store(next, std::memory_order_release);
-//		}
-//		return next;
-//	}
-
 	Node *pop() {
 		Node *s = &stub;
-		Node *hd = head.load(std::memory_order_relaxed);
-		Node *nx = hd->next;
+		Node *h = head.load(std::memory_order_relaxed);
+		Node *n = h->next;
 
-		if (hd == s) {
-			if (nx == nullptr)
+		if (h == s) {
+			if (n == nullptr)
 				return nullptr;
-			head.store(nx, std::memory_order_relaxed);
-			hd = nx;
-			nx = nx->next;
+			head.store(n, std::memory_order_relaxed);
+			h = n;
+			n = n->next;
 		}
 
-		if (nx) {
-			head.store(nx, std::memory_order_relaxed);
-			return hd;
+		if (n) {
+			head.store(n, std::memory_order_relaxed);
+			return h;
 		}
 
-		Node *tl = tail.load(std::memory_order_relaxed);
-		if (tl != hd)
+		Node *t = tail.load(std::memory_order_relaxed);
+		if (t != h)
 			return nullptr;
 
 		push(s);
 
-		nx = hd->next;
-		if (nx) {
-			head.store(nx, std::memory_order_relaxed);
-			return hd;
+		n = h->next;
+		if (n) {
+			head.store(n, std::memory_order_relaxed);
+			return h;
 		}
 
 		return nullptr;
