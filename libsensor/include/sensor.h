@@ -50,6 +50,7 @@ typedef struct {
 } sensor_opt_survey;
 
 typedef struct {
+	char device_name[IF_NAMESIZE];
 	uint32_t timeout;
 	uint32_t initial_timeout;
 	uint32_t info_timeout;

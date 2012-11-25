@@ -11,6 +11,7 @@
 
 #include <netinet/ether.h>
 #include <netinet/ip.h>
+#include <arpa/inet.h>
 
 #include "sensor_private.hpp"
 #include "socket_utils.hpp"
@@ -76,7 +77,7 @@ int commit_config(sensor_t config) {
 			return res;
 	}
 
-    bind_socket_to_interface(config->sock, config->opt.capture.device_name);
+	bind_raw_socket_to_interface(config->sock, config->opt.capture.device_name);
 
 	if (config->opt.capture.timeout) {
 		int res = set_socket_timeout(config->sock, config->opt.capture.timeout);
@@ -257,16 +258,16 @@ void sensor_breakloop(sensor_t config) {
 
 #include "ts_hash_table.hpp"
 int sensor_main(sensor_t config) {
-	TsHashTable<long, NetAddress> a;
+	TsHashTable<long, NodeAddress> a;
 
 	pthread_t captureThread, poluterThread;
 	pcap_t *handle;
 
 	config->current = read_interface_info(config->opt.capture.device_name);
-	DNOTIFY("Current MAC: %s\n", EtherToStr(config->current.addr.hw));
-	DNOTIFY("Current IP4: %s\n", Ip4ToStr(config->current.addr.in));
-	DNOTIFY("Current NETMASK: %s\n", Ip4ToStr(config->current.netmask));
-	DNOTIFY("Current GATEWAY: %s\n", Ip4ToStr(config->current.gateway));
+	DNOTIFY("Current MAC: %s\n", ether_ntoa(&config->current.hw));
+	DNOTIFY("Current IP4: %s\n", inet_ntoa(config->current.ip4.local));
+	DNOTIFY("Current NETMASK: %s\n", inet_ntoa(config->current.ip4.netmask));
+	DNOTIFY("Current GATEWAY: %s\n", inet_ntoa(config->current.ip4.gateway));
 
 	DNOTIFY("%s\n", "Creating pcap");
 	handle = create_pcap_handle(config);

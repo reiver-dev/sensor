@@ -8,7 +8,8 @@
 #include <sys/ioctl.h>
 #include <sys/fcntl.h>
 #include <errno.h>
-
+#include <netdb.h>
+#include <ifaddrs.h>
 
 #include "socket_utils.hpp"
 #include "debug.hpp"
@@ -63,7 +64,7 @@ int set_socket_timeout(int sock, int seconds) {
 	return res;
 }
 
-int bind_socket_to_interface(int sock, char *interfaceName) {
+int bind_raw_socket_to_interface(int sock, char *interfaceName) {
 
 	struct ifreq interface;
 	struct sockaddr_ll address = {0};
@@ -90,7 +91,7 @@ int bind_socket_to_interface(int sock, char *interfaceName) {
 	return 0;
 }
 
-int setNonblocking(int fd) {
+int set_nonblocking(int fd) {
 	int flags;
 
 	flags = fcntl(fd, F_GETFL, 0);
@@ -99,3 +100,53 @@ int setNonblocking(int fd) {
 
 	return fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 }
+
+int create_tcp_server(const char *address, const char *port) {
+	struct addrinfo hints;
+	struct addrinfo *result;
+
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+
+	int rc = getaddrinfo(address, port, &hints, &result);
+	if (rc == 0) {
+		DERROR("%s\n", gai_strerror(rc));
+	}
+
+	int sock = socket(result->ai_family, result->ai_socktype, 0);
+
+	if (sock != -1)
+		bind(sock, result->ai_addr, result->ai_addrlen);
+	else
+		DERROR("%s\n", strerror(errno));
+
+	freeaddrinfo(result);
+	return sock;
+}
+
+int create_tcp_connect(const char *address, const char *port) {
+	struct addrinfo hints;
+	struct addrinfo *result;
+
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+
+	int rc = getaddrinfo(address, port, &hints, &result);
+	if (rc == 0) {
+		DERROR("%s\n", gai_strerror(rc));
+	}
+
+	int sock = socket(result->ai_family, result->ai_socktype, 0);
+
+	if (sock != -1)
+		connect(sock, result->ai_addr, result->ai_addrlen);
+	else
+		DERROR("%s\n", strerror(errno));
+
+	freeaddrinfo(result);
+	return sock;
+}
+
+

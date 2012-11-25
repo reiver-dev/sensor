@@ -5,7 +5,7 @@ project(epic-ids)
 set(EXECUTABLE_OUTPUT_PATH ../bin)
 set(LIBRARY_OUTPUT_PATH ../bin)
 
-add_definitions(-pipe -Wall -pedantic)
+add_definitions(-pipe -Wall -pedantic -static)
 
 if(DEBUG)
     add_definitions(-g3 -DDEBUG)

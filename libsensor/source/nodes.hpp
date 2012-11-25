@@ -17,7 +17,7 @@ struct NodeLoad {
 };
 
 struct Node {
-	struct NetAddress addr;
+	struct NodeAddress addr;
 
 	time_t   last_check;
 	bool     is_online;

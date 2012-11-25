@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8)
 
 project(libsensor CXX)
 
-add_definitions(-std=gnu++11 -static)
+add_definitions(-std=gnu++11)
 
 file(GLOB HEADERS source/*.hpp)
 file(GLOB SOURCES source/*.cpp)

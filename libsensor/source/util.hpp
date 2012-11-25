@@ -4,7 +4,9 @@
 #include <cstddef>
 #include <netinet/ether.h>
 
+#ifdef __cplusplus
 extern "C" {
+#endif
 
 char *Ip4ToStr(const uint32_t ip);
 char *EtherToStr(const uint8_t eth[ETH_ALEN]);
@@ -37,6 +39,8 @@ uint32_t hex_to_uint32(const char *hex);
 #define ADD_TO_BUFFER(buf, data, size) (memcpy(buf, data, size), buf += size)
 #define PUT_FROM_BUFFER(buf, data, type) do { data = (type) buf; buf += sizeof(*data); }while(0)
 
+#ifdef __cplusplus
 }
+#endif
 
 #endif /* UTIL_H_ */

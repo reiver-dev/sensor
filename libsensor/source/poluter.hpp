@@ -15,7 +15,7 @@ public:
 
 	struct MsgSpoof {
 		size_t target_count;
-		struct NetAddress *targets;
+		struct NodeAddress *targets;
 
 		MsgSpoof() : target_count(0), targets(nullptr) {
 			std::cout << "CONSTR" << std::endl;

@@ -6,7 +6,9 @@
 #define DEBUG_LEVEL_NOTIFY 2
 #define DEBUG_LEVEL_INFO 3
 
+#ifdef __cplusplus
 extern "C" {
+#endif
 
 #ifdef DEBUG
 #define __FUNCTION__ __PRETTY_FUNCTION__
@@ -42,6 +44,8 @@ void debug_append(int level, const char *format, ...);
 
 #endif /* DEBUG */
 
+#ifdef __cplusplus
 }
+#endif
 
 #endif /* DEBUG_H_ */

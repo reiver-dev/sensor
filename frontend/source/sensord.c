@@ -163,6 +163,7 @@ int main(int argc, char** argv) {
 	opts.survey.initial_timeout = arguments.survey_initial_timeout;
 	opts.survey.node_disconnect_timeout = arguments.survey_nodedisconnect_timeout;
 
+	strncpy(opts.balancing.device_name, arguments.interface, IF_NAMESIZE);
 	opts.balancing.timeout = arguments.balancing_timeout;
 	opts.balancing.info_timeout = arguments.balancing_info_timeout;
 	opts.balancing.session_timeout = arguments.balancing_session_timeout;

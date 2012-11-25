@@ -72,7 +72,7 @@ void arp_request_set_to_ip(uint8_t *buffer, uint32_t to_ip4) {
 }
 
 
-bool arp_is_reply(const uint8_t *buffer, size_t length, const struct InterfaceInfo *current, struct NetAddress *out) {
+bool arp_is_reply(const uint8_t *buffer, size_t length, const struct InterfaceInfo *current, struct NodeAddress *out) {
 	if (length < ARP_IP4_SIZE) {
 		return false;
 	}
@@ -85,13 +85,13 @@ bool arp_is_reply(const uint8_t *buffer, size_t length, const struct InterfaceIn
 	header = (struct arphdr *) (buffer + sizeof(struct ether_header));
 	arpheader = (struct arp_ip4 *) (buffer + sizeof(struct ether_header) + sizeof(struct arphdr));
 
-
-	if (!memcmp(ethernet->ether_shost, current->addr.hw, ETH_ALEN)    /* source mac is not me */
-		|| memcmp(ethernet->ether_dhost, current->addr.hw, ETH_ALEN)  /* dest mac is me       */
+	const uint8_t *hw = current->hw.ether_addr_octet;
+	if (!memcmp(ethernet->ether_shost, hw, ETH_ALEN)    /* source mac is not me */
+		|| memcmp(ethernet->ether_dhost, hw, ETH_ALEN)  /* dest mac is me       */
 		|| ethernet->ether_type != ntohs(ETH_P_ARP)                   /* arp protocol         */
 		|| header->ar_op != ntohs(ARPOP_REPLY)                        /* arp reply operation  */
-		|| !memcmp(arpheader->ar_sha, current->addr.hw, ETH_ALEN)     /* source is not me     */
-		|| memcmp(arpheader->ar_tha, current->addr.hw, ETH_ALEN)      /* dest is me           */
+		|| !memcmp(arpheader->ar_sha, hw, ETH_ALEN)     /* source is not me     */
+		|| memcmp(arpheader->ar_tha, hw, ETH_ALEN)      /* dest is me           */
 		) {
 
 		return false;

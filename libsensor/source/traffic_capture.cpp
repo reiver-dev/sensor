@@ -27,7 +27,7 @@ void TrafficCapture::run() {
 			DINFO("Captured inbound %i\n", pInfoRequest.size);
 			queueToCore->send(sensor_log_packet, (int)packet_header->len);
 
-			struct NetAddress node;
+			struct NodeAddress node;
 			if (arp_is_reply(packet_data, packet_header->len, &info, &node)) {
 				DINFO("Got reply from %s\n", Ip4ToStr(node.in));
 			}

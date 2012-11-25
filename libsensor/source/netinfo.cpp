@@ -20,11 +20,12 @@ struct InterfaceInfo read_interface_info(const char* interfaceName) {
 	struct InterfaceInfo info;
 
 	int sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	get_current_mac_r(sock, interfaceName, info.addr.hw);
-	info.addr.in = get_current_address(sock, interfaceName);
-	info.netmask = get_current_netmask(sock, interfaceName);
-	info.gateway = read_default_gateway(interfaceName);
+	get_current_mac_r(sock, interfaceName, info.hw.ether_addr_octet);
+	info.ip4.local = get_current_address(sock, interfaceName);
+	info.ip4.netmask = get_current_netmask(sock, interfaceName);
+	info.ip4.gateway.s_addr = read_default_gateway(interfaceName);
 	close(sock);
+	memset(&info.ip6, 0, sizeof(info.ip6));
 
 	return info;
 }
@@ -47,30 +48,32 @@ uint8_t* get_current_mac_r(int sock, const char* interfaceName, uint8_t* hwaddr)
 }
 
 
-uint32_t get_current_address(int sock, const char* interfaceName) {
+struct in_addr get_current_address(int sock, const char* interfaceName) {
 
 	struct ifreq interface;
 	strcpy(interface.ifr_name, interfaceName);
 	interface.ifr_addr.sa_family = AF_INET;
 
 	if (ioctl(sock, SIOCGIFADDR, &interface) == -1) {
-		return 0;
+		char errbuf[512];
+		DERROR("%s\n", strerror_r(errno, errbuf, sizeof(errbuf)));
+		return {0};
 	}
 
-	uint32_t address = ((struct sockaddr_in *)&interface.ifr_addr)->sin_addr.s_addr;
+	struct in_addr address = ((struct sockaddr_in *)&interface.ifr_addr)->sin_addr;
 	return address;
 }
 
-uint32_t get_current_netmask(int sock, const char* interfaceName) {
+struct in_addr get_current_netmask(int sock, const char* interfaceName) {
 	struct ifreq interface;
 	strcpy(interface.ifr_name, interfaceName);
 	interface.ifr_addr.sa_family = AF_INET;
 
 	if (ioctl(sock, SIOCGIFNETMASK, &interface) == -1) {
-		return 0;
+		return {0};
 	}
 
-	uint32_t netmask = ((struct sockaddr_in *)&interface.ifr_addr)->sin_addr.s_addr;
+	struct in_addr netmask = ((struct sockaddr_in *)&interface.ifr_addr)->sin_addr;
 	return netmask;
 
 }
