@@ -1,7 +1,6 @@
 #ifndef MEMBER_MSG_QUEUE_HPP_
 #define MEMBER_MSG_QUEUE_HPP_
 
-#include <future>
 #include "msgqueue.hpp"
 
 namespace mq {
@@ -35,7 +34,7 @@ public:
 	}
 
 	template<typename RESULT, typename ...ARG>
-	std::future<RESULT> request(RESULT (ThreadClass::*func)(ARG...), ARG&&... arg) {
+	mq::future<RESULT> request(RESULT (ThreadClass::*func)(ARG...), ARG&&... arg) {
 		return queue.request(worker, func, std::forward<ARG>(arg)...);
 	}
 
@@ -43,14 +42,17 @@ public:
 		return queue.receive();
 	}
 
-	void stop() {
-		queue.stop();
+	void nullmsg() {
+		queue.nullmsg();
 	}
 
 	void run() {
 		queue.run();
 	}
 
+	void dry_run() {
+		queue.dry_run();
+	}
 };
 
 }

@@ -16,7 +16,6 @@ protected:
 		return static_cast<ACommand *>(node->self);
 	}
 
-	bool running;
 	IntMpscPipe *pipe;
 
 public:
@@ -28,7 +27,7 @@ public:
 	}
 
 	MessageQueue()
-	: running(false), pipe(new IntMpscPipe()) {
+	: pipe(new IntMpscPipe()) {
 
 	};
 
@@ -45,7 +44,7 @@ public:
 	}
 
 	template<typename RESULT, typename ...ARG>
-	std::future<RESULT> request(RESULT (*func)(ARG...), ARG&&... arg) {
+	mq::future<RESULT> request(RESULT (*func)(ARG...), ARG&&... arg) {
 		auto mes =
 			new Command<Node, RESULT, ARG...>(func, std::forward<ARG>(arg)...);
 		mes->node.self = mes;
@@ -63,7 +62,7 @@ public:
 	}
 
 	template<typename T, typename RESULT, typename ...ARG>
-	std::future<RESULT> request(T *obj, RESULT (T::*func)(ARG...), ARG&&... arg) {
+	mq::future<RESULT> request(T *obj, RESULT (T::*func)(ARG...), ARG&&... arg) {
 		auto mes =
 			new MemberCommand<T, Node, RESULT, ARG...>(obj, func, std::forward<ARG>(arg)...);
 		mes->node.self = mes;
@@ -88,8 +87,23 @@ public:
 		return result;
 	}
 
-	void stop() {
-		running = false;
+	bool try_receive() {
+		bool result = false;
+		Node *node = pipe->try_recv();
+		if (node) {
+			ACommand *cmd = getcommand(node);
+			if (cmd) {
+				cmd->call();
+				result = true;
+				delete cmd;
+			} else {
+				delete node;
+			}
+		}
+		return result;
+	}
+
+	void nullmsg() {
 		Node *nullmsg = new Node();
 		nullmsg->self = nullptr;
 		pipe->send(nullmsg);
@@ -97,28 +111,11 @@ public:
 
 
 	void run() {
-		if (running) {
-			return;
-		} else {
-			running = true;
-		}
-		while (running) {
-			Node *node = pipe->recv();
-			if (node) {
+		while (receive());
+	}
 
-				ACommand *cmd = getcommand(node);
-				if (cmd) {
-					cmd->call();
-					delete cmd;
-				} else {
-					delete node;
-					running = false;
-				}
-
-			} else {
-				running = false;
-			}
-		}
+	void dry_run() {
+		while (try_receive());
 	}
 
 };
