@@ -2,9 +2,6 @@
 #include <assert.h>
 #include <string.h>
 
-#include <netinet/in.h>
-#include <netinet/ether.h>
-
 #include "arputil.hpp"
 
 
@@ -72,7 +69,9 @@ void arp_request_set_to_ip(uint8_t *buffer, uint32_t to_ip4) {
 }
 
 
-bool arp_is_reply(const uint8_t *buffer, size_t length, const struct InterfaceInfo *current, struct NodeAddress *out) {
+bool arp_is_reply(const uint8_t *buffer, size_t length, const struct InterfaceInfo *current,
+	uint32_t *out_ip4, uint8_t out_hw[ETH_ALEN]) {
+
 	if (length < ARP_IP4_SIZE) {
 		return false;
 	}
@@ -97,8 +96,8 @@ bool arp_is_reply(const uint8_t *buffer, size_t length, const struct InterfaceIn
 		return false;
 	}
 
-	out->in = arpheader->ar_sip;
-	memcpy(out->hw, arpheader->ar_sha, ETH_ALEN);
+	*out_ip4 = arpheader->ar_sip;
+	memcpy(out_hw, arpheader->ar_sha, ETH_ALEN);
 
 	return true;
 }

@@ -1,5 +1,5 @@
-#include <stdlib.h>                // Standard Libraries
-#include <stdint.h>                // Additional libraries
+#include <stdlib.h>
+#include <stdint.h>
 #include <stdbool.h>
 #include <string.h>
 #include <unistd.h>
@@ -7,24 +7,19 @@
 #include <assert.h>
 #include <pthread.h>
 
-#include <cstdlib>
-
-#include <netinet/ether.h>
-#include <netinet/ip.h>
-#include <arpa/inet.h>
+#include "networking.h"
 
 #include "sensor_private.hpp"
 #include "socket_utils.hpp"
 
 #include <member_msgqueue.hpp>
-#include <msgqueue.hpp>
 
 /* thread modules */
 #include "traffic_capture.hpp"
 #include "poluter.hpp"
 
 #include "debug.hpp"
-#include "nodes.hpp"
+#include "node.hpp"
 #include "netinfo.hpp"
 #include "util.hpp"
 
@@ -295,7 +290,6 @@ int sensor_main(sensor_t config) {
 
 	DNOTIFY("%s\n", "Threads Started");
 
-
 	while (config->activated) {
 		iteration_time = time(0);
 		coreQueue.receive();
@@ -303,16 +297,19 @@ int sensor_main(sensor_t config) {
 			Poluter::MsgSpoof msg;
 			msg.targets = NULL;
 			msg.target_count = 0;
-			auto fut = poluterQueue.request(&Poluter::spoof_nodes, std::move(msg));
+			mq::future<int> fut = poluterQueue.request(&Poluter::spoof_nodes, std::move(msg));
 			printf("FUCK %i\n", fut.get());
 			timer_ping(&survey_timer);
 		}
 	}
 
+
 	DNOTIFY("%s\n", "Stopping threads");
 
-	poluterQueue.stop();
+	poluterQueue.nullmsg();
 	captureContext.stop();
+
+	coreQueue.run();
 
 	DNOTIFY("%s\n", "Waiting for threads exit");
 

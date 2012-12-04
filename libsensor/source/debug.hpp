@@ -10,7 +10,7 @@
 extern "C" {
 #endif
 
-#ifdef DEBUG
+#ifndef NDEBUG
 #define __FUNCTION__ __PRETTY_FUNCTION__
 //-----------------------------
 

@@ -1,9 +1,7 @@
 #include <string.h>
 #include <unistd.h>
-#include <sys/socket.h>
+
 #include <net/if.h>
-#include <netinet/in.h>
-#include <netinet/ether.h>
 #include <netpacket/packet.h>
 #include <sys/ioctl.h>
 #include <sys/fcntl.h>
@@ -12,6 +10,8 @@
 #include <ifaddrs.h>
 
 #include "socket_utils.hpp"
+
+#include "networking.h"
 #include "debug.hpp"
 
 /*

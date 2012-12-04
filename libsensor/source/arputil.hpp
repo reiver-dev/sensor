@@ -7,8 +7,6 @@
 
 #include "netinfo.hpp"
 
-
-
 /* Protocol types */
 struct arp_ip4 {
     uint8_t  ar_sha[ETH_ALEN];  /* Sender hardware address.     */
@@ -19,9 +17,17 @@ struct arp_ip4 {
 
 #define ARP_IP4_SIZE (sizeof(struct ether_header) + sizeof(struct arphdr) + sizeof(struct arp_ip4))
 
-void arp_reply_create(uint8_t buffer[ARP_IP4_SIZE], uint32_t my_ip4, const uint8_t my_hw[ETH_ALEN], uint32_t to_ip4, const uint8_t to_hw[ETH_ALEN]);
-void arp_request_create(uint8_t buffer[ARP_IP4_SIZE], uint32_t my_ip4, const uint8_t my_hw[ETH_ALEN], uint32_t to_ip4);
+void arp_reply_create(uint8_t buffer[ARP_IP4_SIZE], uint32_t my_ip4,
+	const uint8_t my_hw[ETH_ALEN], uint32_t to_ip4,
+	const uint8_t to_hw[ETH_ALEN]);
+
+void arp_request_create(uint8_t buffer[ARP_IP4_SIZE], uint32_t my_ip4,
+	const uint8_t my_hw[ETH_ALEN], uint32_t to_ip4);
+
 void arp_request_set_to_ip(uint8_t *buffer, uint32_t to_ip4);
-bool arp_is_reply(const uint8_t *buffer, size_t length, const struct InterfaceInfo *current, struct NodeAddress *out);
+
+bool arp_is_reply(const uint8_t *buffer, size_t length,
+	const struct InterfaceInfo *current,
+	uint32_t *out_ip4, uint8_t out_hw[ETH_ALEN]);
 
 #endif /* ARPUTIL_H_ */

@@ -4,10 +4,6 @@
 #include <netinet/ether.h>
 #include <netinet/in.h>
 
-struct NodeAddress {
-	uint32_t in;
-	uint8_t hw[ETH_ALEN];
-};
 
 struct NetAddress4 {
 	struct in_addr local;

