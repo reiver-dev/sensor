@@ -7,8 +7,6 @@ add_definitions(-std=gnu++11)
 file(GLOB HEADERS source/*.hpp)
 file(GLOB SOURCES source/*.cpp)
 
-set(CMAKE_FIND_LIBRARY_SUFFIXES .a)
-
 find_path(PCAP_H pcap.h)
 find_library(LIBPCAP pcap)
 
