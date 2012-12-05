@@ -19,36 +19,8 @@ struct Caller {
 	WORKER *worker;
 	RESULT (WORKER::*func)(ARG...);
 
-	RESULT operator()(std::tuple<ARG...>&& arg) {
-		return forward(worker, func, std::forward<decltype(arg)>(arg));
-	}
-};
-
-template<typename RESULT, typename ...ARG>
-struct Caller<void, RESULT, ARG...> {
-	RESULT (*func)(ARG...);
-
-	RESULT operator()(std::tuple<ARG...>&& arg) {
-		return forward(func, std::forward<decltype(arg)>(arg));
-	}
-};
-
-template<typename WORKER, typename RESULT>
-struct Caller<WORKER, RESULT, void> {
-	WORKER *worker;
-	RESULT (WORKER::*func)();
-
-	RESULT operator()() {
-		return (worker->*func)();
-	}
-};
-
-template<typename RESULT>
-struct Caller<void, RESULT, void> {
-	RESULT (*func)();
-
-	RESULT operator()() {
-		return func();
+	RESULT operator()(ARG&& ...arg) {
+		return (worker->*func)(std::forward<ARG>(arg)...);
 	}
 };
 
@@ -57,7 +29,9 @@ struct PromiseApplier {
 
 	template<typename FUNC, typename ...ARG>
 	static void apply(mq::promise<RESULT> &p, FUNC f, std::tuple<ARG...>&& args) {
-		p.set_value(f(std::forward<decltype(args)>(args)));
+		p.set_value(
+			functor_expand<RESULT>::forward(f, std::forward<decltype(args)>(args))
+		);
 	}
 
 	template<typename FUNC>
@@ -71,7 +45,7 @@ struct PromiseApplier<void> {
 
 	template<typename FUNC, typename ...ARG>
 	static void apply(mq::promise<void> &p, FUNC f, std::tuple<ARG...>&& args) {
-		f(std::forward<decltype(args)>(args));
+		functor_expand<void>::forward(f, std::forward<decltype(args)>(args));
 		p.set_value();
 	}
 
@@ -83,21 +57,40 @@ struct PromiseApplier<void> {
 };
 
 
-
-
 #define USE_NODE using AbstractCommand<NODE>::node
 
-template<typename NODE, typename T, typename RESULT, typename ...ARG>
+template<typename NODE, typename FUNCTOR, typename RESULT, typename ...ARG>
 struct Command : public AbstractCommand<NODE> {
 	USE_NODE;
 
-	typedef Caller<T, RESULT, ARG...> caller_type;
+	FUNCTOR caller;
+	std::tuple<ARG...> argument;
 
-	caller_type caller;
+	Command(FUNCTOR c, ARG&& ...arg)
+		: caller(c), argument(std::move(arg)...) {
+		//
+	}
+
+	virtual void call() {
+		functor_expand<RESULT>
+		::forward(caller, std::forward<std::tuple<ARG...>>(argument));
+	}
+
+	virtual ~Command() {
+		//
+	}
+};
+
+
+template<typename NODE, typename FUNCTOR, typename RESULT, typename ...ARG>
+struct RequestCommand : public AbstractCommand<NODE> {
+	USE_NODE;
+
+	FUNCTOR caller;
 	std::tuple<ARG...> argument;
 	mq::promise<RESULT> prms;
 
-	Command(Caller<T, RESULT, ARG...> c, ARG&& ...arg)
+	RequestCommand(FUNCTOR c, ARG&& ...arg)
 		: caller(c), argument(std::move(arg)...) {
 		//
 	}
@@ -110,33 +103,14 @@ struct Command : public AbstractCommand<NODE> {
 		);
 	}
 
-	virtual ~Command() {
+	virtual ~RequestCommand() {
 		//
 	}
 };
 
-template<typename NODE, typename T, typename RESULT, typename ...ARG>
-struct WaitlessCommand : public AbstractCommand<NODE> {
-	USE_NODE;
 
-	typedef Caller<T, RESULT, ARG...> caller_type;
 
-	caller_type caller;
-	std::tuple<ARG...> argument;
 
-	WaitlessCommand(Caller<T, RESULT, ARG...> c, ARG&& ...arg)
-		: caller(c), argument(std::move(arg)...) {
-		//
-	}
-
-	virtual void call() {
-		caller(std::forward<decltype(argument)>(argument));
-	}
-
-	virtual ~WaitlessCommand() {
-		//
-	}
-};
 
 
 

@@ -37,13 +37,14 @@ RESULT forward_impl(RESULT (*func)(ARG...), std::tuple<ARG...>&& tuple, indices<
 	return func(std::forward<ARG>(std::get<Indices>(tuple))...);
 }
 
+
 template<typename T, typename RESULT, typename ...ARG, size_t ... Indices>
 RESULT forward_member_impl(T *worker, RESULT (T::*func)(ARG...), std::tuple<ARG...>&& tuple, indices<Indices...>) {
 	return (worker->*func)(std::forward<ARG>(std::get<Indices>(tuple))... );
 }
 
 template<typename RESULT, typename ...ARG>
-RESULT forward(RESULT (*func)(ARG...), std::tuple<ARG...> tuple) {
+RESULT forward(RESULT (*func)(ARG...), std::tuple<ARG...>&& tuple) {
 	typedef typename make_indices<ARG...>::type Indices;
 	return forward_impl(func, std::forward<decltype(tuple)>(tuple), Indices());
 }
@@ -54,7 +55,29 @@ RESULT forward(T *worker, RESULT (T::*func)(ARG...), std::tuple<ARG...>&& tuple)
 	return forward_member_impl(worker, func, std::forward<decltype(tuple)>(tuple), Indices());
 }
 
+
+
 //------------------------------------------------
 
+
+
+
+
+template<typename RESULT>
+class functor_expand {
+private:
+
+	template<typename FUNCTOR, typename ...ARG, size_t ... Indices>
+	static RESULT forward_functor_impl(FUNCTOR func, std::tuple<ARG...>&& tuple, indices<Indices...>) {
+		return func(std::forward<ARG>(std::get<Indices>(tuple))...);
+	}
+
+public:
+	template<typename FUNCTOR, typename ...ARG>
+	static RESULT forward(FUNCTOR func, std::tuple<ARG...>&& tuple) {
+		typedef typename make_indices<ARG...>::type Indices;
+		return forward_functor_impl(func, std::forward<decltype(tuple)>(tuple), Indices());
+	}
+};
 
 #endif /* TUPLE_INDEXER_HPP_ */
