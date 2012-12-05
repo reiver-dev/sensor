@@ -67,6 +67,12 @@ private:
 	}
 };
 
+template<>
+class Result<void> : public ResultBase {
+
+
+};
+
 class State {
 private:
 
@@ -157,6 +163,9 @@ protected:
 	std::shared_ptr<State> state;
 };
 
+
+//-------------------------------------------------
+
 template<typename R>
 class future : FutureBase {
 protected:
@@ -191,6 +200,40 @@ public :
 	}
 };
 
+template<>
+class future<void> : FutureBase {
+protected:
+
+
+	ResultBase& get_result() {
+		ResultBase& res = state->wait();
+		return static_cast<Result<void>&>(res);
+	}
+
+
+public :
+
+	future(std::shared_ptr<State> s) : FutureBase(s) {
+		//
+	}
+
+	future(future&& f) : FutureBase(std::move(f)) {
+		//
+	}
+
+	future& operator=(future&& f) {
+		future tmp(std::move(f));
+		tmp.swap(*this);
+		return *this;
+	}
+
+	DISABLE_COPY(future)
+
+	void get() {
+		get_result();
+	}
+};
+
 
 template<typename R>
 class promise {
@@ -218,6 +261,31 @@ private	:
 
 };
 
+
+template<>
+class promise<void> {
+public:
+
+	promise() :
+		state(std::make_shared<State>()), storage(new Result<void>()) {
+		//
+	}
+
+	future<void> get_future() {
+		return future<void>(state);
+	}
+
+	void set_value() {
+		Result<void> *tmp = storage.release();
+		state->set_result(tmp);
+	}
+
+private	:
+
+	std::shared_ptr<State> state;
+	std::unique_ptr<Result<void>> storage;
+
+};
 
 
 }
