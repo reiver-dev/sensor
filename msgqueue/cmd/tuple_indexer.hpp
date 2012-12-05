@@ -32,7 +32,7 @@ struct make_indices : make_indices_impl<0, indices<>, Types...> {
 
 //----------------------------
 
-template<class RESULT, class ...ARG, size_t ... Indices>
+template<typename RESULT, typename ...ARG, size_t ... Indices>
 RESULT forward_impl(RESULT (*func)(ARG...), std::tuple<ARG...>&& tuple, indices<Indices...>) {
 	return func(std::forward<ARG>(std::get<Indices>(tuple))...);
 }

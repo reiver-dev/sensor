@@ -6,6 +6,7 @@
 #include <memory>
 #include <mutex>
 
+
 #include "thread_util.hpp"
 
 #define DISABLE_COPY(TYPE) \
@@ -246,6 +247,12 @@ public:
 
 	future<R> get_future() {
 		return future<R>(state);
+	}
+
+	void set_value(R& result) {
+		storage->set(std::move(result));
+		Result<R> *tmp = storage.release();
+		state->set_result(tmp);
 	}
 
 	void set_value(R&& result) {

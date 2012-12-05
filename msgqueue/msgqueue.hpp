@@ -38,7 +38,7 @@ public:
 	template<typename RESULT, typename ...ARG>
 	void send(RESULT (*func)(ARG...), ARG&&... arg) {
 		auto mes =
-			new WaitlessCommand<Node, RESULT, ARG...>(func, std::forward<ARG>(arg)...);
+			new WaitlessCommand<Node, void, RESULT, ARG...>({func}, std::forward<ARG>(arg)...);
 		mes->node.self = mes;
 		pipe->send(&mes->node);
 	}
@@ -46,7 +46,7 @@ public:
 	template<typename RESULT, typename ...ARG>
 	mq::future<RESULT> request(RESULT (*func)(ARG...), ARG&&... arg) {
 		auto mes =
-			new Command<Node, RESULT, ARG...>(func, std::forward<ARG>(arg)...);
+			new Command<Node, void, RESULT, ARG...>({func}, std::forward<ARG>(arg)...);
 		mes->node.self = mes;
 		auto future = mes->prms.get_future();
 		pipe->send(&mes->node);
@@ -56,7 +56,7 @@ public:
 	template<typename T, typename RESULT, typename ...ARG>
 	void send(T *obj, RESULT (T::*func)(ARG...), ARG&&... arg) {
 		auto mes =
-			new WaitlessMemberCommand<T, Node, RESULT, ARG...>(obj, func, std::forward<ARG>(arg)...);
+			new WaitlessCommand<Node, T, RESULT, ARG...>({obj, func}, std::forward<ARG>(arg)...);
 		mes->node.self = mes;
 		pipe->send(&mes->node);
 	}
@@ -64,7 +64,7 @@ public:
 	template<typename T, typename RESULT, typename ...ARG>
 	mq::future<RESULT> request(T *obj, RESULT (T::*func)(ARG...), ARG&&... arg) {
 		auto mes =
-			new MemberCommand<T, Node, RESULT, ARG...>(obj, func, std::forward<ARG>(arg)...);
+			new Command<Node, T, RESULT, ARG...>({obj, func}, std::forward<ARG>(arg)...);
 		mes->node.self = mes;
 		auto future = mes->prms.get_future();
 		pipe->send(&mes->node);
