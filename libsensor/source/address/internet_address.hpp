@@ -6,7 +6,8 @@
 
 #include <string>
 #include <cstring>
-#include "debug.hpp"
+
+#include "../hash.hpp"
 
 class InternetAddress {
 public:
@@ -24,9 +25,9 @@ public:
 		bool result = false;
 		if (family == other.family) {
 			if (family == AF_INET) {
-				result = memcmp(&ip4, &other.ip4, sizeof(ip4));
+				result = memcmp(&address.ip4, &other.address.ip4, sizeof(address.ip4));
 			} else {
-				result = memcmp(&ip6, &other.ip6, sizeof(ip6));
+				result = memcmp(&address.ip6, &other.address.ip6, sizeof(address.ip6));
 			}
 		}
 		return result;
@@ -46,12 +47,16 @@ private:
 		struct in6_addr ip6;
 	} address;
 
-	union {
-		struct sockaddr_storage storage;
-		struct sockaddr_in ip4;
-		struct sockaddr_in6 ip6;
-	};
 
 };
+
+namespace std {
+template<>
+struct hash<InternetAddress> {
+	size_t operator()(const InternetAddress &a) {
+		return hashing::times33(a);
+	}
+};
+}
 
 #endif /* INTERNET_ADDRESS_HPP_ */

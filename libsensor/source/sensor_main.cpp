@@ -230,6 +230,11 @@ void sensor_log_packet(int size) {
 	DNOTIFY("Got packet: %i\n", size);
 }
 
+int sensor_notify() {
+	static int i = 0;
+	DNOTIFY("YEP IT IS NOTIFY: %i\n", i++);
+	return i;
+}
 //----------------------------------------------------------
 sensor_captured_t *init_captured(uint8_t *buffer, int len) {
 	assert(buffer);
@@ -299,6 +304,7 @@ int sensor_main(sensor_t config) {
 			msg.target_count = 0;
 			mq::future<int> fut = poluterQueue.request(&Poluter::spoof_nodes, std::move(msg));
 			printf("FUCK %i\n", fut.get());
+			//printf("FUCK %i\n", fut.get());
 			timer_ping(&survey_timer);
 		}
 	}

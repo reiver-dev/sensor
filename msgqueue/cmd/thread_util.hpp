@@ -11,7 +11,6 @@
 #include <pthread.h>
 
 namespace mq {
-namespace detail {
 
 class Mutex {
 public:
@@ -79,7 +78,6 @@ private:
 	pthread_cond_t cv;
 };
 
-}
 }
 
 #endif /* THREAD_UTIL_HPP_ */

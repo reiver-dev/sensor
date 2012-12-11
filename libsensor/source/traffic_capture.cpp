@@ -27,7 +27,7 @@ void TrafficCapture::run() {
 			pInfoRequest.size = packet_header->len;
 			DINFO("Captured inbound %i\n", pInfoRequest.size);
 			queueToCore->send(sensor_log_packet, (int)packet_header->len);
-
+			queueToCore->send(sensor_notify);
 			struct NodeAddress node;
 			if (arp_is_reply(packet_data, packet_header->len, &info, &node.in.s_addr, node.hw.ether_addr_octet)) {
 				DINFO("Got reply from %s\n", inet_ntoa(node.in));

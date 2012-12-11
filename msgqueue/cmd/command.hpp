@@ -4,9 +4,18 @@
 #include "future.hpp"
 #include "tuple_indexer.hpp"
 
+namespace mq {
+
 template<typename NODE>
-struct AbstractCommand {
+class AbstractCommand {
+private:
 	NODE node;
+
+public:
+
+	NODE *get_node() {
+		return &node;
+	}
 
 	virtual void call() = 0;
 	virtual ~AbstractCommand() {
@@ -14,16 +23,10 @@ struct AbstractCommand {
 	}
 };
 
-template<typename WORKER, typename RESULT, typename ...ARG>
-struct Caller {
-	WORKER *worker;
-	RESULT (WORKER::*func)(ARG...);
-
-	RESULT operator()(ARG&& ...arg) {
-		return (worker->*func)(std::forward<ARG>(arg)...);
-	}
-};
-
+/**
+ * Unpacks tuple of arguments to variadic template list
+ * and puts result into promise
+ */
 template<typename RESULT>
 struct PromiseApplier {
 
@@ -40,6 +43,10 @@ struct PromiseApplier {
 	}
 };
 
+/**
+ * Specialization for void return value
+ * when promise is simply called
+ */
 template<>
 struct PromiseApplier<void> {
 
@@ -56,15 +63,16 @@ struct PromiseApplier<void> {
 	}
 };
 
-
-#define USE_NODE using AbstractCommand<NODE>::node
-
+/**
+ * Applies stored arguments to function object
+ */
 template<typename NODE, typename FUNCTOR, typename RESULT, typename ...ARG>
-struct Command : public AbstractCommand<NODE> {
-	USE_NODE;
-
+class Command : public AbstractCommand<NODE> {
+private:
 	FUNCTOR caller;
 	std::tuple<ARG...> argument;
+
+public:
 
 	Command(FUNCTOR c, ARG&& ...arg)
 		: caller(c), argument(std::move(arg)...) {
@@ -81,14 +89,18 @@ struct Command : public AbstractCommand<NODE> {
 	}
 };
 
-
+/**
+ * Applies stored arguments to function object
+ * and returns result via future-promise
+ */
 template<typename NODE, typename FUNCTOR, typename RESULT, typename ...ARG>
-struct RequestCommand : public AbstractCommand<NODE> {
-	USE_NODE;
-
+class RequestCommand : public AbstractCommand<NODE> {
+private:
 	FUNCTOR caller;
 	std::tuple<ARG...> argument;
 	mq::promise<RESULT> prms;
+
+public:
 
 	RequestCommand(FUNCTOR c, ARG&& ...arg)
 		: caller(c), argument(std::move(arg)...) {
@@ -106,13 +118,12 @@ struct RequestCommand : public AbstractCommand<NODE> {
 	virtual ~RequestCommand() {
 		//
 	}
+
+	mq::future<RESULT> get_future() {
+		return prms.get_future();
+	}
 };
 
-
-
-
-
-
-
+}
 
 #endif /* COMMAND_HPP_ */

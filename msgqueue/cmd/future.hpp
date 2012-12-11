@@ -6,7 +6,6 @@
 #include <memory>
 #include <mutex>
 
-
 #include "thread_util.hpp"
 
 #define DISABLE_COPY(TYPE) \
@@ -77,8 +76,8 @@ class Result<void> : public ResultBase {
 class State {
 private:
 
-	detail::CondVar cond;
-	detail::Mutex   mutex;
+	CondVar cond;
+	Mutex   mutex;
 	std::unique_ptr<ResultBase> result;
 
 public:
@@ -111,7 +110,7 @@ public:
 	void set_result(ResultBase *r) {
 		std::unique_ptr<ResultBase> res(r);
 		{
-			std::lock_guard<detail::Mutex> lock(mutex);
+			std::lock_guard<Mutex> lock(mutex);
 			result.swap(res);
 		}
 		cond.notify_all();

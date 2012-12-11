@@ -25,5 +25,6 @@ struct sensor {
 };
 
 void sensor_log_packet(int size);
+int sensor_notify();
 
 #endif /* SENSOR_PRIVATE_H_ */

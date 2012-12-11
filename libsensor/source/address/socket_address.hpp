@@ -8,27 +8,27 @@
 
 #define SOCK_ADDR(type, storage) *((struct type *) &storage)
 
-class Address {
+class SocketAddress {
 public:
 
-	Address() : storage() {
+	SocketAddress() : storage() {
 		//
 	}
 
-	Address(struct sockaddr_storage sa) : storage(sa) {
+	SocketAddress(struct sockaddr_storage sa) : storage(sa) {
 		//
 	}
 
-	Address(struct sockaddr_in sa) : storage() {
+	SocketAddress(struct sockaddr_in sa) : storage() {
 		SOCK_ADDR(sockaddr_in, storage) = sa;
 	}
 
-	Address(struct sockaddr_in6 sa) : storage() {
+	SocketAddress(struct sockaddr_in6 sa) : storage() {
 		SOCK_ADDR(sockaddr_in6, storage) = sa;
 	}
 
-	bool operator== (const Address &a) {
-		return memcmp(this, &a, sizeof(Address)) == 0;
+	bool operator== (const SocketAddress &a) {
+		return memcmp(this, &a, sizeof(SocketAddress)) == 0;
 	}
 
 private:
@@ -37,8 +37,8 @@ private:
 
 namespace std {
 template<>
-struct hash<Address> {
-	size_t operator()(const Address &a) {
+struct hash<SocketAddress> {
+	size_t operator()(const SocketAddress &a) {
 		return hashing::times33(a);
 	}
 };

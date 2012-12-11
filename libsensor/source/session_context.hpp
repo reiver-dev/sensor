@@ -3,17 +3,20 @@
 
 #include <vector>
 
-#include "address.hpp"
+#include "address/internet_address.hpp"
 #include "node.hpp"
 
 class SessionContext {
 public:
-	SessionContext();
-	virtual ~SessionContext();
 
+	SessionContext(InternetAddress a);
+	~SessionContext();
+
+	void setSocket(int fd);
 
 private:
-	Address address;
+
+	InternetAddress address;
 	std::vector<NodeAddress> owned;
 };
 
