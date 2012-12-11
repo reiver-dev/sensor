@@ -82,16 +82,19 @@ void forking() {
 
 int read_config(struct arguments *arguments) {
 	char *filename = arguments->config;
-	const char *sections[] = {"main", "capture", "persistance", "survey", "balancing", "misc"};
+	const char *sections[] = {"main", "capture", "persistance", "nodes", "balancing", "misc"};
 	kvset kvs = InitKVS(6, sections);
+
 	/* main */
 	AddKVS(kvs, 0, KVS_BOOL, "Fork", &arguments->enable_fork);
 	AddKVS(kvs, 0, KVS_BOOL, "Background", &arguments->enable_background);
+
 	/* capture */
-	AddKVS(kvs, 1, KVS_STRING, "Interface", &arguments->interface);
-	AddKVS(kvs, 1, KVS_BOOL, "Promiscuous", &arguments->promiscuous);
-	AddKVS(kvs, 1, KVS_UINT32, "BufferSize", &arguments->buffersize);
+	AddKVS(kvs, 1, KVS_STRING, "Interface", &arguments->capture_interface);
+	AddKVS(kvs, 1, KVS_BOOL, "Promiscuous", &arguments->capture_promiscuous);
+	AddKVS(kvs, 1, KVS_UINT32, "BufferSize", &arguments->capture_buffersize);
 	AddKVS(kvs, 1, KVS_UINT32, "Timeout", &arguments->capture_timeout);
+
 	/* persistance */
 	AddKVS(kvs, 2, KVS_BOOL, "Enable", &arguments->enable_persistance);
 	AddKVS(kvs, 2, KVS_STRING, "Host", &arguments->head_host);
@@ -100,21 +103,24 @@ int read_config(struct arguments *arguments) {
 	AddKVS(kvs, 2, KVS_STRING, "Key", &arguments->head_key);
 	AddKVS(kvs, 2, KVS_UINT32, "Timeout", &arguments->persist_period);
 
-	/* survey */
-	AddKVS(kvs, 3, KVS_UINT32, "Timeout", &arguments->survey_timeout);
-	AddKVS(kvs, 3, KVS_UINT32, "InitialTimeout", &arguments->survey_initial_timeout);
-	AddKVS(kvs, 3, KVS_UINT32, "NodeDisconnectTimeout", &arguments->survey_nodedisconnect_timeout);
+	/* nodes */
+	AddKVS(kvs, 3, KVS_UINT32, "SurveyTimeout", &arguments->nodes_survey_timeout);
+	AddKVS(kvs, 3, KVS_UINT32, "InitialSurveyTimeout", &arguments->nodes_survey_initial_timeout);
+	AddKVS(kvs, 3, KVS_UINT32, "NodeDisconnectTimeout", &arguments->nodes_disconnect_timeout);
+	AddKVS(kvs, 3, KVS_BOOL, "EnableModifyRouting", &arguments->nodes_enable_modify_routing);
+	AddKVS(kvs, 4, KVS_UINT32, "ModifyRoutingTimeout", &arguments->nodes_modify_routing_timeout);
+	AddKVS(kvs, 3, KVS_BOOL, "EnableRedirect", &arguments->nodes_enable_redirect);
 
 	/* balancing */
-	AddKVS(kvs, 4, KVS_UINT32, "Timeout", &arguments->balancing_timeout);
-	AddKVS(kvs, 4, KVS_UINT32, "InitialTimeout", &arguments->balancing_initial_timeout);
-	AddKVS(kvs, 4, KVS_UINT32, "InfoTimeout", &arguments->balancing_info_timeout);
+	AddKVS(kvs, 4, KVS_STRING, "ListenPort", arguments->balancing_listen_port);
+	AddKVS(kvs, 4, KVS_UINT32, "RebalanceTimeout", &arguments->balancing_timeout);
+	AddKVS(kvs, 4, KVS_UINT32, "InitialSeekTimeout", &arguments->balancing_initial_seek_timeout);
+	AddKVS(kvs, 4, KVS_UINT32, "InfoRequestInterval", &arguments->balancing_info_timeout);
 	AddKVS(kvs, 4, KVS_UINT32, "SessionTimeout", &arguments->balancing_session_timeout);
-	AddKVS(kvs, 4, KVS_UINT32, "ModifyTimeout", &arguments->balancing_modify_timeout);
 	AddKVS(kvs, 4, KVS_UINT32, "LoadCount", &arguments->balancing_load_count);
 	AddKVS(kvs, 4, KVS_UINT32, "LoadInterval", &arguments->balancing_interval);
-	AddKVS(kvs, 4, KVS_BOOL, "Redirect", &arguments->enable_redirect);
-	AddKVS(kvs, 4, KVS_BOOL, "Modify", &arguments->enable_modify);
+
+
 
 	LoadKVS(kvs, filename);
 	DestroyKVS(kvs);
@@ -150,25 +156,25 @@ int main(int argc, char** argv) {
 		sensor_set_persist_callback(sensor, 0);
 	}
 
-	opts.capture.promiscuous = arguments.promiscuous;
-	strncpy(opts.capture.device_name, arguments.interface, IF_NAMESIZE);
-	opts.capture.buffersize = arguments.buffersize;
+	opts.capture.promiscuous = arguments.capture_promiscuous;
+	strncpy(opts.capture.device_name, arguments.capture_interface, IF_NAMESIZE);
+	opts.capture.buffersize = arguments.capture_buffersize;
 
 	opts.capture.timeout = arguments.capture_timeout;
 	opts.persist.timeout = arguments.persist_period;
-	opts.balancing.enable_redirect = arguments.enable_redirect;
-	opts.balancing.enable_modify = arguments.enable_modify;
+	opts.balancing.enable_redirect = arguments.nodes_enable_redirect;
+	opts.balancing.enable_modify = arguments.nodes_enable_modify_routing;
 
-	opts.survey.timeout = arguments.survey_timeout;
-	opts.survey.initial_timeout = arguments.survey_initial_timeout;
-	opts.survey.node_disconnect_timeout = arguments.survey_nodedisconnect_timeout;
+	opts.survey.timeout = arguments.nodes_survey_timeout;
+	opts.survey.initial_timeout = arguments.nodes_survey_initial_timeout;
+	opts.survey.node_disconnect_timeout = arguments.nodes_disconnect_timeout;
 
-	strncpy(opts.balancing.device_name, arguments.interface, IF_NAMESIZE);
+	strncpy(opts.balancing.device_name, arguments.capture_interface, IF_NAMESIZE);
 	opts.balancing.timeout = arguments.balancing_timeout;
 	opts.balancing.info_timeout = arguments.balancing_info_timeout;
 	opts.balancing.session_timeout = arguments.balancing_session_timeout;
-	opts.balancing.initial_timeout = arguments.balancing_initial_timeout;
-	opts.balancing.modify_timeout = arguments.balancing_modify_timeout;
+	opts.balancing.initial_timeout = arguments.balancing_initial_seek_timeout;
+	opts.balancing.modify_timeout = arguments.nodes_modify_routing_timeout;
 	opts.balancing.load_count = arguments.balancing_load_count;
 	opts.balancing.load_interval = arguments.balancing_interval;
 

@@ -7,13 +7,13 @@ struct arguments {
 	char *config;
 
 	/* main */
-	char *interface;
+	char *capture_interface;
 	bool enable_fork;
 	bool enable_background;
 
 	/* capture */
-	bool promiscuous;
-	int buffersize;
+	bool capture_promiscuous;
+	int capture_buffersize;
 	int capture_timeout;
 
 	/* persistance */
@@ -24,20 +24,22 @@ struct arguments {
 	bool enable_persistance;
 
 	/* survey */
-	int survey_timeout;
-	int survey_initial_timeout;
-	int survey_nodedisconnect_timeout;
+	int nodes_survey_timeout;
+	int nodes_survey_initial_timeout;
+	int nodes_disconnect_timeout;
+	bool nodes_enable_redirect;
+	bool nodes_enable_modify_routing;
+	int nodes_modify_routing_timeout;
 
 	/* balancing */
+	char *balancing_listen_port;
 	int balancing_timeout;
-	int balancing_initial_timeout;
+	int balancing_initial_seek_timeout;
 	int balancing_info_timeout;
 	int balancing_session_timeout;
-	int balancing_modify_timeout;
 	int balancing_load_count;
 	int balancing_interval;
-	bool enable_redirect;
-	bool enable_modify;
+
 
 	/* misc */
 	bool verbose;

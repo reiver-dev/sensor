@@ -53,13 +53,13 @@ error_t parse_options(int key, char *arg, struct argp_state *state){
 
 	// main
 	case 'i':
-		arguments->interface = arg;
+		arguments->capture_interface = arg;
 		break;
 	case 'p':
-		arguments->promiscuous = true;
+		arguments->capture_promiscuous = true;
 		break;
 	case 'b':
-		arguments->buffersize = atoi(arg);
+		arguments->capture_buffersize = atoi(arg);
 		break;
 
 	// for database
@@ -91,7 +91,7 @@ error_t parse_options(int key, char *arg, struct argp_state *state){
 		break;
 
 	case OPT_DISABLE_REDIRECT:
-		arguments->enable_redirect = false;
+		arguments->nodes_enable_redirect = false;
 		break;
 
 	case OPT_DISABLE_FORK:
@@ -121,9 +121,9 @@ struct arguments args_get_default() {
 	struct arguments arguments;
 	arguments.config = 0;
 	// main
-	arguments.interface = "eth0";
-	arguments.promiscuous = false;
-	arguments.buffersize = 65536;
+	arguments.capture_interface = "eth0";
+	arguments.capture_promiscuous = false;
+	arguments.capture_buffersize = 65536;
 	// mysql
 	arguments.head_host = "localhost";
 	arguments.head_util_port = 0;
@@ -134,7 +134,7 @@ struct arguments args_get_default() {
 	arguments.persist_period = 10;
 	// debug
 	arguments.enable_persistance = true;
-	arguments.enable_redirect = true;
+	arguments.nodes_enable_redirect = true;
 	arguments.enable_fork = true;
 	// misc
 	arguments.verbose = false;
