@@ -282,7 +282,7 @@ int sensor_main(sensor_t config) {
 	mq::MemberMessageQueue<Poluter> poluterQueue(&poluterContext);
 
 	time_t iteration_time = time(0);
-	struct timer survey_timer = {iteration_time, config->opt.survey.timeout};
+	struct timer survey_timer = {iteration_time, config->opt.nodes.survey_timeout};
 	//struct timer balancing_timer = {iteration_time, config->opt.balancing.timeout};
 	//struct timer spoof_timer = {iteration_time, config->opt.balancing.modify_timeout};
 

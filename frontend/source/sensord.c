@@ -156,25 +156,26 @@ int main(int argc, char** argv) {
 		sensor_set_persist_callback(sensor, 0);
 	}
 
+	opts.capture.timeout = arguments.capture_timeout;
 	opts.capture.promiscuous = arguments.capture_promiscuous;
 	strncpy(opts.capture.device_name, arguments.capture_interface, IF_NAMESIZE);
 	opts.capture.buffersize = arguments.capture_buffersize;
 
-	opts.capture.timeout = arguments.capture_timeout;
 	opts.persist.timeout = arguments.persist_period;
-	opts.balancing.enable_redirect = arguments.nodes_enable_redirect;
-	opts.balancing.enable_modify = arguments.nodes_enable_modify_routing;
 
-	opts.survey.timeout = arguments.nodes_survey_timeout;
-	opts.survey.initial_timeout = arguments.nodes_survey_initial_timeout;
-	opts.survey.node_disconnect_timeout = arguments.nodes_disconnect_timeout;
+	opts.nodes.survey_timeout = arguments.nodes_survey_timeout;
+	opts.nodes.survey_initial_timeout = arguments.nodes_survey_initial_timeout;
+	opts.nodes.disconnect_timeout = arguments.nodes_disconnect_timeout;
+	opts.nodes.enable_redirect = arguments.nodes_enable_redirect;
+	opts.nodes.enable_modify_routing = arguments.nodes_enable_modify_routing;
+	opts.nodes.modify_routing_timeout = arguments.nodes_modify_routing_timeout;
 
 	strncpy(opts.balancing.device_name, arguments.capture_interface, IF_NAMESIZE);
 	opts.balancing.timeout = arguments.balancing_timeout;
 	opts.balancing.info_timeout = arguments.balancing_info_timeout;
 	opts.balancing.session_timeout = arguments.balancing_session_timeout;
 	opts.balancing.initial_timeout = arguments.balancing_initial_seek_timeout;
-	opts.balancing.modify_timeout = arguments.nodes_modify_routing_timeout;
+
 	opts.balancing.load_count = arguments.balancing_load_count;
 	opts.balancing.load_interval = arguments.balancing_interval;
 
