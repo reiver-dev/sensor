@@ -13,6 +13,7 @@ public:
 
 private:
 
+	void connect_callback(ev::io &watcher, int events);
 	void read_callback(ev::io &watcher, int events);
 	void write_callback(ev::io &watcher, int events);
 	void callback(ev::io &watcher, int events);
@@ -21,7 +22,7 @@ private:
 	SessionContext *context;
 
 	int fd;
-	ev::io session_watcher;
+	ev::io net_watcher;
 
 };
 

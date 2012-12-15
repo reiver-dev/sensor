@@ -101,52 +101,126 @@ int set_nonblocking(int fd) {
 	return fcntl(fd, F_SETFL, flags | O_NONBLOCK);
 }
 
-int create_tcp_server(const char *address, const char *port) {
+int create_socket_server(int socket_type, const char *address, const char *port) {
 	struct addrinfo hints;
 	struct addrinfo *result;
+	int sock = -1;
+	int rc = 0;
 
 	memset(&hints, 0, sizeof(hints));
 	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_socktype = socket_type;
 
-	int rc = getaddrinfo(address, port, &hints, &result);
-	if (rc == 0) {
-		DERROR("%s\n", gai_strerror(rc));
+	rc = getaddrinfo(address, port, &hints, &result);
+	for (;;) {
+
+		if (rc != 0) {
+			DERROR("%s\n", gai_strerror(rc));
+			break;
+		}
+
+		int sock = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
+
+		if (sock == -1) {
+			DERROR("%s\n", strerror(errno));
+			break;
+		}
+
+		rc = bind(sock, result->ai_addr, result->ai_addrlen);
+		if (rc != 1) {
+			DERROR("%s\n", strerror(errno));
+			close(sock);
+			sock = -1;
+		}
+
+		break;
 	}
-
-	int sock = socket(result->ai_family, result->ai_socktype, 0);
-
-	if (sock != -1)
-		bind(sock, result->ai_addr, result->ai_addrlen);
-	else
-		DERROR("%s\n", strerror(errno));
-
-	freeaddrinfo(result);
-	return sock;
-}
-
-int create_tcp_connect(const char *address, const char *port) {
-	struct addrinfo hints;
-	struct addrinfo *result;
-
-	memset(&hints, 0, sizeof(hints));
-	hints.ai_family = AF_UNSPEC;
-	hints.ai_socktype = SOCK_STREAM;
-
-	int rc = getaddrinfo(address, port, &hints, &result);
-	if (rc == 0) {
-		DERROR("%s\n", gai_strerror(rc));
-	}
-
-	int sock = socket(result->ai_family, result->ai_socktype, 0);
-
-	if (sock != -1)
-		connect(sock, result->ai_addr, result->ai_addrlen);
-	else
-		DERROR("%s\n", strerror(errno));
-
 	freeaddrinfo(result);
 	return sock;
 }
 
 
+int create_tcp_connect(const char *address, const char *port, bool is_nonblock) {
+	struct addrinfo hints;
+	struct addrinfo *result;
+	int sock = -1;
+	int rc = 0;
+
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_STREAM;
+
+	rc = getaddrinfo(address, port, &hints, &result);
+	for (;;) {
+
+		if (rc != 0) {
+			DERROR("%s\n", gai_strerror(rc));
+			break;
+		}
+
+		int sock = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
+
+		if (sock == -1) {
+			DERROR("%s\n", strerror(errno));
+			break;
+		}
+
+		if (is_nonblock) {
+			set_nonblocking(sock);
+		}
+
+		rc = connect(sock, result->ai_addr, result->ai_addrlen);
+		if (rc != 1) {
+			int err = errno;
+			if (!((err == EINPROGRESS && is_nonblock) || err == EINTR)) {
+				DERROR("%s\n", strerror(errno));
+				close(sock);
+				sock = -1;
+			}
+		}
+
+		break;
+	}
+
+	freeaddrinfo(result);
+	return sock;
+}
+
+int create_inet_connect(struct sockaddr_storage *saddr, short port, bool is_nonblock) {
+	int family = saddr->ss_family;
+	socklen_t len;
+	switch(family) {
+
+	case AF_INET:
+		len = sizeof(struct sockaddr_in);
+		break;
+	case AF_INET6:
+		len = sizeof(struct sockaddr_in6);
+		break;
+	default:
+		len = 0;
+		DERROR("Not supported address family: %i", family);
+	}
+
+	int sock = socket(saddr->ss_family, SOCK_STREAM, 0);
+	if (sock == -1) {
+		DERROR("%s\n", strerror(errno));
+		return sock;
+	}
+
+	if (is_nonblock) {
+		set_nonblocking(sock);
+	}
+
+	int rc = connect(sock, (struct sockaddr *)saddr, len);
+	if (rc != 1) {
+		int err = errno;
+		if (!((err == EINPROGRESS && is_nonblock) || err == EINTR)) {
+			DERROR("%s\n", strerror(errno));
+			close(sock);
+			sock = -1;
+		}
+	}
+
+	return sock;
+}

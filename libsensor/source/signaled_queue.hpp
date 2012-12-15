@@ -1,8 +1,10 @@
 #ifndef SIGNALED_QUEUE_HPP_
 #define SIGNALED_QUEUE_HPP_
 
-#include <sys/eventfd.h>
+#include <unistd.h>
 #include <assert.h>
+
+#include <sys/eventfd.h>
 
 #include <intqueue/int_mpsc_queue.hpp>
 #include <cmd/command.hpp>
@@ -15,12 +17,12 @@ class SignaledQueue {
 public:
 	typedef int fd_t;
 
-	SignaledQueue() : descriptor(create_fd) {
+	SignaledQueue() : descriptor(create_fd()) {
 		//
 	}
 
 	~SignaledQueue() {
-		close(fd);
+		close(descriptor);
 	}
 
 	fd_t get_fd() {
@@ -70,6 +72,12 @@ public:
 		return times;
 	}
 
+	void nullmsg() {
+		Node *nullmsg = new Node();
+		nullmsg->self = nullptr;
+		queue.push(nullmsg);
+	}
+
 private:
 
 	fd_t descriptor;
@@ -83,9 +91,10 @@ private:
 		return static_cast<ACommand *>(node->self);
 	}
 
-	static void send(fd_t descr) {
+	static int send(fd_t descr) {
 		const uint64_t inc = 1;
 		ssize_t sz = write(descr, &inc, sizeof(inc));
+		return sz;
 	}
 
 	static int recv(fd_t descr) {

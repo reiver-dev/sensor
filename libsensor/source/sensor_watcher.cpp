@@ -9,9 +9,11 @@
 
 SensorWatcher::SensorWatcher(SessionContext *sc, int sock) : context(sc), fd(sock) {
 	set_nonblocking(fd);
-	session_watcher.set<SensorWatcher, &SensorWatcher::callback>(this);
-	session_watcher.start(fd, ev::READ | ev::WRITE);
+	net_watcher.set<SensorWatcher, &SensorWatcher::callback>(this);
+	net_watcher.start(fd, ev::READ | ev::WRITE);
 }
+
+
 
 SensorWatcher::~SensorWatcher() {
 	// TODO Auto-generated destructor stub
