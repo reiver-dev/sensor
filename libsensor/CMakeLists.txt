@@ -7,15 +7,30 @@ add_definitions(-std=gnu++11)
 file(GLOB HEADERS source/*.hpp)
 file(GLOB SOURCES source/*.cpp)
 
-find_path(PCAP_H pcap.h)
-find_library(LIBPCAP pcap)
+macro(putlibpath header_path lib_path)
+    set(INCLUDES ${INCLUDES} ${header_path})
+    set(LIBS ${LIBS} ${lib_path})
+endmacro(putlibpath)
 
-find_path(EV_H ev.h)
-find_library(LIBEV ev)
+macro(putlib header lib)
+    find_path(HDR ${header})
+    find_library(LIB ${lib})
+    putlibpath(${HDR} ${LIB})
+endmacro(putlib)
 
-include_directories(include ${PCAP_H} ${EV_H})
+putlib(pcap.h pcap)
+putlib(ev.h ev)
+putlib(msgpack.hpp msgpack)
+
+find_path(PGM_H NAMES pgm/pgm.h PATH_SUFFIXES pgm-5.1 pgm-5.2)
+find_library(LIBPGM pgm)
+putlibpath(${PGM_H} ${LIBPGM})
+
+
+include_directories(include ${INCLUDES})
 
 add_library(${PROJECT_NAME} STATIC ${HEADERS} ${SOURCES})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "")
-target_link_libraries (${PROJECT_NAME} pthread ${LIBPCAP} ${LIBEV})
+
+target_link_libraries (${PROJECT_NAME} pthread ${LIBS})
