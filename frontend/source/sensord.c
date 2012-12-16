@@ -112,7 +112,7 @@ int read_config(struct arguments *arguments) {
 	AddKVS(kvs, 3, KVS_BOOL, "EnableRedirect", &arguments->nodes_enable_redirect);
 
 	/* balancing */
-	AddKVS(kvs, 4, KVS_STRING, "ListenPort", arguments->balancing_listen_port);
+	AddKVS(kvs, 4, KVS_STRING, "ListenPort", &arguments->balancing_listen_port);
 	AddKVS(kvs, 4, KVS_UINT32, "RebalanceTimeout", &arguments->balancing_timeout);
 	AddKVS(kvs, 4, KVS_UINT32, "InitialSeekTimeout", &arguments->balancing_initial_seek_timeout);
 	AddKVS(kvs, 4, KVS_UINT32, "InfoRequestInterval", &arguments->balancing_info_timeout);
