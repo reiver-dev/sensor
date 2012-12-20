@@ -15,13 +15,16 @@ public:
 	InternetAddress(struct in_addr  ip4);
 	InternetAddress(struct in6_addr ip6);
 
+	static InternetAddress fromSocketAddress(struct sockaddr *addr);
+
+
 	~InternetAddress() {
 		//
 	}
 
 	size_t get_sockaddr(struct sockaddr_storage *storage);
 
-	bool operator == (const InternetAddress &other) {
+	bool operator == (const InternetAddress &other) const {
 		bool result = false;
 		if (family == other.family) {
 			if (family == AF_INET) {
@@ -41,6 +44,8 @@ public:
 
 private:
 
+	InternetAddress();
+
 	sa_family_t family;
 	union {
 		struct in_addr ip4;
@@ -53,7 +58,7 @@ private:
 namespace std {
 template<>
 struct hash<InternetAddress> {
-	size_t operator()(const InternetAddress &a) {
+	size_t operator()(const InternetAddress &a) const {
 		return hashing::times33(a);
 	}
 };

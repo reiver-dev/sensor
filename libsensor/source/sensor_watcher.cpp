@@ -7,18 +7,40 @@
 
 #include "sensor_watcher.hpp"
 
-SensorWatcher::SensorWatcher(SessionContext *sc, int sock) : context(sc), fd(sock) {
-	set_nonblocking(fd);
-	net_watcher.set<SensorWatcher, &SensorWatcher::callback>(this);
-	net_watcher.start(fd, ev::READ | ev::WRITE);
+
+SensorWatcher* SensorWatcher::createInstance(SessionContext *sc, int sock) {
+	SensorWatcher *watcher = new SensorWatcher();
+
+	watcher->context = sc;
+	watcher->fd = sock;
+
+	watcher->inbuf = new SockBuffer(4096);
+	watcher->outbuf = new SockBuffer(4096);
+
+	watcher->net_watcher.set(watcher->fd);
+	watcher->net_watcher.set<SensorWatcher, &SensorWatcher::callback>(watcher);
+	watcher->net_watcher.set(EV_READ);
+
+	return watcher;
+
 }
 
-
+SensorWatcher::SensorWatcher() : context(), fd(), inbuf(), outbuf() {
+	//
+}
 
 SensorWatcher::~SensorWatcher() {
-	// TODO Auto-generated destructor stub
+	delete inbuf;
+	delete outbuf;
 }
 
+void SensorWatcher::start() {
+	net_watcher.start();
+}
+
+void SensorWatcher::stop() {
+	net_watcher.stop();
+}
 
 void SensorWatcher::write_callback(ev::io &watcher, int events) {
 
@@ -31,13 +53,14 @@ void SensorWatcher::read_callback(ev::io &watcher, int events) {
 
 void SensorWatcher::callback(ev::io &watcher, int events) {
 	if (EV_ERROR & events) {
-		return;
+		delete this;
 	}
 
-	if (events & EV_READ)
+	if (events & EV_READ) {
 		read_callback(watcher, events);
+	}
 
-	if (events & EV_WRITE)
+	if (events & EV_WRITE) {
 		write_callback(watcher, events);
-
+	}
 }

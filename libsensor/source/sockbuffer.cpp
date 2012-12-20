@@ -41,12 +41,12 @@ int SockBuffer::get(void *data, size_t sz) {
 	return done;
 }
 
-int SockBuffer::pick(void *data, size_t sz) {
+int SockBuffer::pick(void *data, size_t sz) const {
 	return move_data(begin, end, buffer, data, sz);
 }
 
 
-size_t SockBuffer::distance(size_t from, size_t to) {
+size_t SockBuffer::distance(size_t from, size_t to) const {
 	ssize_t result;
 	if (from < to) {
 		result = to - from;
@@ -56,7 +56,7 @@ size_t SockBuffer::distance(size_t from, size_t to) {
 	return result;
 }
 
-size_t SockBuffer::cont_distance(size_t from, size_t to) {
+size_t SockBuffer::cont_distance(size_t from, size_t to) const {
 	ssize_t result;
 	if (from < to) {
 		result = to - from;
@@ -66,7 +66,7 @@ size_t SockBuffer::cont_distance(size_t from, size_t to) {
 	return result;
 }
 
-int SockBuffer::move_data(size_t begin, size_t end, const void* from, void* to, size_t sz) {
+int SockBuffer::move_data(size_t begin, size_t end, const void* from, void* to, size_t sz) const {
 	size_t done = 0;
 
 	while (sz - done) {

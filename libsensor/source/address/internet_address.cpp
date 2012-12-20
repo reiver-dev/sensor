@@ -15,7 +15,23 @@ InternetAddress::InternetAddress(struct in6_addr addr) : family(AF_INET6), addre
 	memcpy(&address.ip6, &addr, sizeof(addr));
 }
 
+InternetAddress InternetAddress::fromSocketAddress(struct sockaddr* addr) {
+	InternetAddress internetAddress;
+	internetAddress.family = addr->sa_family;
+	if (internetAddress.family == AF_INET6) {
+		struct sockaddr_in *a = addr;
+		internetAddress.address.ip4 = a->sin_addr;
+	} else {
+		struct sockaddr_in6 *a = addr;
+		internetAddress.address.ip6 = a->sin6_addr;
+	}
+	return internetAddress;
+}
 
 size_t InternetAddress::get_sockaddr(struct sockaddr_storage *storage) {
 	return 0;
+}
+
+InternetAddress::InternetAddress() : family() {
+	//
 }

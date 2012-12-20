@@ -5,7 +5,7 @@
 
 #include "sensor_private.hpp"
 #include "socket_utils.hpp"
-#include "session_context.hpp"
+#include "sensor_watcher.hpp"
 #include "signaled_member_queue.hpp"
 #include "negotiation_model.hpp"
 

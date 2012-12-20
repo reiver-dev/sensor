@@ -35,7 +35,7 @@ SensorService::~SensorService() {
 }
 
 void SensorService::run() {
-
+	loop.run(0);
 
 
 
@@ -44,7 +44,17 @@ void SensorService::run() {
 void SensorService::accepted(ev::io &watcher, int events) {
 	struct sockaddr_storage addr;
 	socklen_t addr_len = sizeof(addr);
-	accept(watcher.fd, (struct sockaddr *) &addr, &addr_len);
+	int fd = accept(watcher.fd, (struct sockaddr *) &addr, &addr_len);
+	InternetAddress from = InternetAddress::fromSocketAddress((struct sockaddr *)&addr);
+	SessionContext *session;
+	if (!model.check_session(from)) {
+		session = model.create_session(from);
+	} else {
+		session = model.get_session(from);
+	}
+	SensorWatcher *sensor_watcher = SensorWatcher::createInstance(session, fd);
+	sensor_watcher->start();
+
 }
 
 void SensorService::connected(ev::io &watcher, int events) {
