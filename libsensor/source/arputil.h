@@ -1,11 +1,14 @@
 #ifndef ARPUTIL_H_
 #define ARPUTIL_H_
 
-
 #include <netinet/ether.h>
 #include <netinet/in.h>
 
-#include "netinfo.hpp"
+#include "netinfo.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 /* Protocol types */
 struct arp_ip4 {
@@ -29,5 +32,9 @@ void arp_request_set_to_ip(uint8_t *buffer, uint32_t to_ip4);
 bool arp_is_reply(const uint8_t *buffer, size_t length,
 	const struct InterfaceInfo *current,
 	uint32_t *out_ip4, uint8_t out_hw[ETH_ALEN]);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif /* ARPUTIL_H_ */

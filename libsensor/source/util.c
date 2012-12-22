@@ -7,7 +7,7 @@
 #include <arpa/inet.h>
 #include <netinet/ether.h>
 
-#include "util.hpp"
+#include "util.h"
 #include "debug.hpp"
 
 char *Ip4ToStr(const uint32_t ip) {

@@ -14,7 +14,7 @@ int close_socket(int socket);
 int set_socket_timeout(int sock, int seconds);
 int set_nonblocking(int fd);
 int create_socket_server(int socket_type, const char *address, const char *port);
-int create_tcp_connect(const char *address, const char *port);
+int create_tcp_connect(const char *address, const char *port, bool is_nonblock);
 
 
 #ifdef __cplusplus

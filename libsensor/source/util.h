@@ -1,7 +1,8 @@
 #ifndef UTIL_H_
 #define UTIL_H_
+
+
 #include <stdint.h>
-#include <cstddef>
 #include <netinet/ether.h>
 
 #ifdef __cplusplus

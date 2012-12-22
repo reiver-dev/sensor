@@ -10,7 +10,7 @@
 #include "networking.h"
 
 #include "sensor_private.hpp"
-#include "socket_utils.hpp"
+#include "socket_utils.h"
 
 #include <member_msgqueue.hpp>
 
@@ -20,8 +20,8 @@
 
 #include "debug.hpp"
 #include "node.hpp"
-#include "netinfo.hpp"
-#include "util.hpp"
+#include "netinfo.h"
+#include "util.h"
 
 #define SENSOR_DEFAULT_READ_BUFFER_SIZE 65536
 #define SENSOR_DEFAULT_TIMEOUT 1

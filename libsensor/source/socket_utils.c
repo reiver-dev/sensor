@@ -9,7 +9,7 @@
 #include <netdb.h>
 #include <ifaddrs.h>
 
-#include "socket_utils.hpp"
+#include "socket_utils.h"
 
 #include "networking.h"
 #include "debug.hpp"

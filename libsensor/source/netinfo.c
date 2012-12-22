@@ -11,9 +11,9 @@
 #include <netinet/ether.h>
 #include <netinet/in.h>
 
-#include "netinfo.hpp"
+#include "netinfo.h"
 #include "debug.hpp"
-#include "util.hpp"
+#include "util.h"
 
 
 struct InterfaceInfo read_interface_info(const char* interfaceName) {
@@ -51,16 +51,17 @@ uint8_t* get_current_mac_r(int sock, const char* interfaceName, uint8_t* hwaddr)
 struct in_addr get_current_address(int sock, const char* interfaceName) {
 
 	struct ifreq interface;
+	struct in_addr address = {0};
 	strcpy(interface.ifr_name, interfaceName);
 	interface.ifr_addr.sa_family = AF_INET;
 
 	if (ioctl(sock, SIOCGIFADDR, &interface) == -1) {
 		char errbuf[512];
 		DERROR("%s\n", strerror_r(errno, errbuf, sizeof(errbuf)));
-		return {0};
+		return address;
 	}
 
-	struct in_addr address = ((struct sockaddr_in *)&interface.ifr_addr)->sin_addr;
+	address = ((struct sockaddr_in *)&interface.ifr_addr)->sin_addr;
 	return address;
 }
 
@@ -68,12 +69,13 @@ struct in_addr get_current_netmask(int sock, const char* interfaceName) {
 	struct ifreq interface;
 	strcpy(interface.ifr_name, interfaceName);
 	interface.ifr_addr.sa_family = AF_INET;
+	struct in_addr netmask = {0};
 
 	if (ioctl(sock, SIOCGIFNETMASK, &interface) == -1) {
-		return {0};
+		return netmask;
 	}
 
-	struct in_addr netmask = ((struct sockaddr_in *)&interface.ifr_addr)->sin_addr;
+	netmask = ((struct sockaddr_in *)&interface.ifr_addr)->sin_addr;
 	return netmask;
 
 }

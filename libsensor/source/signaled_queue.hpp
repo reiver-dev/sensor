@@ -9,7 +9,7 @@
 #include <intqueue/int_mpsc_queue.hpp>
 #include <cmd/command.hpp>
 
-#include "socket_utils.hpp"
+#include "socket_utils.h"
 
 namespace mq {
 

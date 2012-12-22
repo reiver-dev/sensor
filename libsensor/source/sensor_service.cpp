@@ -4,7 +4,7 @@
 
 #include "sensor_service.hpp"
 #include "session_context.hpp"
-#include "netinfo.hpp"
+#include "netinfo.h"
 
 
 SensorService::SensorService(sensor_opt_balancing *opts) :

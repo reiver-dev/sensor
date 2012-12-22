@@ -4,11 +4,11 @@
 
 #include "poluter.hpp"
 
-#include "arputil.hpp"
+#include "arputil.h"
 #include "node.hpp"
-#include "netinfo.hpp"
+#include "netinfo.h"
 #include "debug.hpp"
-#include "util.hpp"
+#include "util.h"
 
 
 void Poluter::perform_survey() {

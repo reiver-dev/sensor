@@ -4,7 +4,7 @@
 #include <ev++.h>
 
 #include "sensor_private.hpp"
-#include "socket_utils.hpp"
+#include "socket_utils.h"
 #include "sensor_watcher.hpp"
 #include "signaled_member_queue.hpp"
 #include "negotiation_model.hpp"

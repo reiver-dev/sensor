@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 #include "sensor.h"
-#include "netinfo.hpp"
+#include "netinfo.h"
 
 
 enum sensor_error_e {

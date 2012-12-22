@@ -6,7 +6,7 @@
 
 #include "sensor_private.hpp"
 #include <msgqueue.hpp>
-#include "netinfo.hpp"
+#include "netinfo.h"
 
 
 

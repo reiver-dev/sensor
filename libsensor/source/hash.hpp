@@ -1,7 +1,7 @@
 #ifndef HASH_HPP_
 #define HASH_HPP_
 
-#include "socket_utils.hpp"
+#include "socket_utils.h"
 
 namespace hashing {
 

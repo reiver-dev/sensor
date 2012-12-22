@@ -2,10 +2,11 @@ cmake_minimum_required(VERSION 2.8)
 
 project(libsensor CXX)
 
-add_definitions(-std=gnu++11)
+set(CMAKE_C_FLAGS ${CMAKE_C_FLAGS} -std=gnu99)
+set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} -std=gnu++11)
 
-file(GLOB HEADERS source/*.hpp)
-file(GLOB SOURCES source/*.cpp)
+file(GLOB HEADERS source/*.hpp source/*.h)
+file(GLOB SOURCES source/*.cpp source/*.c)
 
 macro(putlibpath header_path lib_path)
     set(INCLUDES ${INCLUDES} ${header_path})
