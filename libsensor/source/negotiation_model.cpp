@@ -1,5 +1,5 @@
 #include "negotiation_model.hpp"
-#include "debug.hpp"
+#include "debug.h"
 
 NegotiationModel::NegotiationModel() {
 

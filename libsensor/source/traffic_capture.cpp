@@ -4,7 +4,7 @@
 #include "networking.h"
 
 #include "traffic_capture.hpp"
-#include "debug.hpp"
+#include "debug.h"
 #include "arputil.h"
 #include "node.hpp"
 

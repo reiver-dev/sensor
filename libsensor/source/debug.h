@@ -8,10 +8,10 @@
 
 #ifdef __cplusplus
 extern "C" {
+#define __FUNCTION__ __PRETTY_FUNCTION__
 #endif
 
 #ifndef NDEBUG
-#define __FUNCTION__ __PRETTY_FUNCTION__
 //-----------------------------
 
 void debug(int level, const char *function, const char *format, ...);

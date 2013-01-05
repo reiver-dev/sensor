@@ -5,7 +5,7 @@
 #include <assert.h>
 
 #include "random.h"
-#include "debug.hpp"
+#include "debug.h"
 
 static inline void process_pgm_error(pgm_error_t *error) {
 	if (!error) {

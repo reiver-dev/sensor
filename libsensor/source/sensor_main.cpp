@@ -18,7 +18,7 @@
 #include "traffic_capture.hpp"
 #include "poluter.hpp"
 
-#include "debug.hpp"
+#include "debug.h"
 #include "node.hpp"
 #include "netinfo.h"
 #include "util.h"

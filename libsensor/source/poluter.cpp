@@ -7,7 +7,7 @@
 #include "arputil.h"
 #include "node.hpp"
 #include "netinfo.h"
-#include "debug.hpp"
+#include "debug.h"
 #include "util.h"
 
 

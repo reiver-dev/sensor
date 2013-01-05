@@ -12,7 +12,7 @@
 #include "socket_utils.h"
 
 #include "networking.h"
-#include "debug.hpp"
+#include "debug.h"
 
 /*
  * Packet family

@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <stdio.h>
 
-#include "debug.hpp"
+#include "debug.h"
 
 
 
@@ -51,7 +51,7 @@ void debug(int level, const char *function, const char *format, ...){
 	printf(line);
 }
 
-void debug_append(int level, char *format, ...) {
+void debug_append(int level, const char *format, ...) {
 	if (rvr_debug < level)
 		return;
 

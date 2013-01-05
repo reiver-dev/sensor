@@ -8,7 +8,7 @@
 #include <netinet/ether.h>
 
 #include "util.h"
-#include "debug.hpp"
+#include "debug.h"
 
 char *Ip4ToStr(const uint32_t ip) {
 	return inet_ntoa(*(struct in_addr *)&ip);

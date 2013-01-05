@@ -12,7 +12,7 @@
 #include <netinet/in.h>
 
 #include "netinfo.h"
-#include "debug.hpp"
+#include "debug.h"
 #include "util.h"
 
 
