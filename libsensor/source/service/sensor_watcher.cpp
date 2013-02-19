@@ -14,8 +14,8 @@ SensorWatcher* SensorWatcher::createInstance(SessionContext *sc, int sock) {
 	watcher->context = sc;
 	watcher->fd = sock;
 
-	watcher->inbuf = new SockBuffer(4096);
-	watcher->outbuf = new SockBuffer(4096);
+	watcher->inbuf = new CircularBuffer(4096);
+	watcher->outbuf = new CircularBuffer(4096);
 
 	watcher->net_watcher.set(watcher->fd);
 	watcher->net_watcher.set<SensorWatcher, &SensorWatcher::callback>(watcher);

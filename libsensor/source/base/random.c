@@ -20,12 +20,12 @@ uint32_t random_get32() {
 
 uint64_t random_get64() {
 	uint32_t arr[2] = {rand(), rand()};
-	uint64_t res = *(uint64_t *)arr;
-	return res;
+	uint64_t *res = (uint64_t *)arr;
+	return *res;
 }
 
 void random_getbuf(uint8_t *buf, size_t len) {
-	for (size_t i; i < len; i++) {
+	for (size_t i = 0; i < len; i++) {
 		buf[i] = rand();
 	}
 }

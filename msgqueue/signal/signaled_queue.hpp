@@ -1,15 +1,13 @@
 #ifndef SIGNALED_QUEUE_HPP_
 #define SIGNALED_QUEUE_HPP_
 
-#include <unistd.h>
+
 #include <assert.h>
 
-#include <sys/eventfd.h>
+#include "queue/int_mpsc_queue.hpp"
+#include "cmd/command.hpp"
+#include "signaler.hpp"
 
-#include <intqueue/int_mpsc_queue.hpp>
-#include <cmd/command.hpp>
-
-#include "socket_utils.h"
 
 namespace mq {
 
@@ -17,40 +15,36 @@ class SignaledQueue {
 public:
 	typedef int fd_t;
 
-	SignaledQueue() : descriptor(create_fd()) {
+	SignaledQueue() {
 		//
 	}
 
-	~SignaledQueue() {
-		close(descriptor);
-	}
-
-	fd_t get_fd() {
-		return descriptor;
+	const Signaler& signal() const {
+		return signaler;
 	}
 
 	template<typename FUNC, typename RESULT, typename ...ARG>
 	void send(FUNC func, ARG&&... arg) {
 		auto mes =
-			new Command<Node, FUNC, RESULT, ARG...>(func, std::forward<ARG>(arg)...);
+			new Command<Node, FUNC, ARG...>(func, std::forward<ARG>(arg)...);
 		mes->get_node()->self = mes;
 		queue.push(mes->get_node());
-		send(descriptor);
+		signaler.send();
 	}
 
 	template<typename FUNC, typename RESULT, typename ...ARG>
 	mq::future<RESULT> request(FUNC func, ARG&&... arg) {
 		auto mes =
-			new RequestCommand<Node, FUNC, RESULT, ARG...>(func, std::forward<ARG>(arg)...);
+			new RequestCommand<Node, FUNC, ARG...>(func, std::forward<ARG>(arg)...);
 		mes->get_node()->self = mes;
 		auto future = mes->get_future();
 		queue.push(mes->get_node());
-		send(descriptor);
+		signaler.send();
 		return future;
 	}
 
 	int receive() {
-		int times = recv(descriptor);
+		int times = signaler.recv();
 		int actual_times = times;
 		for (int i = 0; i < times; ++i) {
 			for (;;) {
@@ -80,35 +74,16 @@ public:
 
 private:
 
-	fd_t descriptor;
-
-	IntMpscQueue queue;
-
 	typedef IntMpscQueue::Node Node;
 	typedef AbstractCommand<Node> ACommand;
+
+	Signaler signaler;
+	IntMpscQueue queue;
 
 	ACommand *getcommand(Node *node) {
 		return static_cast<ACommand *>(node->self);
 	}
 
-	static int send(fd_t descr) {
-		const uint64_t inc = 1;
-		ssize_t sz = write(descr, &inc, sizeof(inc));
-		return sz;
-	}
-
-	static int recv(fd_t descr) {
-		uint64_t ret;
-		ssize_t sz = read(descr, &ret, sizeof (ret));
-		assert(sz == sizeof(ret));
-		return ret;
-	}
-
-	static int create_fd() {
-		fd_t fd = eventfd(0, 0);
-		set_nonblocking(fd);
-		return fd;
-	}
 };
 
 } /* namespace mq */

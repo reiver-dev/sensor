@@ -1,7 +1,7 @@
 #ifndef MSGQUEUE_H_
 #define MSGQUEUE_H_
 
-#include "intqueue/int_mpsc_pipe.hpp"
+#include "queue/int_mpsc_pipe.hpp"
 #include "cmd/command.hpp"
 #include "cmd/caller.hpp"
 
@@ -48,7 +48,7 @@ public:
 	template<typename FUNC, typename RESULT, typename ...ARG>
 	mq::future<RESULT> request(FUNC func, ARG&&... arg) {
 		auto mes =
-			new RequestCommand<Node, FUNC, RESULT, ARG...>(func, std::forward<ARG>(arg)...);
+			new RequestCommand<Node, FUNC, ARG...>(func, std::forward<ARG>(arg)...);
 		mes->get_node()->self = mes;
 		auto future = mes->get_future();
 		pipe->send(mes->get_node());

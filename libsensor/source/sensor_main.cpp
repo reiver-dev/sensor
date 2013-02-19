@@ -18,10 +18,9 @@
 #include "traffic_capture.hpp"
 #include "poluter.hpp"
 
-#include "debug.h"
-#include "node.hpp"
-#include "netinfo.h"
-#include "util.h"
+#include "base/debug.h"
+#include "base/clock.h"
+#include "base/util.h"
 
 #define SENSOR_DEFAULT_READ_BUFFER_SIZE 65536
 #define SENSOR_DEFAULT_TIMEOUT 1
@@ -34,20 +33,20 @@ enum {
 };
 
 struct timer {
-	time_t last;
-	time_t period;
+	uint64_t last;
+	uint64_t period;
 };
 
-bool timer_check(struct timer *timer, time_t now) {
+bool timer_check(struct timer *timer, uint64_t now) {
 	return (now - timer->last) > timer->period;
 }
 
-void timer_ping_r(struct timer *timer, time_t now) {
+void timer_ping_r(struct timer *timer, uint64_t now) {
 	timer->last = now;
 }
 
 void timer_ping(struct timer *timer) {
-	timer_ping_r(timer, time(0));
+	timer_ping_r(timer, get_now_usec());
 }
 
 //------------PRIVATE---------------------
@@ -256,10 +255,8 @@ void sensor_breakloop(sensor_t config) {
 	config->activated = false;
 }
 
-#include "ts_hash_table.hpp"
-int sensor_main(sensor_t config) {
-	TsHashTable<long, NodeAddress> a;
 
+int sensor_main(sensor_t config) {
 	pthread_t captureThread, poluterThread;
 	pcap_t *handle;
 
@@ -281,7 +278,7 @@ int sensor_main(sensor_t config) {
 
 	mq::MemberMessageQueue<Poluter> poluterQueue(&poluterContext);
 
-	time_t iteration_time = time(0);
+	uint64_t iteration_time = get_now_usec();
 	struct timer survey_timer = {iteration_time, config->opt.nodes.survey_timeout};
 	//struct timer balancing_timer = {iteration_time, config->opt.balancing.timeout};
 	//struct timer spoof_timer = {iteration_time, config->opt.balancing.modify_timeout};
@@ -296,15 +293,13 @@ int sensor_main(sensor_t config) {
 	DNOTIFY("%s\n", "Threads Started");
 
 	while (config->activated) {
-		iteration_time = time(0);
+		iteration_time = get_now_usec();
 		coreQueue.receive();
 		if (timer_check(&survey_timer, iteration_time)) {
 			Poluter::MsgSpoof msg;
 			msg.targets = NULL;
 			msg.target_count = 0;
-			mq::future<int> fut = poluterQueue.request(&Poluter::spoof_nodes, std::move(msg));
-			printf("FUCK %i\n", fut.get());
-			//printf("FUCK %i\n", fut.get());
+			poluterQueue.send(&Poluter::spoof_nodes, std::move(msg));
 			timer_ping(&survey_timer);
 		}
 	}

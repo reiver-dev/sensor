@@ -18,6 +18,7 @@ private:
 
 	InternetAddress address;
 	std::vector<NodeAddress> owned;
+
 };
 
 #endif /* SESSION_CONTEXT_HPP_ */

@@ -26,6 +26,7 @@ uint64_t get_pgm_rate_timeout(pgm_sock_t *sock);
 uint64_t get_pgm_send_timeout(pgm_sock_t *sock);
 bool get_pgm_send_fd(pgm_sock_t *sock, struct pgm_send_fds *send_fds);
 bool get_pgm_recv_fd(pgm_sock_t *sock, struct pgm_recv_fds *recv_fds);
+uint64_t pgm_sender_push_fsm(pgm_sock_t *sock);
 
 #ifdef __cplusplus
 }

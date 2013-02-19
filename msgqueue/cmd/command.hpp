@@ -23,6 +23,12 @@ public:
 	}
 };
 
+template<typename FUNC, typename ...ARG>
+struct ReturnType {
+
+};
+
+
 /**
  * Unpacks tuple of arguments to variadic template list
  * and puts result into promise
@@ -93,9 +99,12 @@ public:
  * Applies stored arguments to function object
  * and returns result via future-promise
  */
-template<typename NODE, typename FUNCTOR, typename RESULT, typename ...ARG>
+template<typename NODE, typename FUNCTOR, typename ...ARG>
 class RequestCommand : public AbstractCommand<NODE> {
 private:
+
+	typedef typename std::result_of<FUNCTOR(ARG...)>::type RESULT;
+
 	FUNCTOR caller;
 	std::tuple<ARG...> argument;
 	mq::promise<RESULT> prms;

@@ -6,8 +6,11 @@
 #include "sensor_private.hpp"
 #include "socket_utils.h"
 #include "sensor_watcher.hpp"
-#include "signaled_member_queue.hpp"
 #include "negotiation_model.hpp"
+#include "event_system.hpp"
+
+#include <signal/signaled_member_queue.hpp>
+
 
 class SensorService {
 public:
@@ -36,14 +39,14 @@ private:
 
 	ev::default_loop loop;
 
-	ev::io connect_watcher;
-	ev::io accept_watcher;
-	ev::io lookup_watcher;
-	ev::io capture_watcher;
+	IoEvent connect_watcher;
+	IoEvent accept_watcher;
+	IoEvent lookup_watcher;
+	IoEvent capture_watcher;
 
-	ev::timer balance_timer;
-	ev::timer lookup_timer;
-	ev::timer survey_timer;
+	TimerEvent balance_timer;
+	TimerEvent lookup_timer;
+	TimerEvent survey_timer;
 
 	NegotiationModel model;
 

@@ -12,8 +12,8 @@
 #include <netinet/in.h>
 
 #include "netinfo.h"
-#include "debug.h"
-#include "util.h"
+#include "base/debug.h"
+#include "base/util.h"
 
 
 struct InterfaceInfo read_interface_info(const char* interfaceName) {

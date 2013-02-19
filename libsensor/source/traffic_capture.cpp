@@ -1,10 +1,11 @@
 #include <stdbool.h>
 #include <pcap.h>
 
-#include "networking.h"
+#include <net/networking.h>
+#include <base/debug.h>
 
 #include "traffic_capture.hpp"
-#include "debug.h"
+
 #include "arputil.h"
 #include "node.hpp"
 

@@ -72,7 +72,7 @@ template<typename RESULT>
 class functor_expand {
 private:
 
-	template<typename FUNCTOR, typename ...ARG, size_t ... Indices>
+	template<typename FUNCTOR, typename ...ARG, size_t ...Indices>
 	static RESULT forward_functor_impl(FUNCTOR func, std::tuple<ARG...>&& tuple, indices<Indices...>) {
 		return func(std::forward<ARG>(std::get<Indices>(tuple))...);
 	}

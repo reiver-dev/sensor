@@ -4,8 +4,8 @@
 #include <stdio.h>
 #include <assert.h>
 
-#include "random.h"
-#include "debug.h"
+#include "base/random.h"
+#include "base/debug.h"
 
 static inline void process_pgm_error(pgm_error_t *error) {
 	if (!error) {
@@ -240,4 +240,34 @@ bool get_pgm_recv_fd(pgm_sock_t *sock, struct pgm_recv_fds *recv_fds) {
 		*recv_fds = fds;
 	}
 	return ok;
+}
+
+
+uint64_t pgm_sender_push_fsm(pgm_sock_t *sock) {
+	struct pgm_msgv_t dummy_msg;
+
+	size_t length = 0;
+	pgm_error_t *pgm_error = NULL;
+
+	const int status = pgm_recvmsgv(sock, &dummy_msg, 1, MSG_ERRQUEUE, &length, &pgm_error);
+
+	assert(status != PGM_IO_STATUS_ERROR);
+	assert(length == 0);
+
+	uint64_t timeout;
+	switch(status) {
+	case PGM_IO_STATUS_TIMER_PENDING:
+		timeout = get_pgm_send_timeout(sock);
+		DINFO("PGM - send pending for (%i)", timeout);
+		break;
+	case PGM_IO_STATUS_RATE_LIMITED:
+		timeout = get_pgm_rate_timeout(sock);
+		DINFO("PGM - rate limited for (%i)", timeout);
+		break;
+	default:
+		timeout = 0;
+		break;
+	}
+
+	return true;
 }

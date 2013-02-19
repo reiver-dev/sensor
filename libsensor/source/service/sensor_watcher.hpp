@@ -4,7 +4,7 @@
 #include <ev++.h>
 #include <memory>
 
-#include "sockbuffer.hpp"
+#include "socket_buffer.hpp"
 #include "session_context.hpp"
 
 class SensorWatcher {
@@ -30,8 +30,8 @@ private:
 	int fd;
 	ev::io net_watcher;
 
-	SockBuffer *inbuf;
-	SockBuffer *outbuf;
+	CircularBuffer *inbuf;
+	CircularBuffer *outbuf;
 
 };
 

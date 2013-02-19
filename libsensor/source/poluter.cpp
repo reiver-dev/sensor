@@ -7,8 +7,8 @@
 #include "arputil.h"
 #include "node.hpp"
 #include "netinfo.h"
-#include "debug.h"
-#include "util.h"
+#include "base/debug.h"
+#include "base/util.h"
 
 
 void Poluter::perform_survey() {
