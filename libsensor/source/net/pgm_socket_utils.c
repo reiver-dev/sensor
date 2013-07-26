@@ -257,7 +257,7 @@ uint64_t pgm_sender_push_fsm(pgm_sock_t *sock) {
 	uint64_t timeout;
 	switch(status) {
 	case PGM_IO_STATUS_TIMER_PENDING:
-		timeout = get_pgm_send_timeout(sock);
+		timeout = get_pgm_timeout(sock);
 		DINFO("PGM - send pending for (%i)", timeout);
 		break;
 	case PGM_IO_STATUS_RATE_LIMITED:
