@@ -13,12 +13,12 @@ void arp_reply_create(uint8_t buffer[ARP_IP4_SIZE], uint32_t my_ip4, const uint8
 	assert(my_ip4 != to_ip4);
 
 	struct ether_header *ethernet;
- 	struct arphdr *header;
- 	struct arp_ip4 *data;
+	struct arphdr *header;
+	struct arp_ip4 *data;
 
- 	ethernet = (struct ether_header *)buffer;
- 	header = (struct arphdr *)(buffer + sizeof(struct ether_header));
- 	data = (struct arp_ip4 *)(buffer + sizeof(struct ether_header) + sizeof(struct arphdr));
+	ethernet = (struct ether_header *)buffer;
+	header = (struct arphdr *)(buffer + sizeof(struct ether_header));
+	data = (struct arp_ip4 *)(buffer + sizeof(struct ether_header) + sizeof(struct arphdr));
 
 	memcpy(ethernet->ether_dhost, to_hw, ETH_ALEN);
 	memcpy(ethernet->ether_shost, my_hw, ETH_ALEN);
@@ -65,8 +65,8 @@ void arp_request_create(uint8_t buffer[ARP_IP4_SIZE], uint32_t my_ip4, const uin
 }
 
 void arp_request_set_to_ip(uint8_t *buffer, uint32_t to_ip4) {
-	  struct arp_ip4 *arpheader = (struct arp_ip4 *)(buffer + sizeof(struct ether_header) + sizeof(struct arphdr));
-	  arpheader->ar_tip = to_ip4;
+	struct arp_ip4 *arpheader = (struct arp_ip4 *)(buffer + sizeof(struct ether_header) + sizeof(struct arphdr));
+	arpheader->ar_tip = to_ip4;
 }
 
 
@@ -88,8 +88,8 @@ bool arp_is_reply(const uint8_t *buffer, size_t length, const struct InterfaceIn
 	const uint8_t *hw = current->hw.ether_addr_octet;
 	if (!memcmp(ethernet->ether_shost, hw, ETH_ALEN)    /* source mac is not me */
 		|| memcmp(ethernet->ether_dhost, hw, ETH_ALEN)  /* dest mac is me       */
-		|| ethernet->ether_type != ntohs(ETH_P_ARP)                   /* arp protocol         */
-		|| header->ar_op != ntohs(ARPOP_REPLY)                        /* arp reply operation  */
+		|| ethernet->ether_type != ntohs(ETH_P_ARP)     /* arp protocol         */
+		|| header->ar_op != ntohs(ARPOP_REPLY)          /* arp reply operation  */
 		|| !memcmp(arpheader->ar_sha, hw, ETH_ALEN)     /* source is not me     */
 		|| memcmp(arpheader->ar_tha, hw, ETH_ALEN)      /* dest is me           */
 		) {

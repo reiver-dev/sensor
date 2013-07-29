@@ -1,7 +1,7 @@
 #ifndef NODE_HPP_
 #define NODE_HPP_
 
-#include "networking.h"
+#include "net/networking.h"
 
 struct NodeAddress {
 	struct ether_addr hw;

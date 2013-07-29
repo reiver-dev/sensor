@@ -28,7 +28,7 @@ find_path(PGM_INCLUDE NAMES pgm/pgm.h PATH_SUFFIXES pgm-5.1 pgm-5.2)
 find_library(PGM_LIBS pgm)
 putlibpath(${PGM_INCLUDE} ${PGM_LIBS})
 
-set(LOCAL_INCLUDES source source/net)
+set(LOCAL_INCLUDES source)
 
 include_directories(include ${INCLUDES} ${LOCAL_INCLUDES})
 

@@ -7,10 +7,11 @@
 #include <assert.h>
 #include <pthread.h>
 
-#include "networking.h"
+#include "net/networking.h"
+#include "net/socket_utils.h"
 
 #include "sensor_private.hpp"
-#include "socket_utils.h"
+
 
 #include <member_msgqueue.hpp>
 

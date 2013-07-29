@@ -4,7 +4,7 @@
 #include <ev++.h>
 #include <memory>
 
-#include "socket_buffer.hpp"
+#include "net/socket_buffer.hpp"
 #include "session_context.hpp"
 
 class SensorWatcher {

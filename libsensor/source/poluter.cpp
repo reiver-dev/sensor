@@ -4,9 +4,9 @@
 
 #include "poluter.hpp"
 
-#include "arputil.h"
+#include "net/arputil.h"
 #include "node.hpp"
-#include "netinfo.h"
+#include "net/netinfo.h"
 #include "base/debug.h"
 #include "base/util.h"
 

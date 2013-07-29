@@ -6,7 +6,7 @@
 
 #include "traffic_capture.hpp"
 
-#include "arputil.h"
+#include "net/arputil.h"
 #include "node.hpp"
 
 
