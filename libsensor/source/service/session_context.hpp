@@ -3,7 +3,6 @@
 
 #include <vector>
 
-#include "address/internet_address.hpp"
 #include "node.hpp"
 
 class SessionContext {

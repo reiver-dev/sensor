@@ -70,7 +70,7 @@ void arp_request_set_to_ip(uint8_t *buffer, uint32_t to_ip4) {
 }
 
 
-bool arp_is_reply(const uint8_t *buffer, size_t length, uint8_t current_hw[ETH_ALEN],
+bool arp_is_reply(const uint8_t *buffer, size_t length, const uint8_t current_hw[ETH_ALEN],
 	uint32_t *out_ip4, uint8_t out_hw[ETH_ALEN]) {
 
 	if (length < ARP_IP4_SIZE) {

@@ -1,12 +1,12 @@
 #ifndef NODE_HPP_
 #define NODE_HPP_
 
-#include "net/networking.h"
+#include "base/internet_address.hpp"
+#include "base/hw_address.hpp"
 
 struct NodeAddress {
-	struct ether_addr hw;
-	struct in_addr  in;
-	struct in6_addr in6;
+	HwAddress hw;
+	InternetAddress in;
 };
 
 

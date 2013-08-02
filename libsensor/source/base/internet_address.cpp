@@ -7,6 +7,10 @@
 
 #include "internet_address.hpp"
 
+InternetAddress::InternetAddress() : family(AF_UNSPEC), address() {
+	//
+}
+
 InternetAddress::InternetAddress(struct in_addr addr) : family(AF_INET), address() {
 	memcpy(&address.ip4, &addr, sizeof(addr));
 }
@@ -28,10 +32,7 @@ InternetAddress::InternetAddress(struct sockaddr* addr, size_t len) {
 	}
 }
 
-size_t InternetAddress::get_sockaddr(struct sockaddr_storage *storage) {
-	return 0;
-}
+/*void InternetAddress::setAddr4(struct in_addr ip4);
+void InternetAddress::setAddr6(struct in6_addr ip6);
+InternetAddress& InternetAddress::operator=(InternetAddress ip4);*/
 
-InternetAddress::InternetAddress() : family() {
-	//
-}

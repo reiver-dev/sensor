@@ -45,7 +45,7 @@ void SensorService::accepted(ev::io &watcher, int events) {
 	struct sockaddr_storage addr;
 	socklen_t addr_len = sizeof(addr);
 	int fd = accept(watcher.fd, (struct sockaddr *) &addr, &addr_len);
-	InternetAddress from = InternetAddress::fromSocketAddress((struct sockaddr *)&addr);
+	InternetAddress from((struct sockaddr *)&addr, addr_len);
 	SessionContext *session;
 	if (!model.check_session(from)) {
 		session = model.create_session(from);

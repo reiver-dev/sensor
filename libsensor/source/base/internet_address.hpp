@@ -12,15 +12,34 @@
 class InternetAddress {
 public:
 
+	InternetAddress();
 	InternetAddress(struct in_addr  ip4);
 	InternetAddress(struct in6_addr ip6);
 	InternetAddress(struct sockaddr *addr, size_t len);
+
 
 	~InternetAddress() {
 		//
 	}
 
-	size_t get_sockaddr(struct sockaddr_storage *storage);
+	InternetAddress& operator=(const InternetAddress &other) {
+		family = other.family;
+		memcpy(&address, &other.address, sizeof(address));
+		return *this;
+	}
+
+
+	void setAddr4(struct in_addr ip4);
+	void setAddr6(struct in6_addr ip6);
+
+
+	const in_addr& ip4() const {
+		return address.ip4;
+	}
+
+	const in6_addr& ip6() const {
+		return address.ip6;
+	}
 
 	bool operator == (const InternetAddress &other) const {
 		bool result = false;
@@ -41,8 +60,6 @@ public:
 	}
 
 private:
-
-	InternetAddress();
 
 	sa_family_t family;
 	union {
