@@ -80,7 +80,7 @@ int commit_config(sensor_t config) {
 			return res;
 	}
 
-	config->current = read_interface_info(config->opt.capture.device_name);
+	config->captureInterface = read_interface_info(config->opt.capture.device_name);
 
 
 
@@ -235,7 +235,7 @@ int sensor_notify() {
 	DNOTIFY("YEP IT IS NOTIFY: %i\n", i++);
 	return i;
 }
-//----------------------------------------------------------
+
 sensor_captured_t *init_captured(uint8_t *buffer, int len) {
 	assert(buffer);
 
@@ -261,11 +261,11 @@ int sensor_main(sensor_t config) {
 	pthread_t captureThread, poluterThread;
 	pcap_t *handle;
 
-	config->current = read_interface_info(config->opt.capture.device_name);
-	DNOTIFY("Current MAC: %s\n", ether_ntoa(&config->current.hw));
-	DNOTIFY("Current IP4: %s\n", inet_ntoa(config->current.ip4.local));
-	DNOTIFY("Current NETMASK: %s\n", inet_ntoa(config->current.ip4.netmask));
-	DNOTIFY("Current GATEWAY: %s\n", inet_ntoa(config->current.ip4.gateway));
+	config->captureInterface = read_interface_info(config->opt.capture.device_name);
+	DNOTIFY("Current MAC: %s\n", ether_ntoa(&config->captureInterface.hw));
+	DNOTIFY("Current IP4: %s\n", inet_ntoa(config->captureInterface.ip4.local));
+	DNOTIFY("Current NETMASK: %s\n", inet_ntoa(config->captureInterface.ip4.netmask));
+	DNOTIFY("Current GATEWAY: %s\n", inet_ntoa(config->captureInterface.ip4.gateway));
 
 	DNOTIFY("%s\n", "Creating pcap");
 	handle = create_pcap_handle(config);

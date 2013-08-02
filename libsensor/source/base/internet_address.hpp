@@ -14,9 +14,7 @@ public:
 
 	InternetAddress(struct in_addr  ip4);
 	InternetAddress(struct in6_addr ip6);
-
-	static InternetAddress fromSocketAddress(struct sockaddr *addr);
-
+	InternetAddress(struct sockaddr *addr, size_t len);
 
 	~InternetAddress() {
 		//

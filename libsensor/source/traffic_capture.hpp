@@ -15,7 +15,7 @@ struct PacketInfoRequest {
 class TrafficCapture {
 public:
 	TrafficCapture(sensor_t context, pcap_t *handle, mq::MessageQueue *toCore) :
-		active(false), info(context->current), handle(handle), queueToCore(toCore) {}
+		active(false), interface(context->captureInterface), handle(handle), queueToCore(toCore) {}
 	void stop();
 	bool isRunning();
 
@@ -27,7 +27,7 @@ private:
 	void run();
 
 	bool active;
-	InterfaceInfo info;
+	InterfaceInfo interface;
 	pcap_t *handle;
 	mq::MessageQueue *queueToCore;
 };

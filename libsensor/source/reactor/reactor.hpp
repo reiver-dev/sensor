@@ -39,10 +39,6 @@ private:
 	struct ev_loop *m_eventLoop;
 };
 
-
-
-
-
 }
 
 #endif /* REACTOR_HPP_ */

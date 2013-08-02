@@ -49,7 +49,7 @@ public:
 	int spoof_nodes(MsgSpoof msg);
 
 	Poluter(sensor_t context, pcap_t *handle) :
-		active(false), handle(handle), info(context->current) {}
+		active(false), handle(handle), info(context->captureInterface) {}
 
 private:
 	void run();

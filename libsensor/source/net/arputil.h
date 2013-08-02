@@ -30,7 +30,7 @@ void arp_request_create(uint8_t buffer[ARP_IP4_SIZE], uint32_t my_ip4,
 void arp_request_set_to_ip(uint8_t *buffer, uint32_t to_ip4);
 
 bool arp_is_reply(const uint8_t *buffer, size_t length,
-	const struct InterfaceInfo *current,
+	const uint8_t current_hw[ETH_ALEN],
 	uint32_t *out_ip4, uint8_t out_hw[ETH_ALEN]);
 
 #ifdef __cplusplus

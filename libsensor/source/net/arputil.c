@@ -70,7 +70,7 @@ void arp_request_set_to_ip(uint8_t *buffer, uint32_t to_ip4) {
 }
 
 
-bool arp_is_reply(const uint8_t *buffer, size_t length, const struct InterfaceInfo *current,
+bool arp_is_reply(const uint8_t *buffer, size_t length, uint8_t current_hw[ETH_ALEN],
 	uint32_t *out_ip4, uint8_t out_hw[ETH_ALEN]) {
 
 	if (length < ARP_IP4_SIZE) {
@@ -85,7 +85,7 @@ bool arp_is_reply(const uint8_t *buffer, size_t length, const struct InterfaceIn
 	header = (struct arphdr *) (buffer + sizeof(struct ether_header));
 	arpheader = (struct arp_ip4 *) (buffer + sizeof(struct ether_header) + sizeof(struct arphdr));
 
-	const uint8_t *hw = current->hw.ether_addr_octet;
+	const uint8_t *hw = current_hw;
 	if (!memcmp(ethernet->ether_shost, hw, ETH_ALEN)    /* source mac is not me */
 		|| memcmp(ethernet->ether_dhost, hw, ETH_ALEN)  /* dest mac is me       */
 		|| ethernet->ether_type != ntohs(ETH_P_ARP)     /* arp protocol         */

@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <stdbool.h>
-#include "packet_extract.hpp"
+#include "packet_extract.h"
 
 static void *next(void *header, size_t header_len) {
 	if (!header) {

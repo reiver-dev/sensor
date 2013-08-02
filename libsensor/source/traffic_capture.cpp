@@ -30,7 +30,7 @@ void TrafficCapture::run() {
 			queueToCore->send(sensor_log_packet, (int)packet_header->len);
 			queueToCore->send(sensor_notify);
 			struct NodeAddress node;
-			if (arp_is_reply(packet_data, packet_header->len, &info, &node.in.s_addr, node.hw.ether_addr_octet)) {
+			if (arp_is_reply(packet_data, packet_header->len, interface.hw.ether_addr_octet, &node.in.s_addr, node.hw.ether_addr_octet)) {
 				DINFO("Got reply from %s\n", inet_ntoa(node.in));
 			}
 

@@ -8,13 +8,13 @@
 extern "C" {
 #endif
 
-struct NetAddress4 {
+struct Ip4NetInfo {
 	struct in_addr local;
 	struct in_addr netmask;
 	struct in_addr gateway;
 };
 
-struct NetAddress6 {
+struct Ip6NetInfo {
 	struct in6_addr local;
 	struct in6_addr netmask;
 	struct in6_addr gateway;
@@ -22,14 +22,10 @@ struct NetAddress6 {
 
 struct InterfaceInfo {
 	struct ether_addr hw;
-	struct NetAddress4 ip4;
-	struct NetAddress6 ip6;
+	struct Ip4NetInfo ip4;
+	struct Ip6NetInfo ip6;
 };
 
-
-struct IntenetAddress6 {
-	struct ether_addr hw;
-};
 
 struct InterfaceInfo read_interface_info(const char* interfaceName);
 
