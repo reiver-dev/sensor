@@ -32,7 +32,34 @@ InternetAddress::InternetAddress(struct sockaddr* addr, size_t len) {
 	}
 }
 
-/*void InternetAddress::setAddr4(struct in_addr ip4);
-void InternetAddress::setAddr6(struct in6_addr ip6);
-InternetAddress& InternetAddress::operator=(InternetAddress ip4);*/
+void InternetAddress::setAddr4(struct in_addr ip4) {
+	family = AF_INET;
+	address.ip4 = ip4;
+}
+void InternetAddress::setAddr6(const struct in6_addr &ip6) {
+	family = AF_INET6;
+	address.ip6 = ip6;
+}
 
+InternetAddress& InternetAddress::operator=(const InternetAddress &other) {
+	family = other.family;
+	memcpy(&address, &other.address, sizeof(address));
+	return *this;
+}
+
+bool InternetAddress::operator==(const InternetAddress &other) const {
+	bool result = false;
+	if (family == other.family) {
+		if (family == AF_INET) {
+			result = memcmp(&address.ip4, &other.address.ip4, sizeof(address.ip4));
+		} else {
+			result = memcmp(&address.ip6, &other.address.ip6, sizeof(address.ip6));
+		}
+	}
+	return result;
+}
+
+char *InternetAddress::toString(char buffer[INET6_ADDRSTRLEN]) const {
+	inet_ntop(family, &address, buffer, INET6_ADDRSTRLEN);
+	return buffer;
+}

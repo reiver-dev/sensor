@@ -1,7 +1,8 @@
 #ifndef NEGOTIATOR_HPP_
 #define NEGOTIATOR_HPP_
 
-#include <ev++.h>
+
+#include "reactor/reactor.hpp"
 
 #include "sensor_private.hpp"
 #include "net/socket_utils.h"
@@ -26,13 +27,22 @@ public:
 
 private:
 
+	sensor_opt_balancing *options;
+
+	net::EventLoop eventLoop;
+	net::TcpAcceptor acceptor;
+	net::TcpConnector connector;
+	SignaledMemberQueue<SensorService> mqueue;
+
+	InternetAddress currentAddress;
+
 	void accepted(ev::io &watcher, int events);
 	void connected(ev::io &watcher, int events);
 	void lookup_received(ev::io &watcher, int events);
 	void polute_timeout(ev::timer &watcher);
 
-	sensor_opt_balancing *options;
-	SignaledMemberQueue<SensorService> mqueue;
+
+
 
 	int server_socket;
 	int lookup_socket;

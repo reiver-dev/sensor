@@ -18,6 +18,7 @@
 /* thread modules */
 #include "traffic_capture.hpp"
 #include "poluter.hpp"
+#include "raw_packet_handler.hpp"
 
 #include "base/debug.h"
 #include "base/clock.h"
@@ -80,7 +81,7 @@ int commit_config(sensor_t config) {
 			return res;
 	}
 
-	config->captureInterface = read_interface_info(config->opt.capture.device_name);
+	read_interface_info(config->opt.capture.device_name, &config->captureInterface);
 
 
 
@@ -195,37 +196,6 @@ int sensor_set_persist_callback(sensor_t config, sensor_persist_f callback) {
 }
 
 //----------------------------------------------------------
-
-static pcap_t *create_pcap_handle(sensor_t context) {
-	char errbuf[PCAP_ERRBUF_SIZE] = {0};
-	pcap_t *pcapHandle = NULL;
-	pcap_t *result = NULL;
-
-	bool success = true;
-	pcapHandle = pcap_create(context->opt.capture.device_name, errbuf);
-	DINFO("Pcap created %s\n", errbuf);
-
-	success = !pcap_set_promisc(pcapHandle, context->opt.capture.promiscuous);
-	success = success && !pcap_set_buffer_size(pcapHandle, context->opt.capture.buffersize);
-
-	if (!pcap_setdirection(pcapHandle, PCAP_D_OUT)) {
-		DWARNING("%s\n", "can't set PCAP_D_IN");
-	}
-
-	success = success && !pcap_activate(pcapHandle);
-
-	if (success) {
-		result = pcapHandle;
-		DINFO("Pcap initialized successfully\n", errbuf);
-	} else {
-		pcap_close(pcapHandle);
-		DERROR("Pcap crash: %s\n", pcap_geterr(pcapHandle));
-	}
-
-	return result;
-}
-
-
 void sensor_log_packet(int size) {
 	DNOTIFY("Got packet: %i\n", size);
 }
@@ -259,25 +229,21 @@ void sensor_breakloop(sensor_t config) {
 
 int sensor_main(sensor_t config) {
 	pthread_t captureThread, poluterThread;
-	pcap_t *handle;
+	RawPacketHandler rawPacketHandler;
 
-	config->captureInterface = read_interface_info(config->opt.capture.device_name);
+	read_interface_info(config->opt.capture.device_name, &config->captureInterface);
 	DNOTIFY("Current MAC: %s\n", ether_ntoa(&config->captureInterface.hw));
 	DNOTIFY("Current IP4: %s\n", inet_ntoa(config->captureInterface.ip4.local));
 	DNOTIFY("Current NETMASK: %s\n", inet_ntoa(config->captureInterface.ip4.netmask));
 	DNOTIFY("Current GATEWAY: %s\n", inet_ntoa(config->captureInterface.ip4.gateway));
 
-	DNOTIFY("%s\n", "Creating pcap");
-	handle = create_pcap_handle(config);
-
-	// ---------------------------------------
+	rawPacketHandler.initialize(config->opt.capture.device_name,
+		config->opt.capture.buffersize, config->opt.capture.promiscuous);
 
 	mq::MessageQueue coreQueue;
 
-	TrafficCapture captureContext(config, handle, &coreQueue);
-	Poluter poluterContext(config, handle);
-
-	mq::MemberMessageQueue<Poluter> poluterQueue(&poluterContext);
+	TrafficCapture captureContext(config, rawPacketHandler, &coreQueue);
+	Poluter poluterContext(config, rawPacketHandler);
 
 	uint64_t iteration_time = get_now_usec();
 	struct timer survey_timer = {iteration_time, config->opt.nodes.survey_timeout};
@@ -289,7 +255,7 @@ int sensor_main(sensor_t config) {
 	DNOTIFY("%s\n", "Starting");
 
 	pthread_create(&captureThread, NULL, (void *(*)(void*))TrafficCapture::start, &captureContext);
-	pthread_create(&poluterThread, NULL, (void *(*)(void*))mq::MemberMessageQueue<Poluter>::start, &poluterQueue);
+	pthread_create(&poluterThread, NULL, (void *(*)(void*))Poluter::start, &poluterContext);
 
 	DNOTIFY("%s\n", "Threads Started");
 
@@ -300,7 +266,7 @@ int sensor_main(sensor_t config) {
 			Poluter::MsgSpoof msg;
 			msg.targets = NULL;
 			msg.target_count = 0;
-			poluterQueue.send(&Poluter::spoof_nodes, std::move(msg));
+			poluterContext.messageQueue().send(&Poluter::spoof_nodes, std::move(msg));
 			timer_ping(&survey_timer);
 		}
 	}
@@ -308,7 +274,7 @@ int sensor_main(sensor_t config) {
 
 	DNOTIFY("%s\n", "Stopping threads");
 
-	poluterQueue.nullmsg();
+	poluterContext.messageQueue().nullmsg();
 	captureContext.stop();
 
 	coreQueue.run();
@@ -320,7 +286,6 @@ int sensor_main(sensor_t config) {
 
 	DNOTIFY("%s\n", "Closing pcap");
 
-	pcap_close(handle);
-
+	rawPacketHandler.close();
 	return 0;
 }

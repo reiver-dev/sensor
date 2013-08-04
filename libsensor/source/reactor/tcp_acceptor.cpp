@@ -4,7 +4,10 @@
 
 using namespace net;
 
-TcpAcceptor::TcpAcceptor(const char *addr, const char *port) {
+TcpAcceptor::TcpAcceptor() {
+
+}
+void TcpAcceptor::initialize(const char *addr, const char *port) {
 	sock = Socket::createFromText(addr, port, &m_address);
 
 	if (sock.set_nonblocking(true)) {
@@ -22,6 +25,13 @@ TcpAcceptor::TcpAcceptor(const char *addr, const char *port) {
 	ev_io_init(&handler, onEvent, sock.fd(), EV_READ);
 	handler.data = this;
 	reactor = 0;
+}
+
+
+void TcpAcceptor::initialize(const char* addr, uint16_t port) {
+	char service[16] = { };
+	snprintf(service, 16, "%hu", port);
+	initialize(addr, service);
 }
 
 void TcpAcceptor::setAcceptCallback(const AcceptCB& cb) {

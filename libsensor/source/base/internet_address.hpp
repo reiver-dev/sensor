@@ -7,7 +7,7 @@
 #include <string>
 #include <cstring>
 
-#include "../hash.hpp"
+#include "hash.hpp"
 
 class InternetAddress {
 public:
@@ -17,21 +17,14 @@ public:
 	InternetAddress(struct in6_addr ip6);
 	InternetAddress(struct sockaddr *addr, size_t len);
 
-
-	~InternetAddress() {
-		//
-	}
-
-	InternetAddress& operator=(const InternetAddress &other) {
-		family = other.family;
-		memcpy(&address, &other.address, sizeof(address));
-		return *this;
-	}
-
+	InternetAddress& operator=(const InternetAddress &other);
 
 	void setAddr4(struct in_addr ip4);
-	void setAddr6(struct in6_addr ip6);
+	void setAddr6(const struct in6_addr &ip6);
 
+	bool operator == (const InternetAddress &other) const;
+
+	char *toString(char buffer[INET6_ADDRSTRLEN]) const;
 
 	const in_addr& ip4() const {
 		return address.ip4;
@@ -39,24 +32,6 @@ public:
 
 	const in6_addr& ip6() const {
 		return address.ip6;
-	}
-
-	bool operator == (const InternetAddress &other) const {
-		bool result = false;
-		if (family == other.family) {
-			if (family == AF_INET) {
-				result = memcmp(&address.ip4, &other.address.ip4, sizeof(address.ip4));
-			} else {
-				result = memcmp(&address.ip6, &other.address.ip6, sizeof(address.ip6));
-			}
-		}
-		return result;
-	}
-
-	std::string to_string() {
-		std::string result(INET6_ADDRSTRLEN, '\0');
-		inet_ntop(family, (const void *)&address, &result.front(), result.length());
-		return result;
 	}
 
 private:

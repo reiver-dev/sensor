@@ -5,21 +5,32 @@
 #include "sensor_service.hpp"
 #include "session_context.hpp"
 #include "net/netinfo.h"
-
+#include "base/debug.h"
 
 SensorService::SensorService(sensor_opt_balancing *opts) :
-	options(opts), mqueue(nullptr), loop(ev::NOENV)
-{
+	options(opts), mqueue(nullptr), loop(ev::NOENV) {
 
-	int s = socket(AF_INET, SOCK_DGRAM, 0);
-	get_current_address(s, opts->device_name);
-	close(s);
+	struct in_addr ip4addr;
+	struct in6_addr ip6addr;
+	char buffer[64];
+
+	if (get_current_address(AF_INET6, opts->device_name, &ip6addr)) {
+		currentAddress.setAddr6(ip6addr);
+	} else if (get_current_address(AF_INET, opts->device_name, &ip4addr)) {
+		currentAddress.setAddr4(ip4addr);
+	} else {
+		DERROR("Error getting interface (%s) address", opts->device_name);
+	}
+
+	acceptor.initialize(currentAddress.toString(buffer), "31337");
+
+
 
 	server_socket = create_socket_server(SOCK_STREAM, "0.0.0.0", "31337");
 	set_nonblocking(server_socket);
 	listen(server_socket, SOMAXCONN);
 
-	lookup_socket = create_socket_server(SOCK_DGRAM, "0.0.0.0", "31338");
+	lookup_socket = create_socket_server(SOCK_DGRAM, "0.0.0.0", "31337");
 	set_nonblocking(lookup_socket);
 
 	accept_watcher.set<SensorService, &SensorService::accepted>(this);

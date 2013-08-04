@@ -5,8 +5,9 @@
 #include <iostream>
 
 #include "sensor_private.hpp"
-#include <msgqueue.hpp>
+#include <member_msgqueue.hpp>
 #include "net/netinfo.h"
+#include "raw_packet_handler.hpp"
 
 
 
@@ -45,18 +46,25 @@ public:
 
 	};
 
+	static void *start(Poluter *self);
+
 	void perform_survey();
 	int spoof_nodes(MsgSpoof msg);
 
-	Poluter(sensor_t context, pcap_t *handle) :
-		active(false), handle(handle), info(context->captureInterface) {}
+	mq::MemberMessageQueue<Poluter>& messageQueue() {
+		return message_queue;
+	}
+
+	Poluter(sensor_t context, RawPacketHandler handler) :
+		active(false), rawHandler(handler), info(context->captureInterface), message_queue(this) {}
 
 private:
 	void run();
 
 	bool active;
-	pcap_t *handle;
+	RawPacketHandler rawHandler;
 	struct InterfaceInfo info;
+	mq::MemberMessageQueue<Poluter> message_queue;
 };
 
 #endif /* POLUTER_H_ */
