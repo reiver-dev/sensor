@@ -4,7 +4,7 @@
 #include <unordered_map>
 
 #include "stream_link.hpp"
-#include "reactor.hpp"
+#include "event_loop.hpp"
 #include "callback.hpp"
 
 
@@ -37,7 +37,7 @@ private:
 
 	std::unordered_map<ev_io, entry_t, hasher_t, equals_t> m_pendingConnections;
 
-	Reactor *reactor;
+	EventLoop *reactor;
 };
 
 }

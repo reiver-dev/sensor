@@ -48,7 +48,7 @@ void StreamLink::write(char *data, size_t len) {
 	m_out.append(data, len);
 }
 
-void StreamLink::initialize(Socket sock, Reactor *reactor) {
+void StreamLink::initialize(Socket sock, EventLoop *reactor) {
 	m_sock = sock;
 	m_reactor = reactor;
 	m_handler.data = this;
@@ -57,7 +57,7 @@ void StreamLink::initialize(Socket sock, Reactor *reactor) {
 	ev_io_start(m_reactor->get_loop(), &m_handler);
 }
 
-void StreamLink::initialize(const ev_io &handler, Reactor *reactor) {
+void StreamLink::initialize(const ev_io &handler, EventLoop *reactor) {
 	m_sock = handler.fd;
 	m_reactor = reactor;
 	m_handler.data = this;

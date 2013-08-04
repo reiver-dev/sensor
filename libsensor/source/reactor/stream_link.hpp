@@ -1,7 +1,7 @@
 #ifndef STREAM_LINK_HPP_
 #define STREAM_LINK_HPP_
 
-#include "reactor.hpp"
+#include "event_loop.hpp"
 #include "socket.hpp"
 #include "callback.hpp"
 #include "buffer.hpp"
@@ -69,8 +69,8 @@ private:
 
 	static void eventCallback(EV_P_ ev_io *handler, int revents);
 
-	void initialize(Socket sock, Reactor *reactor);
-	void initialize(const ev_io& handler, Reactor *reactor);
+	void initialize(Socket sock, EventLoop *reactor);
+	void initialize(const ev_io& handler, EventLoop *reactor);
 
 	void processRead();
 	void processWrite();
@@ -92,7 +92,7 @@ private:
 	Buffer m_in;
 	Buffer m_out;
 
-	Reactor *m_reactor;
+	EventLoop *m_reactor;
 
 	friend class TcpConnector;
 	friend class TcpAcceptor;

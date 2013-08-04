@@ -28,7 +28,7 @@ void TcpAcceptor::setAcceptCallback(const AcceptCB& cb) {
 	onAccept = cb;
 }
 
-void TcpAcceptor::start(Reactor *r) {
+void TcpAcceptor::start(EventLoop *r) {
 	reactor = r;
 	if (sock.listen()) {
 		throw std::runtime_error(strerror(errno));

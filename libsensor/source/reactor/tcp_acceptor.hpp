@@ -2,7 +2,7 @@
 #define TCP_ACCEPTOR_HPP_
 
 #include "stream_link.hpp"
-#include "reactor.hpp"
+#include "event_loop.hpp"
 #include "callback.hpp"
 
 namespace net {
@@ -15,7 +15,7 @@ public:
 	TcpAcceptor(const char *addr, const char *port);
 	void setAcceptCallback(const AcceptCB& cb);
 
-	void start(Reactor *r);
+	void start(EventLoop *r);
 	void stop();
 
 private:
@@ -28,7 +28,7 @@ private:
 	EndpointAddress m_address;
 	Socket sock;
 
-	Reactor *reactor;
+	EventLoop *reactor;
 };
 
 }
