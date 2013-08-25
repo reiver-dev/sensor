@@ -14,8 +14,6 @@ public:
 
 	typedef CB::Callback<StreamLink* (const EndpointAddress&)> AcceptCB;
 
-	TcpAcceptor();
-
 	void initialize(const char *addr, const char *port);
 	void initialize(const char* addr, uint16_t port);
 

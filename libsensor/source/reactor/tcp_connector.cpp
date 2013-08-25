@@ -18,6 +18,7 @@ void TcpConnector::connect(char* addr, char* port, const ConnectCB& continuation
 }
 
 void TcpConnector::setConnectCallback(const ConnectCB& cb) {
+
 }
 
 void TcpConnector::onEvent(struct ev_loop *loop, ev_io *handler, int revent) {

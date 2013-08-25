@@ -24,12 +24,6 @@ SensorService::SensorService(sensor_opt_balancing *opts) :
 
 	acceptor.initialize(currentAddress.toString(buffer), "31337");
 
-
-
-	server_socket = create_socket_server(SOCK_STREAM, "0.0.0.0", "31337");
-	set_nonblocking(server_socket);
-	listen(server_socket, SOMAXCONN);
-
 	lookup_socket = create_socket_server(SOCK_DGRAM, "0.0.0.0", "31337");
 	set_nonblocking(lookup_socket);
 
@@ -41,15 +35,12 @@ SensorService::SensorService(sensor_opt_balancing *opts) :
 
 }
 
-SensorService::~SensorService() {
-
+void SensorService::start() {
+	eventLoop.start();
 }
 
-void SensorService::run() {
-	loop.run(0);
-
-
-
+void SensorService::stop() {
+	eventLoop.stop();
 }
 
 void SensorService::accepted(ev::io &watcher, int events) {

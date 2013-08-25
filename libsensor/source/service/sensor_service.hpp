@@ -19,11 +19,8 @@ public:
 
 	SensorService(sensor_opt_balancing *opts);
 
-	virtual ~SensorService();
-
-	void initialize();
-	void run();
-
+	void start();
+	void stop();
 
 private:
 
@@ -40,9 +37,6 @@ private:
 	void connected(ev::io &watcher, int events);
 	void lookup_received(ev::io &watcher, int events);
 	void polute_timeout(ev::timer &watcher);
-
-
-
 
 	int server_socket;
 	int lookup_socket;

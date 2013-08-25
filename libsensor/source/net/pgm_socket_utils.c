@@ -269,5 +269,13 @@ uint64_t pgm_sender_push_fsm(pgm_sock_t *sock) {
 		break;
 	}
 
-	return true;
+	return timeout;
 }
+
+size_t pgm_get_max_tsdu(pgm_sock_t *sock) {
+	int max_tsdu = 0;
+	socklen_t optlen = sizeof(max_tsdu);
+	pgm_getsockopt(sock, IPPROTO_PGM, PGM_MSS, &max_tsdu, &optlen);
+	return (size_t) max_tsdu;
+}
+

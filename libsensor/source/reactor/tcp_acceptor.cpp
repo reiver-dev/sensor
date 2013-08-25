@@ -1,12 +1,10 @@
 #include "tcp_acceptor.hpp"
 
 #include <stdexcept>
+#include <assert.h>
 
 using namespace net;
 
-TcpAcceptor::TcpAcceptor() {
-
-}
 void TcpAcceptor::initialize(const char *addr, const char *port) {
 	sock = Socket::createFromText(addr, port, &m_address);
 
@@ -39,6 +37,7 @@ void TcpAcceptor::setAcceptCallback(const AcceptCB& cb) {
 }
 
 void TcpAcceptor::start(EventLoop *r) {
+	assert(r);
 	reactor = r;
 	if (sock.listen()) {
 		throw std::runtime_error(strerror(errno));
