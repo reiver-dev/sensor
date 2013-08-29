@@ -15,27 +15,20 @@ public:
 
 	typedef CB::Callback<StreamLink* (const EndpointAddress&)> ConnectCB;
 
-	void connect(char *address, char *port, const ConnectCB& continuation);
+	void connect(EventLoop *loop, char *address, char *port, const ConnectCB& continuation);
 	void setConnectCallback(const ConnectCB& cb);
 
 private:
 
 	static void onEvent(EV_P_ ev_io *handler, int revent);
 
-	typedef std::pair<EndpointAddress, ConnectCB> entry_t;
-
-	struct hasher_t {
-		size_t operator()(const ev_io &o) const {
-			return static_cast<size_t>(o.fd);
-		}
-	};
-	struct equals_t {
-		bool operator()(const ev_io &o1, const ev_io &o2) const {
-			return o1.fd == o2.fd && o1.cb == o2.cb;
-		}
+	struct entry_t {
+		ev_io handler;
+		EndpointAddress addr;
+		ConnectCB cb;
 	};
 
-	std::unordered_map<ev_io, entry_t, hasher_t, equals_t> m_pendingConnections;
+	std::unordered_map<Socket::NATIVE, entry_t> m_pendingConnections;
 
 	EventLoop *reactor;
 };
