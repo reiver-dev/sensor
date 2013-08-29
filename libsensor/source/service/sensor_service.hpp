@@ -5,17 +5,13 @@
 #include "reactor/reactor.hpp"
 
 #include "sensor_private.hpp"
-#include "net/socket_utils.h"
-#include "sensor_watcher.hpp"
 #include "negotiation_model.hpp"
-#include "event_system.hpp"
+#include "async_msgqueue.hpp"
 
-#include <signal/signaled_member_queue.hpp>
 
 
 class SensorService {
 public:
-
 
 	SensorService(sensor_opt_balancing *opts);
 
@@ -25,33 +21,29 @@ public:
 private:
 
 	sensor_opt_balancing *options;
+	InternetAddress currentAddress;
+
+	MemberAsyncQueue<SensorService> mqueue;
 
 	net::EventLoop eventLoop;
 	net::TcpAcceptor acceptor;
 	net::TcpConnector connector;
-	SignaledMemberQueue<SensorService> mqueue;
 
-	InternetAddress currentAddress;
 
-	void accepted(ev::io &watcher, int events);
-	void connected(ev::io &watcher, int events);
-	void lookup_received(ev::io &watcher, int events);
-	void polute_timeout(ev::timer &watcher);
+	struct get_hash {
+		size_t operator()(const net::EndpointAddress& o) const {
+			size_t h = 0;
+			size_t s = sizeof(net::EndpointAddress);
+			char *data = (char *)&o;
+			while(s) {
+				h += 33 * h + *data++;
+				s--;
+			}
+			return h;
+		}
+	};
 
-	int server_socket;
-	int lookup_socket;
-
-	ev::default_loop loop;
-
-	IoEvent connect_watcher;
-	IoEvent accept_watcher;
-	IoEvent lookup_watcher;
-	IoEvent capture_watcher;
-
-	TimerEvent balance_timer;
-	TimerEvent lookup_timer;
-	TimerEvent survey_timer;
-
+	std::unordered_map<net::EndpointAddress, net::StreamLink, get_hash> activeChannels;
 	NegotiationModel model;
 
 };
