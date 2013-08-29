@@ -94,22 +94,6 @@ public:
 		return result;
 	}
 
-	bool try_receive() {
-		bool result = false;
-		Node *node = pipe->try_recv();
-		if (node) {
-			ACommand *cmd = getcommand(node);
-			if (cmd) {
-				cmd->call();
-				result = true;
-				delete cmd;
-			} else {
-				delete node;
-			}
-		}
-		return result;
-	}
-
 	void nullmsg() {
 		Node *nullmsg = new Node();
 		nullmsg->self = nullptr;
@@ -119,10 +103,6 @@ public:
 
 	void run() {
 		while (receive());
-	}
-
-	void dry_run() {
-		while (try_receive());
 	}
 
 };

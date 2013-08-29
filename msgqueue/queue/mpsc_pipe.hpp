@@ -11,15 +11,6 @@ template<typename DataT>
 class MpscPipe {
 public:
 
-	MpscPipe() : queue(new MpscQueue<DataT>), waiting(false) {
-		sem_init(&semaphore, 0, 0);
-	}
-
-	~MpscPipe() {
-		sem_destroy(&semaphore);
-		delete queue;
-	}
-
 	void send(DataT &data) {
 		queue->push(data);
 		eventcount.notify();

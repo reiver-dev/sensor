@@ -50,9 +50,6 @@ public:
 		queue.run();
 	}
 
-	void dry_run() {
-		queue.dry_run();
-	}
 };
 
 }
