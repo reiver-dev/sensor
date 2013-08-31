@@ -18,6 +18,12 @@ public:
 	void start();
 	void stop();
 
+	void onNodeFound(const Node &node);
+	net::StreamLink* onConnectionAccepted(const net::EndpointAddress &addr);
+	void onDataRead(net::StreamLink &link);
+
+	net::StreamLink* onConnectionEstablished(const net::EndpointAddress &addr);
+
 private:
 
 	sensor_opt_balancing *options;
@@ -28,7 +34,6 @@ private:
 	net::EventLoop eventLoop;
 	net::TcpAcceptor acceptor;
 	net::TcpConnector connector;
-
 
 	struct get_hash {
 		size_t operator()(const net::EndpointAddress& o) const {

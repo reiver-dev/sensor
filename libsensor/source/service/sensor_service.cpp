@@ -10,7 +10,7 @@ SensorService::SensorService(sensor_opt_balancing *opts) :
 	struct in6_addr ip6addr;
 	char buffer[64];
 
-	if (get_current_address(AF_INET6,  opts->device_name, &ip6addr)) {
+	if (get_current_address(AF_INET6, opts->device_name, &ip6addr)) {
 		currentAddress.setAddr6(ip6addr);
 	} else if (get_current_address(AF_INET, opts->device_name, &ip4addr)) {
 		currentAddress.setAddr4(ip4addr);
@@ -29,6 +29,36 @@ void SensorService::start() {
 
 void SensorService::stop() {
 	eventLoop.stop();
+}
+
+void SensorService::onNodeFound(const Node &node) {
+
+}
+
+net::StreamLink* SensorService::onConnectionAccepted(const net::EndpointAddress &addr) {
+	auto it = activeChannels.emplace(addr, addr);
+	if (it.second) {
+		net::StreamLink *link = &it.first->second;
+		link->setReadCallback(CB_BIND_MEM(this, &SensorService::onDataRead));
+		link->setReceiving(true);
+		return link;
+	}
+	return nullptr;
+}
+
+void SensorService::onDataRead(net::StreamLink &link) {
+
+}
+
+net::StreamLink* SensorService::onConnectionEstablished(const net::EndpointAddress &addr) {
+	auto it = activeChannels.emplace(addr, addr);
+	if (it.second) {
+		net::StreamLink *link = &it.first->second;
+		link->setReadCallback(CB_BIND_MEM(this, &SensorService::onDataRead));
+		link->setReceiving(true);
+		return link;
+	}
+	return nullptr;
 }
 
 /*void SensorService::accepted(ev::io &watcher, int events) {

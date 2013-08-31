@@ -55,6 +55,8 @@ void TcpAcceptor::onEvent(EV_P_ ev_io *handler, int revent) {
 	EndpointAddress address;
 	Socket sock = self->sock.accept(&address);
 	StreamLink *channel = self->onAccept(address);
-	if (channel != nullptr)
-		channel->initialize(sock, self->reactor);
+	if (channel != nullptr) {
+		channel->init(sock);
+		channel->start(self->reactor);
+	}
 }

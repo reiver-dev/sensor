@@ -79,7 +79,7 @@ struct FreeFunc {
 				return Func(std::forward<ARGS>(args)...);
 			}
 		};
-		return Callback<R (ARGS...)>(0, _::wrapper);
+		return Callback<R (ARGS...)>(nullptr, _::wrapper);
 	}
 };
 
@@ -103,10 +103,12 @@ inline FreeFunc<R, ARGS...> get(R (*)(ARGS...)) {
 
 }
 
-
-
 #define CD_BIND_MEM_IMPL(instance, func) \
 	(CB::Factory::get(func).template bind<func>(instance))
 #define CB_BIND_MEM CD_BIND_MEM_IMPL
+
+#define CD_BIND_FREE_IMPL(func) \
+	(CB::Factory::get(func).template bind<func>(instance))
+#define CB_BIND_FREE CD_BIND_FREE_IMPL
 
 #endif /* CALLBACK_HPP_ */

@@ -25,15 +25,16 @@ void TcpConnector::setConnectCallback(const ConnectCB& cb) {
 }
 
 void TcpConnector::onEvent(struct ev_loop *loop, ev_io *handler, int revent) {
-	TcpConnector *self = (TcpConnector *) handler->data;
-	auto it = self->m_pendingConnections.find(handler->fd);
-	if (it != self->m_pendingConnections.end()) {
+	TcpConnector *conn = (TcpConnector *) handler->data;
+	auto it = conn->m_pendingConnections.find(handler->fd);
+	if (it != conn->m_pendingConnections.end()) {
 		entry_t &e = it->second;
 		ev_io_stop(loop, handler);
-		StreamLink *channel = e.cb(e.addr);
-		if (channel != nullptr) {
-			channel->initialize(*handler, self->reactor);
+		StreamLink *link = e.cb(e.addr);
+		if (link) {
+			link->init(*handler);
+			link->start(conn->reactor);
 		}
-		self->m_pendingConnections.erase(it);
+		conn->m_pendingConnections.erase(it);
 	}
 }

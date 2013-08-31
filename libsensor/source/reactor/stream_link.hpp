@@ -65,16 +65,21 @@ public:
 	void advance(size_t l);
 	void write(char *data, size_t len);
 
+	void init(Socket sock);
+	void init(const ev_io& handler);
+
+	void start(EventLoop *r);
+	void stop();
+
 private:
 
-	static void eventCallback(EV_P_ ev_io *handler, int revents);
+	static void onEvent(EV_P_ ev_io *handler, int revents);
 
-	void initialize(Socket sock, EventLoop *reactor);
-	void initialize(const ev_io& handler, EventLoop *reactor);
+	bool prepareEvents();
+	void destroy();
 
 	void processRead();
 	void processWrite();
-	bool prepareEvents();
 
 	ev_io m_handler;
 
@@ -93,10 +98,6 @@ private:
 	Buffer m_out;
 
 	EventLoop *m_reactor;
-
-	friend class TcpConnector;
-	friend class TcpAcceptor;
-
 };
 
 }

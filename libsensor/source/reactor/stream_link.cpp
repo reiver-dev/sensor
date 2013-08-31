@@ -9,7 +9,7 @@ StreamLink::~StreamLink() {
 }
 
 
-void StreamLink::eventCallback(EV_P_ ev_io *handler, int revents) {
+void StreamLink::onEvent(EV_P_ ev_io *handler, int revents) {
 	StreamLink *link = static_cast<StreamLink*>(handler->data);
 	if (revents || EV_READ) {
 		link->processRead();
@@ -19,6 +19,8 @@ void StreamLink::eventCallback(EV_P_ ev_io *handler, int revents) {
 	}
 
 	if (!link->prepareEvents()) {
+		link->stop();
+		link->destroy();
 		link->onDispose(*link);
 	}
 }
@@ -48,32 +50,38 @@ void StreamLink::write(char *data, size_t len) {
 	m_out.append(data, len);
 }
 
-void StreamLink::initialize(Socket sock, EventLoop *reactor) {
+void StreamLink::init(Socket sock) {
 	m_sock = sock;
-	m_reactor = reactor;
 	m_handler.data = this;
-	ev_init(&m_handler, eventCallback);
-	prepareEvents();
-	ev_io_start(m_reactor->get_loop(), &m_handler);
+	ev_init(&m_handler, onEvent);
 }
 
-void StreamLink::initialize(const ev_io &handler, EventLoop *reactor) {
+void StreamLink::init(const ev_io &handler) {
 	m_sock = handler.fd;
-	m_reactor = reactor;
 	m_handler.data = this;
-	ev_set_cb(&m_handler, eventCallback);
-	prepareEvents();
-	ev_io_start(m_reactor->get_loop(), &m_handler);
+	ev_set_cb(&m_handler, onEvent);
+}
+
+void StreamLink::destroy() {
+	if (m_sock.fd()) {
+		m_sock.close();
+	}
+}
+
+void StreamLink::start(EventLoop *reactor) {
+	m_reactor = reactor;
+	if (prepareEvents())
+		ev_io_start(m_reactor->get_loop(), &m_handler);
+}
+
+void StreamLink::stop() {
+	ev_io_stop(m_reactor->get_loop(), &m_handler);
 }
 
 bool StreamLink::prepareEvents() {
 	int events = 0;
 
 	if (m_state == State::DISCONNECT || m_state == State::READ_ERROR) {
-		 (m_reactor->get_loop(), &m_handler);
-		if (m_sock.fd()) {
-			m_sock.close();
-		}
 		return false;
 	}
 
