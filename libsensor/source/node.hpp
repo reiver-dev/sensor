@@ -14,7 +14,7 @@ struct Node {
 	NodeAddress addr;
 	time_t last_check;
 	int load;
-	int current_load;
+	int moment_load;
 };
 
 

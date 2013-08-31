@@ -19,6 +19,7 @@
 #include "traffic_capture.hpp"
 #include "poluter.hpp"
 #include "raw_packet_handler.hpp"
+#include "sensor_service.hpp"
 
 #include "base/debug.h"
 #include "base/clock.h"
@@ -226,6 +227,11 @@ void sensor_breakloop(sensor_t config) {
 	config->activated = false;
 }
 
+template<typename T>
+static void *thread_start(void *arg) {
+	static_cast<T*>(arg)->start();
+	return 0;
+}
 
 int sensor_main(sensor_t config) {
 	pthread_t captureThread, poluterThread;
@@ -237,47 +243,31 @@ int sensor_main(sensor_t config) {
 	DNOTIFY("Current NETMASK: %s\n", inet_ntoa(config->captureInterface.ip4.netmask));
 	DNOTIFY("Current GATEWAY: %s\n", inet_ntoa(config->captureInterface.ip4.gateway));
 
-	rawPacketHandler.initialize(config->opt.capture.device_name,
+	rawPacketHandler.init(config->opt.capture.device_name,
 		config->opt.capture.buffersize, config->opt.capture.promiscuous);
 
-	mq::MessageQueue coreQueue;
+	SensorService sensorService(config);
 
-	TrafficCapture captureContext(config, rawPacketHandler, &coreQueue);
+	TrafficCapture captureContext(config, rawPacketHandler, sensorService.messageQueue());
 	Poluter poluterContext(config, rawPacketHandler);
 
-	uint64_t iteration_time = get_now_usec();
-	struct timer survey_timer = {iteration_time, config->opt.nodes.survey_timeout};
-	//struct timer balancing_timer = {iteration_time, config->opt.balancing.timeout};
-	//struct timer spoof_timer = {iteration_time, config->opt.balancing.modify_timeout};
+	sensorService.setPolluterMq(poluterContext.messageQueue());
 
 	config->activated = true;
 
 	DNOTIFY("%s\n", "Starting");
 
-	pthread_create(&captureThread, NULL, (void *(*)(void*))TrafficCapture::start, &captureContext);
-	pthread_create(&poluterThread, NULL, (void *(*)(void*))Poluter::start, &poluterContext);
+	pthread_create(&captureThread, NULL, thread_start<TrafficCapture>, &captureContext);
+	pthread_create(&poluterThread, NULL, thread_start<Poluter>, &poluterContext);
 
 	DNOTIFY("%s\n", "Threads Started");
 
-	while (config->activated) {
-		iteration_time = get_now_usec();
-		coreQueue.receive();
-		if (timer_check(&survey_timer, iteration_time)) {
-			Poluter::MsgSpoof msg;
-			msg.targets = NULL;
-			msg.target_count = 0;
-			poluterContext.messageQueue().send(&Poluter::spoof_nodes, std::move(msg));
-			timer_ping(&survey_timer);
-		}
-	}
-
+	sensorService.start();
 
 	DNOTIFY("%s\n", "Stopping threads");
 
-	poluterContext.messageQueue().nullmsg();
+	poluterContext.messageQueue()->nullmsg();
 	captureContext.stop();
-
-	coreQueue.run();
 
 	DNOTIFY("%s\n", "Waiting for threads exit");
 

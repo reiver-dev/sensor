@@ -3,7 +3,7 @@
 
 using namespace net;
 
-void TcpConnector::connect(EventLoop *loop, char* addr, char* port, const ConnectCB& continuation) {
+void TcpConnector::connect(EventLoop *loop, char* addr, char* port, const ConnectCB& continuation) noexcept {
 	entry_t entry;
 	Socket sock = Socket::createFromText(addr, port, &entry.addr);
 	entry.cb = continuation;
@@ -17,10 +17,6 @@ void TcpConnector::connect(EventLoop *loop, char* addr, char* port, const Connec
 
 	ev_io_init(&handler, onEvent, sock.fd(), EV_READ);
 	ev_io_start(loop->get_loop(), &handler);
-
-}
-
-void TcpConnector::setConnectCallback(const ConnectCB& cb) {
 
 }
 

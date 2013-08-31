@@ -1,7 +1,7 @@
 #include "raw_packet_handler.hpp"
 #include "base/debug.h"
 
-bool RawPacketHandler::initialize(const char *deviceName, size_t bufferSize, bool promiscuous) {
+bool RawPacketHandler::init(const char *deviceName, size_t bufferSize, bool promiscuous) {
 	char errbuf[PCAP_ERRBUF_SIZE] = {0};
 	pcap_t *pcapHandle = NULL;
 

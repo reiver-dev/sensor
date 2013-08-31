@@ -1,19 +1,29 @@
 #ifndef NEGOTIATOR_HPP_
 #define NEGOTIATOR_HPP_
 
+#include "sensor_private.hpp"
+#include "node.hpp"
+#include "poluter.hpp"
 
 #include "reactor/reactor.hpp"
-
-#include "sensor_private.hpp"
-#include "negotiation_model.hpp"
-#include "async_msgqueue.hpp"
+#include "service/async_msgqueue.hpp"
 
 
 
 class SensorService {
 public:
 
-	SensorService(sensor_opt_balancing *opts);
+	typedef MemberAsyncQueue<SensorService> MQ;
+
+	SensorService(sensor_t config);
+
+	void setPolluterMq(Poluter::MQ *mq) {
+		polluterMqueue = mq;
+	}
+
+	MQ *messageQueue() {
+		return &mqueue;
+	}
 
 	void start();
 	void stop();
@@ -29,7 +39,8 @@ private:
 	sensor_opt_balancing *options;
 	InternetAddress currentAddress;
 
-	MemberAsyncQueue<SensorService> mqueue;
+	MQ mqueue;
+	Poluter::MQ *polluterMqueue;
 
 	net::EventLoop eventLoop;
 	net::TcpAcceptor acceptor;
@@ -49,7 +60,6 @@ private:
 	};
 
 	std::unordered_map<net::EndpointAddress, net::StreamLink, get_hash> activeChannels;
-	NegotiationModel model;
 
 };
 

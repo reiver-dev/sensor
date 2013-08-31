@@ -13,12 +13,11 @@ static void handle_packet_callback(void *data, const struct pcap_pkthdr *header,
 	static_cast<TrafficCapture *>(data)->handlePacket(header, buffer);
 }
 
-void *TrafficCapture::start(TrafficCapture *self) {
-	self->active = true;
-	self->rawHandler.start(self, handle_packet_callback);
-	self->active = false;
-	self->queueToCore->nullmsg();
-	return 0;
+void TrafficCapture::start() {
+	active = true;
+	rawHandler.start(this, handle_packet_callback);
+	active = false;
+	queue->nullmsg();
 }
 
 
@@ -26,9 +25,6 @@ void TrafficCapture::handlePacket(const struct pcap_pkthdr *packet_header, const
 	struct PacketInfoRequest pInfoRequest = { 0 };
 	pInfoRequest.size = packet_header->len;
 	DINFO("Captured inbound %i\n", pInfoRequest.size);
-
-	queueToCore->send(sensor_log_packet, (int) packet_header->len);
-	queueToCore->send(sensor_notify);
 
 	struct in_addr ip4;
 	uint8_t hw[ETH_ALEN];

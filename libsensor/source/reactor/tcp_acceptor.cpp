@@ -5,8 +5,8 @@
 
 using namespace net;
 
-void TcpAcceptor::initialize(const char *addr, const char *port) {
-	sock = Socket::createFromText(addr, port, &m_address);
+void TcpAcceptor::init(const char *addr, const char *port, const AcceptCB& cb) {
+	sock = SocketMain::createFromText(addr, port, &m_address);
 
 	if (sock.set_nonblocking(true)) {
 		throw std::runtime_error(strerror(errno));
@@ -22,18 +22,14 @@ void TcpAcceptor::initialize(const char *addr, const char *port) {
 
 	ev_io_init(&handler, onEvent, sock.fd(), EV_READ);
 	handler.data = this;
-	reactor = 0;
+	onAccept = cb;
 }
 
 
-void TcpAcceptor::initialize(const char* addr, uint16_t port) {
+void TcpAcceptor::init(const char* addr, uint16_t port, const AcceptCB& cb) {
 	char service[16] = { };
 	snprintf(service, 16, "%hu", port);
-	initialize(addr, service);
-}
-
-void TcpAcceptor::setAcceptCallback(const AcceptCB& cb) {
-	onAccept = cb;
+	init(addr, service, cb);
 }
 
 void TcpAcceptor::start(EventLoop *r) {

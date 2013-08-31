@@ -14,6 +14,8 @@
 class Poluter {
 public:
 
+	typedef mq::MemberMessageQueue<Poluter> MQ;
+
 	struct MsgSpoof {
 		size_t target_count;
 		struct NodeAddress *targets;
@@ -46,13 +48,14 @@ public:
 
 	};
 
-	static void *start(Poluter *self);
+	void start();
+	void stop();
 
 	void perform_survey();
 	int spoof_nodes(MsgSpoof msg);
 
-	mq::MemberMessageQueue<Poluter>& messageQueue() {
-		return message_queue;
+	MQ *messageQueue() {
+		return &message_queue;
 	}
 
 	Poluter(sensor_t context, RawPacketHandler handler) :

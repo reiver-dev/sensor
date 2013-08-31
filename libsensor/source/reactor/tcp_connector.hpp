@@ -15,8 +15,7 @@ public:
 
 	typedef CB::Callback<StreamLink* (const EndpointAddress&)> ConnectCB;
 
-	void connect(EventLoop *loop, char *address, char *port, const ConnectCB& continuation);
-	void setConnectCallback(const ConnectCB& cb);
+	void connect(EventLoop *loop, char *address, char *port, const ConnectCB& continuation) noexcept;
 
 private:
 

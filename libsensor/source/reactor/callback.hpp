@@ -108,7 +108,7 @@ inline FreeFunc<R, ARGS...> get(R (*)(ARGS...)) {
 #define CB_BIND_MEM CD_BIND_MEM_IMPL
 
 #define CD_BIND_FREE_IMPL(func) \
-	(CB::Factory::get(func).template bind<func>(instance))
+	(CB::Factory::get(func).template bind<func>())
 #define CB_BIND_FREE CD_BIND_FREE_IMPL
 
 #endif /* CALLBACK_HPP_ */

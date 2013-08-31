@@ -11,9 +11,8 @@
 #include "base/util.h"
 
 
-void *Poluter::start(Poluter *self) {
-	static_cast<Poluter*>(self)->message_queue.run();
-	return 0;
+void Poluter::start() {
+	message_queue.run();
 }
 
 void Poluter::perform_survey() {

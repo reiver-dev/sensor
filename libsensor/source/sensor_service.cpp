@@ -1,24 +1,24 @@
 #include "sensor_service.hpp"
-#include "session_context.hpp"
 #include "net/netinfo.h"
 #include "base/debug.h"
 
-SensorService::SensorService(sensor_opt_balancing *opts) :
-	options(opts), mqueue(this) {
+SensorService::SensorService(sensor_t config) :
+	options(&config->opt.balancing), mqueue(this) {
 
 	struct in_addr ip4addr;
 	struct in6_addr ip6addr;
 	char buffer[64];
 
-	if (get_current_address(AF_INET6, opts->device_name, &ip6addr)) {
+	if (get_current_address(AF_INET6, options->device_name, &ip6addr)) {
 		currentAddress.setAddr6(ip6addr);
-	} else if (get_current_address(AF_INET, opts->device_name, &ip4addr)) {
+	} else if (get_current_address(AF_INET, options->device_name, &ip4addr)) {
 		currentAddress.setAddr4(ip4addr);
 	} else {
-		DERROR("Error getting interface (%s) address", opts->device_name);
+		DERROR("Error getting interface (%s) address", options->device_name);
 	}
 
-	acceptor.initialize(currentAddress.toString(buffer), "33178");
+	acceptor.init(currentAddress.toString(buffer), "33178",
+		CB_BIND_MEM(this, &SensorService::onConnectionAccepted));
 	acceptor.start(&eventLoop);
 
 }

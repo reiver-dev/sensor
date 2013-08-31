@@ -14,10 +14,8 @@ public:
 
 	typedef CB::Callback<StreamLink* (const EndpointAddress&)> AcceptCB;
 
-	void initialize(const char *addr, const char *port);
-	void initialize(const char* addr, uint16_t port);
-
-	void setAcceptCallback(const AcceptCB& cb);
+	void init(const char *addr, const char *port, const AcceptCB& cb);
+	void init(const char* addr, uint16_t port, const AcceptCB& cb);
 
 	void start(EventLoop *r);
 	void stop();
@@ -30,7 +28,7 @@ private:
 	AcceptCB onAccept;
 
 	EndpointAddress m_address;
-	Socket sock;
+	SocketMain sock;
 
 	EventLoop *reactor;
 };

@@ -24,7 +24,7 @@ public:
 
 	}
 
-	bool initialize(const char *deviceName, size_t bufferSize, bool promiscuous);
+	bool init(const char *deviceName, size_t bufferSize, bool promiscuous);
 	void close() {
 		if (isInitialized()) {
 			pcap_close(m_handler);

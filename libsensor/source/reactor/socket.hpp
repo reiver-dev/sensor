@@ -74,7 +74,22 @@ private:
 	NATIVE m_fd;
 };
 
+class SocketMain : public Socket {
+public:
 
+	SocketMain() : Socket(0) { }
+
+	SocketMain(NATIVE sock) : Socket(sock) {
+
+	}
+
+	~SocketMain() {
+		close();
+	}
+
+	static SocketMain createFromText(const char *addr, const char *port, EndpointAddress *resolved);
+
+};
 
 
 }

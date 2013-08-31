@@ -3,7 +3,7 @@
 using namespace net;
 
 
-Socket Socket::createFromText(const char *addr, const char *port, EndpointAddress *resolved) {
+static Socket::NATIVE fromText(const char *addr, const char *port, EndpointAddress *resolved) {
 	struct addrinfo hints;
 	struct addrinfo *result;
 	int rc;
@@ -18,12 +18,17 @@ Socket Socket::createFromText(const char *addr, const char *port, EndpointAddres
 	}
 	std::unique_ptr<addrinfo, void(*)(addrinfo*)> info(result, freeaddrinfo);
 
-	Socket fd = ::socket(info->ai_family, info->ai_socktype, info->ai_protocol);
+	Socket::NATIVE fd = ::socket(info->ai_family, info->ai_socktype, info->ai_protocol);
 
 	if (resolved)
 		*resolved = EndpointAddress(info->ai_addr, info->ai_addrlen);
 
 	return fd;
+}
+
+
+Socket Socket::createFromText(const char *addr, const char *port, EndpointAddress *resolved) {
+	return fromText(addr, port, resolved);
 }
 
 int Socket::set_nonblocking(bool value) {
@@ -50,3 +55,9 @@ Socket Socket::accept(EndpointAddress* address) {
 		*address = EndpointAddress(saddr, len);
 	return fd;
 }
+
+
+SocketMain SocketMain::createFromText(const char *addr, const char *port, EndpointAddress *resolved) {
+	return fromText(addr, port, resolved);
+}
+
